@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { processIncomingMessage, generateFirstMessage } from './agent-processor'
 import { checkWorkingHours } from './working-hours'
 import { sendTextMessage } from '@/lib/evolution/client'
+import { logMessageToCRM, updateCRMStatus } from '@/lib/integrations/crm-sync'
 
 function getSupabase() {
   return createClient(
@@ -72,6 +73,15 @@ export async function handleIncomingMessage(
       const response = outsideHoursMessage || workingHours.message ||
         'Danke für deine Nachricht! Wir melden uns bald bei dir.'
 
+      // Log incoming message to CRM first
+      logMessageToCRM({
+        tenantId,
+        phone: conversation.contact_phone,
+        contactName: conversation.contact_name || undefined,
+        message: incomingMessage,
+        direction: 'inbound',
+      }).catch(err => console.error('CRM log error:', err))
+
       await saveAndSendMessage({
         conversationId,
         tenantId,
@@ -79,6 +89,8 @@ export async function handleIncomingMessage(
         phone: conversation.contact_phone,
         content: response,
         senderType: 'agent',
+        contactName: conversation.contact_name || undefined,
+        agentName: agent.agent_name || agent.name,
       })
 
       return {
@@ -115,6 +127,23 @@ export async function handleIncomingMessage(
         })
         .eq('id', conversationId)
 
+      // Log incoming message to CRM
+      logMessageToCRM({
+        tenantId,
+        phone: conversation.contact_phone,
+        contactName: conversation.contact_name || undefined,
+        message: incomingMessage,
+        direction: 'inbound',
+      }).catch(err => console.error('CRM log error:', err))
+
+      // Update CRM status to escalated
+      updateCRMStatus({
+        tenantId,
+        phone: conversation.contact_phone,
+        outcome: 'escalated',
+        note: `Eskaliert: ${result.escalationReason}`,
+      }).catch(err => console.error('CRM status error:', err))
+
       await saveAndSendMessage({
         conversationId,
         tenantId,
@@ -122,6 +151,8 @@ export async function handleIncomingMessage(
         phone: conversation.contact_phone,
         content: result.response,
         senderType: 'agent',
+        contactName: conversation.contact_name || undefined,
+        agentName: agent.agent_name || agent.name,
       })
 
       return {
@@ -139,7 +170,16 @@ export async function handleIncomingMessage(
         .eq('id', conversationId)
     }
 
-    // 7. Sende Antwort
+    // 7. Log incoming message to CRM
+    logMessageToCRM({
+      tenantId,
+      phone: conversation.contact_phone,
+      contactName: conversation.contact_name || undefined,
+      message: incomingMessage,
+      direction: 'inbound',
+    }).catch(err => console.error('CRM log error:', err))
+
+    // 8. Sende Antwort
     await saveAndSendMessage({
       conversationId,
       tenantId,
@@ -148,6 +188,8 @@ export async function handleIncomingMessage(
       content: result.response,
       senderType: 'agent',
       scriptStep: conversation.current_script_step,
+      contactName: conversation.contact_name || undefined,
+      agentName: agent.agent_name || agent.name,
     })
 
     return {
@@ -259,9 +301,19 @@ export async function startNewConversation(options: {
       content: firstMessage,
       senderType: 'agent',
       scriptStep: 1,
+      contactName: options.contactName,
+      agentName: agent.agent_name || agent.name,
     })
 
-    // 7. Update Trigger Stats
+    // 7. Update CRM status to contacted
+    updateCRMStatus({
+      tenantId: options.tenantId,
+      phone: options.phone,
+      outcome: 'contacted',
+      note: `Neue Conversation gestartet via Trigger`,
+    }).catch(err => console.error('CRM status error:', err))
+
+    // 8. Update Trigger Stats
     await supabase
       .from('triggers')
       .update({
@@ -292,6 +344,8 @@ async function saveAndSendMessage(options: {
   content: string
   senderType: 'agent' | 'human'
   scriptStep?: number
+  contactName?: string
+  agentName?: string
 }): Promise<void> {
   const supabase = getSupabase()
 
@@ -352,4 +406,14 @@ async function saveAndSendMessage(options: {
   } catch {
     // Ignore if RPC doesn't exist yet
   }
+
+  // 6. Log to CRM (async, don't block)
+  logMessageToCRM({
+    tenantId: options.tenantId,
+    phone: options.phone,
+    contactName: options.contactName,
+    message: options.content,
+    direction: 'outbound',
+    agentName: options.agentName,
+  }).catch(err => console.error('CRM log error:', err))
 }

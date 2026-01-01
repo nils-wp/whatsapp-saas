@@ -318,6 +318,84 @@ export async function addNoteToLead(
 }
 
 /**
+ * Loggt eine SMS-Aktivität (für WhatsApp-Nachrichten)
+ */
+export async function logSmsActivity(
+  config: CloseConfig,
+  options: {
+    leadId: string
+    contactId?: string
+    remotePhone: string
+    localPhone?: string
+    text: string
+    direction: 'inbound' | 'outbound'
+    status?: 'sent' | 'received' | 'draft'
+  }
+): Promise<boolean> {
+  try {
+    const response = await closeRequest(config, '/activity/sms/', {
+      method: 'POST',
+      body: JSON.stringify({
+        lead_id: options.leadId,
+        contact_id: options.contactId,
+        remote_phone: options.remotePhone,
+        local_phone: options.localPhone || 'WhatsApp',
+        text: options.text,
+        direction: options.direction,
+        status: options.status || (options.direction === 'outbound' ? 'sent' : 'received'),
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Close SMS activity error:', response.status, errorText)
+    }
+
+    return response.ok
+  } catch (error) {
+    console.error('Close logSmsActivity error:', error)
+    return false
+  }
+}
+
+/**
+ * Holt SMS-Aktivitäten für einen Lead
+ */
+export async function getSmsActivities(
+  config: CloseConfig,
+  leadId: string,
+  limit: number = 50
+): Promise<Array<{
+  id: string
+  text: string
+  direction: 'inbound' | 'outbound'
+  remotePhone: string
+  createdAt: string
+}>> {
+  try {
+    const response = await closeRequest(
+      config,
+      `/activity/sms/?lead_id=${leadId}&_limit=${limit}&_order_by=-date_created`
+    )
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+
+    return data.data?.map((sms: any) => ({
+      id: sms.id,
+      text: sms.text,
+      direction: sms.direction,
+      remotePhone: sms.remote_phone,
+      createdAt: sms.date_created,
+    })) || []
+  } catch (error) {
+    console.error('Close getSmsActivities error:', error)
+    return []
+  }
+}
+
+/**
  * Holt Lead Statuses
  */
 export async function getLeadStatuses(
