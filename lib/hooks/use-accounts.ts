@@ -1,0 +1,118 @@
+'use client'
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useTenant } from '@/providers/tenant-provider'
+import type { Tables, InsertTables, UpdateTables } from '@/types/database'
+
+type WhatsAppAccount = Tables<'whatsapp_accounts'>
+type InsertAccount = InsertTables<'whatsapp_accounts'>
+type UpdateAccount = UpdateTables<'whatsapp_accounts'>
+
+export function useAccounts() {
+  const { currentTenant } = useTenant()
+  const supabase = createClient()
+
+  return useQuery({
+    queryKey: ['accounts', currentTenant?.id],
+    queryFn: async () => {
+      if (!currentTenant) return []
+
+      const { data, error } = await supabase
+        .from('whatsapp_accounts')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data as WhatsAppAccount[]
+    },
+    enabled: !!currentTenant,
+  })
+}
+
+export function useAccount(id: string) {
+  const supabase = createClient()
+
+  return useQuery({
+    queryKey: ['account', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('whatsapp_accounts')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+      return data as WhatsAppAccount
+    },
+    enabled: !!id,
+  })
+}
+
+export function useCreateAccount() {
+  const queryClient = useQueryClient()
+  const { currentTenant } = useTenant()
+  const supabase = createClient()
+
+  return useMutation({
+    mutationFn: async (data: Omit<InsertAccount, 'tenant_id'>): Promise<WhatsAppAccount> => {
+      if (!currentTenant) throw new Error('No tenant')
+
+      const { data: account, error } = await supabase
+        .from('whatsapp_accounts')
+        .insert({ ...data, tenant_id: currentTenant.id })
+        .select()
+        .single()
+
+      if (error) throw error
+      if (!account) throw new Error('Failed to create account')
+      return account as WhatsAppAccount
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export function useUpdateAccount() {
+  const queryClient = useQueryClient()
+  const supabase = createClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: UpdateAccount & { id: string }) => {
+      const { data: account, error } = await supabase
+        .from('whatsapp_accounts')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return account
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['account', variables.id] })
+    },
+  })
+}
+
+export function useDeleteAccount() {
+  const queryClient = useQueryClient()
+  const supabase = createClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('whatsapp_accounts')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}

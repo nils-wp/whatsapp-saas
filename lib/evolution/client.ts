@@ -1,0 +1,86 @@
+const EVOLUTION_URL = process.env.EVOLUTION_API_URL
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
+
+interface EvolutionResponse<T = unknown> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+async function evolutionFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<EvolutionResponse<T>> {
+  try {
+    const response = await fetch(`${EVOLUTION_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'apikey': EVOLUTION_API_KEY!,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      return { success: false, error }
+    }
+
+    const data = await response.json()
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+export async function createInstance(instanceName: string) {
+  return evolutionFetch('/instance/create', {
+    method: 'POST',
+    body: JSON.stringify({
+      instanceName,
+      qrcode: true,
+      integration: 'WHATSAPP-BAILEYS',
+    }),
+  })
+}
+
+export async function getQRCode(instanceName: string) {
+  return evolutionFetch<{ base64: string }>(`/instance/connect/${instanceName}`)
+}
+
+export async function getInstanceStatus(instanceName: string) {
+  return evolutionFetch<{ state: string }>(`/instance/connectionState/${instanceName}`)
+}
+
+export async function disconnectInstance(instanceName: string) {
+  return evolutionFetch(`/instance/logout/${instanceName}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function deleteInstance(instanceName: string) {
+  return evolutionFetch(`/instance/delete/${instanceName}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function sendTextMessage(
+  instanceName: string,
+  phone: string,
+  text: string
+) {
+  return evolutionFetch(`/message/sendText/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      number: phone,
+      text,
+    }),
+  })
+}
+
+export async function getInstanceInfo(instanceName: string) {
+  return evolutionFetch(`/instance/fetchInstances?instanceName=${instanceName}`)
+}
