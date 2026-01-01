@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { handleIncomingMessage } from '@/lib/ai/message-handler'
 
 function getSupabase() {
   return createClient(
@@ -8,34 +9,38 @@ function getSupabase() {
   )
 }
 
-// Evolution API sends webhooks here when messages are received
+/**
+ * Evolution API Webhook - Empfängt alle WhatsApp Events
+ */
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
 
     console.log('Evolution webhook received:', JSON.stringify(payload, null, 2))
 
-    // Evolution API sends different event types
     const event = payload.event
     const data = payload.data
+    const instanceName = payload.instance
 
+    // ============================================
+    // NEUE NACHRICHT EMPFANGEN
+    // ============================================
     if (event === 'messages.upsert') {
-      // New message received
       const message = data.message
-      const instanceName = payload.instance
 
-      // Only process incoming messages (not our own)
+      // Ignoriere eigene Nachrichten
       if (message.key?.fromMe) {
-        return NextResponse.json({ success: true, ignored: true })
+        return NextResponse.json({ success: true, ignored: 'own_message' })
       }
 
       const supabase = getSupabase()
       const phone = message.key?.remoteJid?.replace('@s.whatsapp.net', '')
       const content = message.message?.conversation ||
                       message.message?.extendedTextMessage?.text ||
+                      message.message?.imageMessage?.caption ||
                       '[Media]'
 
-      // Find the WhatsApp account
+      // Finde WhatsApp Account
       const { data: account } = await supabase
         .from('whatsapp_accounts')
         .select('id, tenant_id')
@@ -47,107 +52,115 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Account not found' }, { status: 404 })
       }
 
-      // Find or create conversation
+      // Finde aktive Conversation
       let { data: conversation } = await supabase
         .from('conversations')
         .select('*')
         .eq('tenant_id', account.tenant_id)
         .eq('contact_phone', phone)
-        .eq('status', 'active')
+        .in('status', ['active', 'paused'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single()
 
+      // Prüfe auch eskalierte Conversations
       if (!conversation) {
-        // Check for paused/escalated conversations
-        const { data: existingConv } = await supabase
+        const { data: escalatedConv } = await supabase
           .from('conversations')
           .select('*')
           .eq('tenant_id', account.tenant_id)
           .eq('contact_phone', phone)
-          .in('status', ['paused', 'escalated'])
+          .eq('status', 'escalated')
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
 
-        if (existingConv) {
-          conversation = existingConv
-          // Reactivate the conversation
-          await supabase
-            .from('conversations')
-            .update({ status: 'active' })
-            .eq('id', existingConv.id)
+        if (escalatedConv) {
+          // Bei eskalierten Conversations nur speichern, nicht antworten
+          await saveIncomingMessage(supabase, {
+            tenantId: account.tenant_id,
+            conversationId: escalatedConv.id,
+            content,
+            whatsappMessageId: message.key?.id,
+          })
+
+          return NextResponse.json({
+            success: true,
+            action: 'saved_to_escalated',
+            conversation_id: escalatedConv.id,
+          })
         }
       }
 
       if (!conversation) {
         console.log('No active conversation for phone:', phone)
-        // Could create a new conversation here if needed
+        // Optional: Könnte hier eine neue Conversation starten
         return NextResponse.json({ success: true, no_conversation: true })
       }
 
-      // Save the message
-      await supabase.from('messages').insert({
-        tenant_id: account.tenant_id,
-        conversation_id: conversation.id,
-        whatsapp_message_id: message.key?.id,
-        direction: 'inbound',
-        sender_type: 'contact',
+      // Reaktiviere pausierte Conversations
+      if (conversation.status === 'paused') {
+        await supabase
+          .from('conversations')
+          .update({ status: 'active' })
+          .eq('id', conversation.id)
+      }
+
+      // Speichere eingehende Nachricht
+      await saveIncomingMessage(supabase, {
+        tenantId: account.tenant_id,
+        conversationId: conversation.id,
         content,
-        status: 'delivered',
+        whatsappMessageId: message.key?.id,
       })
 
-      // Update conversation
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_contact_message_at: new Date().toISOString(),
-        })
-        .eq('id', conversation.id)
-
-      // TODO: Here you would trigger the AI agent to respond
-      // This could be done via:
-      // 1. n8n webhook
-      // 2. Direct OpenAI call
-      // 3. Background job
+      // Verarbeite mit AI und antworte
+      const result = await handleIncomingMessage({
+        conversationId: conversation.id,
+        incomingMessage: content,
+        tenantId: account.tenant_id,
+      })
 
       return NextResponse.json({
-        success: true,
+        success: result.success,
+        action: result.action,
         conversation_id: conversation.id,
-        message_saved: true
       })
     }
 
+    // ============================================
+    // CONNECTION STATUS GEÄNDERT
+    // ============================================
     if (event === 'connection.update') {
-      // Connection status changed
       const state = data.state
-      const instanceName = payload.instance
-
       const supabase = getSupabase()
+
+      const status = state === 'open' ? 'connected' : 'disconnected'
 
       await supabase
         .from('whatsapp_accounts')
-        .update({
-          status: state === 'open' ? 'connected' : 'disconnected'
-        })
+        .update({ status })
         .eq('instance_name', instanceName)
+
+      console.log(`Instance ${instanceName} status updated to: ${status}`)
 
       return NextResponse.json({ success: true, status_updated: true })
     }
 
+    // ============================================
+    // QR CODE AKTUALISIERT
+    // ============================================
     if (event === 'qrcode.updated') {
-      // QR code was updated
       const qrCode = data.qrcode?.base64
-      const instanceName = payload.instance
+      const supabase = getSupabase()
 
       if (qrCode) {
-        const supabase = getSupabase()
-
         await supabase
           .from('whatsapp_accounts')
           .update({
             qr_code: qrCode,
-            qr_expires_at: new Date(Date.now() + 60000).toISOString(), // 1 min expiry
-            status: 'connecting'
+            qr_expires_at: new Date(Date.now() + 60000).toISOString(),
+            status: 'connecting',
           })
           .eq('instance_name', instanceName)
       }
@@ -155,7 +168,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, qr_updated: true })
     }
 
-    // Unknown event type
+    // ============================================
+    // NACHRICHT STATUS (delivered, read)
+    // ============================================
+    if (event === 'messages.update') {
+      const messageId = data.key?.id
+      const status = data.update?.status
+
+      if (messageId && status) {
+        const supabase = getSupabase()
+
+        const statusMap: Record<number, string> = {
+          2: 'sent',
+          3: 'delivered',
+          4: 'read',
+        }
+
+        const newStatus = statusMap[status]
+        if (newStatus) {
+          await supabase
+            .from('messages')
+            .update({ status: newStatus })
+            .eq('whatsapp_message_id', messageId)
+        }
+      }
+
+      return NextResponse.json({ success: true, status_updated: true })
+    }
+
+    // Unbekannter Event-Typ
     return NextResponse.json({ success: true, event_type: event })
 
   } catch (error) {
@@ -167,10 +208,44 @@ export async function POST(request: Request) {
   }
 }
 
-// Allow GET for webhook verification
+/**
+ * Speichert eine eingehende Nachricht
+ */
+async function saveIncomingMessage(
+  supabase: ReturnType<typeof getSupabase>,
+  options: {
+    tenantId: string
+    conversationId: string
+    content: string
+    whatsappMessageId?: string
+  }
+) {
+  await supabase.from('messages').insert({
+    tenant_id: options.tenantId,
+    conversation_id: options.conversationId,
+    whatsapp_message_id: options.whatsappMessageId,
+    direction: 'inbound',
+    sender_type: 'contact',
+    content: options.content,
+    status: 'delivered',
+  })
+
+  await supabase
+    .from('conversations')
+    .update({
+      last_message_at: new Date().toISOString(),
+      last_contact_message_at: new Date().toISOString(),
+    })
+    .eq('id', options.conversationId)
+}
+
+/**
+ * GET für Webhook-Verification
+ */
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    message: 'Evolution webhook endpoint active'
+    message: 'Evolution webhook endpoint active',
+    version: '2.0',
   })
 }
