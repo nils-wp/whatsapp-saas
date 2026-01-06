@@ -84,3 +84,19 @@ export async function sendTextMessage(
 export async function getInstanceInfo(instanceName: string) {
   return evolutionFetch(`/instance/fetchInstances?instanceName=${instanceName}`)
 }
+
+export interface WhatsAppCheckResult {
+  exists: boolean
+  jid: string | null
+  number: string
+}
+
+export async function checkWhatsAppNumbers(
+  instanceName: string,
+  numbers: string[]
+): Promise<EvolutionResponse<WhatsAppCheckResult[]>> {
+  return evolutionFetch<WhatsAppCheckResult[]>(`/chat/whatsappNumbers/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({ numbers }),
+  })
+}
