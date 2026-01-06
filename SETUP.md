@@ -8,17 +8,17 @@ Diese Anleitung erklärt, wie du ChatSetter mit Coolify deployen kannst.
 ┌─────────────────────────────────────────────────────────────┐
 │                        COOLIFY                               │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Supabase   │  │ Evolution API│  │     n8n      │      │
-│  │  (Postgres)  │  │  (WhatsApp)  │  │ (Automation) │      │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
-│         │                 │                 │               │
-│         └────────────┬────┴────────────────┘               │
-│                      │                                      │
-│              ┌───────▼───────┐                             │
-│              │   ChatSetter  │                             │
-│              │   (Next.js)   │                             │
-│              └───────────────┘                             │
+│  ┌──────────────┐  ┌──────────────┐                        │
+│  │   Supabase   │  │ Evolution API│                        │
+│  │  (Postgres)  │  │  (WhatsApp)  │                        │
+│  └──────┬───────┘  └──────┬───────┘                        │
+│         │                 │                                 │
+│         └────────┬────────┘                                │
+│                  │                                          │
+│          ┌───────▼───────┐                                 │
+│          │   ChatSetter  │                                 │
+│          │   (Next.js)   │                                 │
+│          └───────────────┘                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,27 +72,7 @@ Diese Anleitung erklärt, wie du ChatSetter mit Coolify deployen kannst.
 
 ---
 
-## Schritt 3: n8n in Coolify (Optional)
-
-1. In Coolify: **New Resource** > **Docker Image**
-
-2. Image: `n8nio/n8n:latest`
-
-3. Ports: `5678:5678`
-
-4. Umgebungsvariablen:
-   ```env
-   N8N_HOST=n8n.deine-domain.de
-   N8N_PORT=5678
-   N8N_PROTOCOL=https
-   WEBHOOK_URL=https://n8n.deine-domain.de
-   ```
-
-5. Volume für Persistenz: `/home/node/.n8n`
-
----
-
-## Schritt 4: ChatSetter (Next.js) in Coolify
+## Schritt 3: ChatSetter (Next.js) in Coolify
 
 1. In Coolify: **New Resource** > **Public Repository**
 
@@ -114,17 +94,17 @@ Diese Anleitung erklärt, wie du ChatSetter mit Coolify deployen kannst.
    EVOLUTION_API_KEY=dein-evolution-api-key
 
    # App
-   NEXT_PUBLIC_APP_URL=https://app.deine-domain.de
+   NEXT_PUBLIC_APP_URL=https://deine-domain.de
    ```
 
-6. Domain zuweisen (z.B. `app.deine-domain.de`)
+6. Domain zuweisen (z.B. `deine-domain.de`)
 
 ---
 
-## Schritt 5: Verbindung testen
+## Schritt 4: Verbindung testen
 
 ### 1. Benutzer registrieren
-- Öffne `https://app.deine-domain.de/signup`
+- Öffne `https://deine-domain.de/signup`
 - Erstelle einen Account
 - Du wirst automatisch ein Projekt erstellt bekommen
 
@@ -142,17 +122,12 @@ Diese Anleitung erklärt, wie du ChatSetter mit Coolify deployen kannst.
 - Wähle den WhatsApp Account und Agent
 - Kopiere die Webhook URL
 
-### 5. Mit n8n verbinden (optional)
-- In n8n: Neuer Workflow
-- HTTP Request Node zu deiner Webhook URL
-- Teste mit Beispiel-Daten
-
 ---
 
 ## Architektur-Flow
 
 ```
-1. Lead kommt rein (CRM/Formular/n8n)
+1. Lead kommt rein (CRM/Formular)
        │
        ▼
 2. Webhook zu ChatSetter Trigger
@@ -190,13 +165,12 @@ Diese Anleitung erklärt, wie du ChatSetter mit Coolify deployen kannst.
 
 ### "Keine Nachrichten werden empfangen"
 - Prüfe den Evolution API Webhook
-- Webhook URL: `https://app.deine-domain.de/api/evolution/webhook`
+- Webhook URL: `https://deine-domain.de/api/evolution/webhook`
 
 ---
 
 ## Nächste Schritte
 
-1. [ ] n8n Workflows für Lead-Import erstellen
-2. [ ] ActiveCampaign/Close Integration konfigurieren
-3. [ ] Stripe für Billing einrichten
-4. [ ] Custom Domain mit SSL
+1. [ ] ActiveCampaign/Close Integration konfigurieren
+2. [ ] Stripe für Billing einrichten
+3. [ ] Custom Domain mit SSL

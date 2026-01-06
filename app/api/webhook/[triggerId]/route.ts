@@ -133,7 +133,7 @@ export async function POST(
       .eq('id', trigger.id)
 
     // Here you would typically trigger the actual message sending
-    // via n8n webhook or directly through Evolution API
+    // directly through Evolution API
     // For now, we'll just mark it as scheduled
 
     return NextResponse.json({

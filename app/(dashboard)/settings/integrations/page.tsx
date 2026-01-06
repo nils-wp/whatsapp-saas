@@ -78,7 +78,7 @@ function WebhooksSection() {
   const [copiedIncoming, setCopiedIncoming] = useState(false)
   const [copiedOutgoing, setCopiedOutgoing] = useState(false)
 
-  const incomingWebhookUrl = 'https://n8n.chatsetter.io/webhook/incoming/abc123'
+  const incomingWebhookUrl = 'https://chatsetter.io/api/webhook/abc123'
   const outgoingWebhookUrl = ''
 
   const copyToClipboard = (text: string, type: 'incoming' | 'outgoing') => {
