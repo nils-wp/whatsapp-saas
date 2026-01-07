@@ -12,7 +12,10 @@ async function evolutionFetch<T>(
   options: RequestInit = {}
 ): Promise<EvolutionResponse<T>> {
   try {
-    const response = await fetch(`${EVOLUTION_URL}${endpoint}`, {
+    const url = `${EVOLUTION_URL}${endpoint}`
+    console.log(`[Evolution API] ${options.method || 'GET'} ${url}`)
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         'apikey': EVOLUTION_API_KEY!,
@@ -21,14 +24,17 @@ async function evolutionFetch<T>(
       },
     })
 
+    const responseText = await response.text()
+    console.log(`[Evolution API] Response ${response.status}: ${responseText.substring(0, 500)}`)
+
     if (!response.ok) {
-      const error = await response.text()
-      return { success: false, error }
+      return { success: false, error: responseText }
     }
 
-    const data = await response.json()
+    const data = responseText ? JSON.parse(responseText) : {}
     return { success: true, data }
   } catch (error) {
+    console.error('[Evolution API] Error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

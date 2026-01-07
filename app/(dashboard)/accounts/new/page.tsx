@@ -27,7 +27,7 @@ export default function NewAccountPage() {
     try {
       await createAccount.mutateAsync({
         instance_name: instanceName.trim().toLowerCase().replace(/\s+/g, '-'),
-        status: 'qr_pending',
+        status: 'connecting',
       })
       setStep('connect')
     } catch (error) {

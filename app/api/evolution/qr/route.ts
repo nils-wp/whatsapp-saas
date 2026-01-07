@@ -21,14 +21,23 @@ export async function POST(request: Request) {
     }
 
     // Create instance if it doesn't exist
-    await createInstance(instanceName)
+    const createResult = await createInstance(instanceName)
+    console.log('[QR Route] Create instance result:', createResult)
+
+    if (!createResult.success) {
+      return NextResponse.json(
+        { error: `Failed to create instance: ${createResult.error}` },
+        { status: 500 }
+      )
+    }
 
     // Get QR code
     const qrResult = await getQRCode(instanceName)
+    console.log('[QR Route] QR code result:', qrResult)
 
     if (!qrResult.success) {
       return NextResponse.json(
-        { error: 'Failed to get QR code' },
+        { error: `Failed to get QR code: ${qrResult.error}` },
         { status: 500 }
       )
     }
