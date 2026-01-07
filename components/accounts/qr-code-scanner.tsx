@@ -29,11 +29,12 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
         body: JSON.stringify({ instanceName }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch QR code')
-      }
-
       const data = await response.json()
+      console.log('QR Response:', data)
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch QR code')
+      }
 
       if (data.qrCode) {
         setQRCode(data.qrCode)
@@ -41,9 +42,12 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
       } else if (data.connected) {
         setStatus('connected')
         onConnected?.()
+      } else {
+        throw new Error('No QR code in response')
       }
     } catch (err) {
-      setError('Fehler beim Laden des QR-Codes')
+      console.error('QR Error:', err)
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden des QR-Codes')
       setStatus('error')
     }
   }

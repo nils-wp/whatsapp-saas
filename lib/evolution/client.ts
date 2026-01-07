@@ -54,7 +54,22 @@ export async function createInstance(instanceName: string) {
 }
 
 export async function getQRCode(instanceName: string) {
-  return evolutionFetch<{ base64: string }>(`/instance/connect/${instanceName}`)
+  // Evolution API v2 returns QR code in different formats
+  const result = await evolutionFetch<{
+    base64?: string
+    code?: string
+    qrcode?: { base64?: string; code?: string }
+    pairingCode?: string
+  }>(`/instance/connect/${instanceName}`)
+
+  // Normalize the response
+  if (result.success && result.data) {
+    const data = result.data
+    const base64 = data.base64 || data.qrcode?.base64 || data.code || data.qrcode?.code
+    return { success: true, data: { base64 } }
+  }
+
+  return result
 }
 
 export async function getInstanceStatus(instanceName: string) {
