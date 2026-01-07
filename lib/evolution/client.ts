@@ -73,7 +73,15 @@ export async function getQRCode(instanceName: string) {
 }
 
 export async function getInstanceStatus(instanceName: string) {
-  return evolutionFetch<{ state: string }>(`/instance/connectionState/${instanceName}`)
+  const result = await evolutionFetch<{ instance?: { state: string }; state?: string }>(`/instance/connectionState/${instanceName}`)
+
+  // Normalize response - Evolution API returns state under instance.state
+  if (result.success && result.data) {
+    const state = result.data.instance?.state || result.data.state
+    return { success: true, data: { state } }
+  }
+
+  return result
 }
 
 export async function disconnectInstance(instanceName: string) {
