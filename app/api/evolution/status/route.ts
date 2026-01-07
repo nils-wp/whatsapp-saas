@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getInstanceStatus } from '@/lib/evolution/client'
+import { getInstanceStatus, getInstanceInfo } from '@/lib/evolution/client'
 import { createClient } from '@supabase/supabase-js'
 
 function getSupabase() {
@@ -7,6 +7,14 @@ function getSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
+
+interface InstanceInfo {
+  instance?: {
+    owner?: string
+    profileName?: string
+    profilePictureUrl?: string
+  }
 }
 
 export async function GET(request: Request) {
@@ -32,9 +40,32 @@ export async function GET(request: Request) {
     // Update database if connected
     if (state === 'open') {
       const supabase = getSupabase()
+
+      // Also fetch phone number from instance info
+      let phoneNumber: string | undefined
+      try {
+        const infoResult = await getInstanceInfo(instanceName)
+        console.log(`[Status Route] ${instanceName} info:`, infoResult)
+
+        if (infoResult.success && infoResult.data) {
+          const instances = Array.isArray(infoResult.data) ? infoResult.data : [infoResult.data]
+          const instance = instances[0] as InstanceInfo
+          if (instance?.instance?.owner) {
+            phoneNumber = instance.instance.owner.replace('@s.whatsapp.net', '')
+          }
+        }
+      } catch (err) {
+        console.error('[Status Route] Error fetching instance info:', err)
+      }
+
+      const updateData: { status: string; phone_number?: string } = { status: 'connected' }
+      if (phoneNumber) {
+        updateData.phone_number = phoneNumber
+      }
+
       await supabase
         .from('whatsapp_accounts')
-        .update({ status: 'connected' })
+        .update(updateData)
         .eq('instance_name', instanceName)
     }
 
