@@ -20,11 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ connected: true })
     }
 
-    // Create instance if it doesn't exist
+    // Create instance if it doesn't exist (ignore "already in use" error)
     const createResult = await createInstance(instanceName)
     console.log('[QR Route] Create instance result:', createResult)
 
-    if (!createResult.success) {
+    // If instance already exists, that's fine - just get QR code
+    const isAlreadyInUse = createResult.error?.includes('already in use')
+    if (!createResult.success && !isAlreadyInUse) {
       return NextResponse.json(
         { error: `Failed to create instance: ${createResult.error}` },
         { status: 500 }

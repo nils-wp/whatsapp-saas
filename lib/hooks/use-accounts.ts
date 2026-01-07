@@ -100,16 +100,18 @@ export function useUpdateAccount() {
 
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('whatsapp_accounts')
-        .delete()
-        .eq('id', id)
+      // Use API route to delete both from Evolution API and database
+      const response = await fetch(`/api/accounts/${id}`, {
+        method: 'DELETE',
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete account')
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
