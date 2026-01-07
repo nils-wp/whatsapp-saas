@@ -42,11 +42,13 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({
-      qrCode: qrResult.data?.base64
-        ? `data:image/png;base64,${qrResult.data.base64}`
-        : null,
-    })
+    // Don't add prefix if it's already there
+    let qrCode = qrResult.data?.base64 || null
+    if (qrCode && !qrCode.startsWith('data:')) {
+      qrCode = `data:image/png;base64,${qrCode}`
+    }
+
+    return NextResponse.json({ qrCode })
   } catch (error) {
     console.error('Error in QR route:', error)
     return NextResponse.json(
