@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Loader2, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Loader2, RefreshCw, CheckCircle, XCircle, Smartphone } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -17,10 +17,12 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
   const [status, setStatus] = useState<ScanStatus>('loading')
   const [qrCode, setQRCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const hasDetectedScan = useRef(false)
 
   async function fetchQRCode() {
     setStatus('loading')
     setError(null)
+    hasDetectedScan.current = false
 
     try {
       const response = await fetch('/api/evolution/qr', {
@@ -41,7 +43,7 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
         setStatus('ready')
       } else if (data.connected) {
         setStatus('connected')
-        onConnected?.()
+        setTimeout(() => onConnected?.(), 1500)
       } else {
         throw new Error('No QR code in response')
       }
@@ -55,7 +57,7 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
   useEffect(() => {
     fetchQRCode()
 
-    // Poll for status updates more frequently
+    // Poll for status updates
     const interval = setInterval(async () => {
       try {
         console.log('[QR Scanner] Checking status for:', instanceName)
@@ -63,19 +65,27 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
         const data = await response.json()
         console.log('[QR Scanner] Status response:', data)
 
+        // Detect when QR code was scanned (state becomes 'connecting')
+        if (data.status === 'connecting' && !hasDetectedScan.current) {
+          console.log('[QR Scanner] QR code scanned, connecting...')
+          hasDetectedScan.current = true
+          setStatus('scanning')
+        }
+
+        // Detect when fully connected
         if (data.status === 'connected') {
-          console.log('[QR Scanner] Connected! Redirecting...')
+          console.log('[QR Scanner] Connected!')
           setStatus('connected')
           clearInterval(interval)
-          // Small delay to show success state
+          // Show success state for 1.5 seconds before redirecting
           setTimeout(() => {
             onConnected?.()
-          }, 1000)
+          }, 1500)
         }
       } catch (err) {
         console.error('[QR Scanner] Error checking status:', err)
       }
-    }, 2000) // Check every 2 seconds
+    }, 1500) // Check every 1.5 seconds
 
     return () => clearInterval(interval)
   }, [instanceName])
@@ -140,10 +150,34 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
           </>
         )}
 
+        {status === 'scanning' && (
+          <div className="flex flex-col items-center py-8">
+            <div className="relative mb-4">
+              <Smartphone className="h-16 w-16 text-primary" />
+              <div className="absolute -top-1 -right-1">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            </div>
+            <p className="text-lg font-semibold">Verbindung wird hergestellt...</p>
+            <p className="text-muted-foreground text-center">
+              Bitte warte, während wir dein WhatsApp verbinden.
+            </p>
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.2s]" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.4s]" />
+            </div>
+          </div>
+        )}
+
         {status === 'connected' && (
           <div className="flex flex-col items-center py-8">
-            <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-            <p className="text-lg font-semibold">Erfolgreich verbunden!</p>
+            <div className="relative mb-4">
+              <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+            </div>
+            <p className="text-lg font-semibold text-green-500">Erfolgreich verbunden!</p>
             <p className="text-muted-foreground">
               Dein WhatsApp-Konto wurde verknüpft.
             </p>

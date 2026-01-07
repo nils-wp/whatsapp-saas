@@ -72,8 +72,16 @@ export async function GET(request: Request) {
         .eq('instance_name', instanceName)
     }
 
+    // Return appropriate status based on state
+    let mappedStatus = 'disconnected'
+    if (state === 'open') {
+      mappedStatus = 'connected'
+    } else if (state === 'connecting') {
+      mappedStatus = 'connecting'
+    }
+
     return NextResponse.json({
-      status: state === 'open' ? 'connected' : 'disconnected',
+      status: mappedStatus,
     })
   } catch (error) {
     console.error('Error in status route:', error)
