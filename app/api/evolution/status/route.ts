@@ -15,6 +15,11 @@ function getSupabase() {
 }
 
 interface InstanceInfo {
+  // Evolution API v2 format
+  ownerJid?: string
+  profileName?: string
+  profilePicUrl?: string
+  // Legacy format
   instance?: {
     owner?: string
     profileName?: string
@@ -59,8 +64,12 @@ export async function GET(request: Request) {
           if (infoResult.success && infoResult.data) {
             const instances = Array.isArray(infoResult.data) ? infoResult.data : [infoResult.data]
             const instance = instances[0] as InstanceInfo
-            if (instance?.instance?.owner) {
-              phoneNumber = instance.instance.owner.replace('@s.whatsapp.net', '')
+
+            // Evolution API v2 uses ownerJid, legacy uses instance.owner
+            const ownerJid = instance?.ownerJid || instance?.instance?.owner
+            if (ownerJid) {
+              phoneNumber = ownerJid.replace('@s.whatsapp.net', '')
+              console.log(`[Status Route] ${instanceName} phone:`, phoneNumber)
             }
           }
         } catch (err) {
