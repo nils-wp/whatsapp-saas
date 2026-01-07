@@ -55,21 +55,27 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
   useEffect(() => {
     fetchQRCode()
 
-    // Poll for status updates
+    // Poll for status updates more frequently
     const interval = setInterval(async () => {
       try {
+        console.log('[QR Scanner] Checking status for:', instanceName)
         const response = await fetch(`/api/evolution/status?instanceName=${instanceName}`)
         const data = await response.json()
+        console.log('[QR Scanner] Status response:', data)
 
         if (data.status === 'connected') {
+          console.log('[QR Scanner] Connected! Redirecting...')
           setStatus('connected')
-          onConnected?.()
           clearInterval(interval)
+          // Small delay to show success state
+          setTimeout(() => {
+            onConnected?.()
+          }, 1000)
         }
       } catch (err) {
-        console.error('Error checking status:', err)
+        console.error('[QR Scanner] Error checking status:', err)
       }
-    }, 3000)
+    }, 2000) // Check every 2 seconds
 
     return () => clearInterval(interval)
   }, [instanceName])

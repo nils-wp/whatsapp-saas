@@ -25,10 +25,16 @@ export default function NewAccountPage() {
     }
 
     try {
+      // Transform the instance name
+      const normalizedName = instanceName.trim().toLowerCase().replace(/\s+/g, '-')
+
       await createAccount.mutateAsync({
-        instance_name: instanceName.trim().toLowerCase().replace(/\s+/g, '-'),
+        instance_name: normalizedName,
         status: 'connecting',
       })
+
+      // Update state with normalized name for QR scanner
+      setInstanceName(normalizedName)
       setStep('connect')
     } catch (error) {
       toast.error('Fehler beim Erstellen der Instanz')

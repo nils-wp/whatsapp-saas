@@ -30,12 +30,15 @@ export async function GET(request: Request) {
     }
 
     const result = await getInstanceStatus(instanceName)
+    console.log(`[Status API] ${instanceName} result:`, JSON.stringify(result))
 
     if (!result.success) {
+      console.log(`[Status API] ${instanceName} not successful, returning disconnected`)
       return NextResponse.json({ status: 'disconnected' })
     }
 
     const state = result.data?.state
+    console.log(`[Status API] ${instanceName} state:`, state)
 
     // Update database if connected
     if (state === 'open') {
