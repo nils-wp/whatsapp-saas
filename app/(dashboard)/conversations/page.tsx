@@ -13,12 +13,12 @@ import { useAgents } from '@/lib/hooks/use-agents'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 
 export default function ConversationsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [agentFilter, setAgentFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [agentFilter, setAgentFilter] = useState<string>('all')
 
   const { data: conversations, isLoading } = useConversations({
-    status: statusFilter || undefined,
-    agentId: agentFilter || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    agentId: agentFilter !== 'all' ? agentFilter : undefined,
   })
   const { data: agents } = useAgents()
   const { data: accounts } = useAccounts()
@@ -50,7 +50,7 @@ export default function ConversationsPage() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Alle Status</SelectItem>
+            <SelectItem value="all">Alle Status</SelectItem>
             <SelectItem value="active">Aktiv</SelectItem>
             <SelectItem value="paused">Pausiert</SelectItem>
             <SelectItem value="escalated">Eskaliert</SelectItem>
@@ -64,7 +64,7 @@ export default function ConversationsPage() {
             <SelectValue placeholder="Agent" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Alle Agents</SelectItem>
+            <SelectItem value="all">Alle Agents</SelectItem>
             {agents?.map((agent) => (
               <SelectItem key={agent.id} value={agent.id}>
                 {agent.name}
@@ -73,13 +73,13 @@ export default function ConversationsPage() {
           </SelectContent>
         </Select>
 
-        {(statusFilter || agentFilter) && (
+        {(statusFilter !== 'all' || agentFilter !== 'all') && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              setStatusFilter('')
-              setAgentFilter('')
+              setStatusFilter('all')
+              setAgentFilter('all')
             }}
           >
             Filter zurücksetzen
