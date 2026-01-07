@@ -3,10 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { getInstanceStatus, getInstanceInfo } from '@/lib/evolution/client'
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    return null
+  }
+
+  return createClient(url, key)
 }
 
 interface InstanceInfo {
@@ -20,6 +24,15 @@ interface InstanceInfo {
 export async function POST(request: Request) {
   try {
     const supabase = getSupabase()
+
+    if (!supabase) {
+      console.error('[Sync Status] Missing Supabase credentials')
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY' },
+        { status: 500 }
+      )
+    }
+
     const { accountIds } = await request.json()
 
     if (!accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {

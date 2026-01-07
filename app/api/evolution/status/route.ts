@@ -3,10 +3,15 @@ import { getInstanceStatus, getInstanceInfo } from '@/lib/evolution/client'
 import { createClient } from '@supabase/supabase-js'
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    console.warn('[Status API] Missing Supabase credentials, skipping DB update')
+    return null
+  }
+
+  return createClient(url, key)
 }
 
 interface InstanceInfo {
@@ -44,32 +49,34 @@ export async function GET(request: Request) {
     if (state === 'open') {
       const supabase = getSupabase()
 
-      // Also fetch phone number from instance info
-      let phoneNumber: string | undefined
-      try {
-        const infoResult = await getInstanceInfo(instanceName)
-        console.log(`[Status Route] ${instanceName} info:`, infoResult)
+      if (supabase) {
+        // Also fetch phone number from instance info
+        let phoneNumber: string | undefined
+        try {
+          const infoResult = await getInstanceInfo(instanceName)
+          console.log(`[Status Route] ${instanceName} info:`, infoResult)
 
-        if (infoResult.success && infoResult.data) {
-          const instances = Array.isArray(infoResult.data) ? infoResult.data : [infoResult.data]
-          const instance = instances[0] as InstanceInfo
-          if (instance?.instance?.owner) {
-            phoneNumber = instance.instance.owner.replace('@s.whatsapp.net', '')
+          if (infoResult.success && infoResult.data) {
+            const instances = Array.isArray(infoResult.data) ? infoResult.data : [infoResult.data]
+            const instance = instances[0] as InstanceInfo
+            if (instance?.instance?.owner) {
+              phoneNumber = instance.instance.owner.replace('@s.whatsapp.net', '')
+            }
           }
+        } catch (err) {
+          console.error('[Status Route] Error fetching instance info:', err)
         }
-      } catch (err) {
-        console.error('[Status Route] Error fetching instance info:', err)
-      }
 
-      const updateData: { status: string; phone_number?: string } = { status: 'connected' }
-      if (phoneNumber) {
-        updateData.phone_number = phoneNumber
-      }
+        const updateData: { status: string; phone_number?: string } = { status: 'connected' }
+        if (phoneNumber) {
+          updateData.phone_number = phoneNumber
+        }
 
-      await supabase
-        .from('whatsapp_accounts')
-        .update(updateData)
-        .eq('instance_name', instanceName)
+        await supabase
+          .from('whatsapp_accounts')
+          .update(updateData)
+          .eq('instance_name', instanceName)
+      }
     }
 
     // Return appropriate status based on state
