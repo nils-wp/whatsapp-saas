@@ -115,7 +115,6 @@ export async function POST(request: Request) {
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
             contact_name: pushName,
-            contact_push_name: pushName,
             status: 'active',
             current_script_step: 1,
           })

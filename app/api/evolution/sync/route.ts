@@ -74,14 +74,26 @@ export async function POST(request: Request) {
     let skipped = 0
 
     for (const chat of chats) {
-      // Log chat for debugging
-      console.log('Processing chat:', chat.id, chat.name || chat.pushName)
+      // Log full chat object for first few to debug
+      if (synced + skipped < 5) {
+        console.log('Full chat object:', JSON.stringify(chat, null, 2))
+      }
 
-      // Get the remoteJid - could be in different places
-      const remoteJid = chat.id || chat.remoteJid || chat.jid
+      // Get the remoteJid - could be in different places depending on Evolution API version
+      const remoteJid = chat.remoteJid || chat.id || chat.jid || chat.owner
+
+      // Log what we found
+      console.log('Processing chat:', remoteJid, chat.name || chat.pushName)
+
+      // Skip if no valid remoteJid with @ symbol (WhatsApp format)
+      if (!remoteJid || !remoteJid.includes('@')) {
+        console.log('Skipping (not WhatsApp format):', remoteJid)
+        skipped++
+        continue
+      }
 
       // Skip group chats and status broadcasts
-      if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+      if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
         console.log('Skipping (group/broadcast):', remoteJid)
         skipped++
         continue
@@ -116,7 +128,6 @@ export async function POST(request: Request) {
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
             contact_name: chat.name || chat.pushName || null,
-            contact_push_name: chat.pushName || null,
             status: 'active',
             current_script_step: 1,
           })
