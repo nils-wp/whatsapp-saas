@@ -2,10 +2,9 @@
 
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
-import { de } from 'date-fns/locale'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 
 type Conversation = Tables<'conversations'> & {
@@ -18,70 +17,93 @@ interface ConversationListProps {
   selectedId?: string
 }
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  active: { label: 'Aktiv', color: 'bg-green-500' },
-  paused: { label: 'Pausiert', color: 'bg-yellow-500' },
-  escalated: { label: 'Eskaliert', color: 'bg-red-500' },
-  completed: { label: 'Abgeschlossen', color: 'bg-blue-500' },
-  disqualified: { label: 'Disqualifiziert', color: 'bg-gray-500' },
+const statusConfig: Record<string, { label: string; dot: string; text: string }> = {
+  active: { label: 'Active', dot: 'bg-emerald-500', text: 'text-emerald-500' },
+  paused: { label: 'Paused', dot: 'bg-yellow-500', text: 'text-yellow-500' },
+  escalated: { label: 'Escalated', dot: 'bg-red-500', text: 'text-red-500' },
+  completed: { label: 'Completed', dot: 'bg-blue-500', text: 'text-blue-500' },
+  disqualified: { label: 'Disqualified', dot: 'bg-gray-500', text: 'text-gray-500' },
+}
+
+function formatPhoneNumber(phone: string): string {
+  // Format: +49 176 12345678
+  if (phone.startsWith('49') && phone.length >= 10) {
+    return `+${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5)}`
+  }
+  if (phone.length >= 10) {
+    return `+${phone.slice(0, -8)} ${phone.slice(-8, -4)} ${phone.slice(-4)}`
+  }
+  return phone
+}
+
+function getInitials(name: string | null, phone: string): string {
+  if (name) {
+    const parts = name.split(' ')
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+  return phone.slice(-2)
 }
 
 export function ConversationList({ conversations, selectedId }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground p-8 text-center">
-        Keine Konversationen gefunden
+      <div className="flex items-center justify-center h-full text-gray-500 p-8 text-center">
+        No conversations found
       </div>
     )
   }
 
   return (
     <ScrollArea className="h-full">
-      <div className="divide-y">
+      <div className="divide-y divide-[#2a2a2a]">
         {conversations.map((conversation) => {
           const status = statusConfig[conversation.status] || statusConfig.active
           const isSelected = conversation.id === selectedId
+          const displayName = conversation.contact_name || formatPhoneNumber(conversation.contact_phone)
 
           return (
             <Link
               key={conversation.id}
               href={`/conversations/${conversation.id}`}
-              className={`flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors ${
-                isSelected ? 'bg-muted' : ''
-              }`}
+              className={cn(
+                'flex items-center gap-3 p-4 transition-colors',
+                isSelected
+                  ? 'bg-emerald-500/10 border-l-2 border-emerald-500'
+                  : 'hover:bg-[#252525]'
+              )}
             >
-              <Avatar className="h-10 w-10">
-                <AvatarFallback>
-                  {conversation.contact_name?.[0] ||
-                    conversation.contact_phone.slice(-2)}
+              <Avatar className="h-11 w-11 border border-[#3a3a3a]">
+                <AvatarImage src={undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 text-emerald-500 font-medium">
+                  {getInitials(conversation.contact_name, conversation.contact_phone)}
                 </AvatarFallback>
               </Avatar>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium truncate">
-                    {conversation.contact_name || conversation.contact_phone}
+                  <p className="font-medium text-white truncate">
+                    {displayName}
                   </p>
-                  <span className="text-xs text-muted-foreground shrink-0">
+                  <span className="text-xs text-gray-500 shrink-0">
                     {conversation.last_message_at
                       ? formatDistanceToNow(new Date(conversation.last_message_at), {
                           addSuffix: true,
-                          locale: de,
                         })
                       : '-'}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge
-                    variant="outline"
-                    className={`${status.color} text-white text-xs`}
-                  >
-                    {status.label}
-                  </Badge>
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
+                    <span className={status.text}>{status.label}</span>
+                  </span>
                   {conversation.agents?.name && (
-                    <span className="text-xs text-muted-foreground truncate">
-                      {conversation.agents.name}
+                    <span className="text-xs text-gray-500 truncate">
+                      • {conversation.agents.name}
                     </span>
                   )}
                 </div>
