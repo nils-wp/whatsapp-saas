@@ -4,11 +4,10 @@ import {
   Calendar,
   MessageSquare,
   TrendingUp,
-  Users,
+  Phone,
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface StatsCardsProps {
@@ -16,12 +15,12 @@ interface StatsCardsProps {
     appointmentsBooked: number
     activeConversations: number
     conversionRate: number
-    totalConversations: number
+    connectedNumbers: number
     changes?: {
       appointmentsBooked?: number
       activeConversations?: number
       conversionRate?: number
-      totalConversations?: number
+      connectedNumbers?: number
     }
   }
 }
@@ -29,103 +28,86 @@ interface StatsCardsProps {
 export function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
     {
-      title: 'Termine gebucht',
+      title: 'Appointments Booked',
       value: stats.appointmentsBooked,
       icon: Calendar,
-      description: 'diese Woche',
       change: stats.changes?.appointmentsBooked,
-      primary: true,
+      iconBg: 'bg-emerald-500/10',
+      iconColor: 'text-emerald-500',
     },
     {
-      title: 'Aktive Konversationen',
+      title: 'Active Conversations',
       value: stats.activeConversations,
       icon: MessageSquare,
-      description: 'laufend',
       change: stats.changes?.activeConversations,
+      iconBg: 'bg-blue-500/10',
+      iconColor: 'text-blue-500',
     },
     {
       title: 'Conversion Rate',
       value: `${stats.conversionRate}%`,
       icon: TrendingUp,
-      description: 'Termin / Konversation',
       change: stats.changes?.conversionRate,
+      iconBg: 'bg-purple-500/10',
+      iconColor: 'text-purple-500',
       isPercentage: true,
     },
     {
-      title: 'Konversationen gesamt',
-      value: stats.totalConversations,
-      icon: Users,
-      description: 'diese Woche',
-      change: stats.changes?.totalConversations,
+      title: 'Connected Numbers',
+      value: stats.connectedNumbers,
+      icon: Phone,
+      change: stats.changes?.connectedNumbers,
+      iconBg: 'bg-orange-500/10',
+      iconColor: 'text-orange-500',
     },
   ]
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card
+        <div
           key={card.title}
-          className={cn(
-            'relative overflow-hidden',
-            card.primary && 'border-primary bg-primary/5'
-          )}
+          className="relative overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6"
         >
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {card.title}
-                </p>
-                <p
-                  className={cn(
-                    'text-3xl font-bold tracking-tight',
-                    card.primary && 'text-primary'
-                  )}
-                >
-                  {typeof card.value === 'number'
-                    ? card.value.toLocaleString()
-                    : card.value}
-                </p>
-                <div className="flex items-center gap-2">
-                  {card.change !== undefined && (
-                    <span
-                      className={cn(
-                        'flex items-center text-xs font-medium',
-                        card.change >= 0 ? 'text-green-500' : 'text-red-500'
-                      )}
-                    >
-                      {card.change >= 0 ? (
-                        <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                      ) : (
-                        <ArrowDownRight className="h-3 w-3 mr-0.5" />
-                      )}
-                      {Math.abs(card.change)}%
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {card.description}
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-400">
+                {card.title}
+              </p>
+              <p className="text-3xl font-bold tracking-tight text-white">
+                {typeof card.value === 'number'
+                  ? card.value.toLocaleString()
+                  : card.value}
+              </p>
+              {card.change !== undefined && card.change !== 0 && (
+                <div className="flex items-center gap-1">
+                  <span
+                    className={cn(
+                      'flex items-center text-xs font-medium',
+                      card.change >= 0 ? 'text-emerald-500' : 'text-red-500'
+                    )}
+                  >
+                    {card.change >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {Math.abs(card.change)}%
                   </span>
+                  <span className="text-xs text-gray-500">vs last week</span>
                 </div>
-              </div>
-              <div
-                className={cn(
-                  'flex h-12 w-12 items-center justify-center rounded-lg',
-                  card.primary ? 'bg-primary/20' : 'bg-secondary'
-                )}
-              >
-                <card.icon
-                  className={cn(
-                    'h-6 w-6',
-                    card.primary ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                />
-              </div>
+              )}
             </div>
-          </CardContent>
-          {card.primary && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />
-          )}
-        </Card>
+            <div
+              className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-lg',
+                card.iconBg
+              )}
+            >
+              <card.icon className={cn('h-6 w-6', card.iconColor)} />
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   )

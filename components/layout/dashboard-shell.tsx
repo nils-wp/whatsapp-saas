@@ -2,30 +2,27 @@
 
 import { useState } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { TenantProvider } from '@/providers/tenant-provider'
 import { QueryProvider } from '@/providers/query-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { Menu } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function DashboardShell({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
     <QueryProvider>
       <TenantProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-[#121212]">
           {/* Desktop Sidebar */}
           <div className="hidden lg:block">
-            <Sidebar
-              collapsed={sidebarCollapsed}
-              onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            />
+            <Sidebar />
           </div>
 
           {/* Mobile Navigation */}
@@ -34,13 +31,21 @@ export function DashboardShell({
             onClose={() => setMobileNavOpen(false)}
           />
 
+          {/* Mobile Header */}
+          <div className="lg:hidden sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#1f1f1f] bg-[#121212] px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileNavOpen(true)}
+              className="text-gray-400 hover:text-white"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="font-semibold text-white">Chatsetter</span>
+          </div>
+
           {/* Main Content */}
-          <div
-            className={`transition-all duration-300 ${
-              sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
-            }`}
-          >
-            <Header onMenuClick={() => setMobileNavOpen(true)} />
+          <div className="lg:pl-64">
             <main className="p-4 sm:p-6 lg:p-8">
               <div className="mx-auto max-w-7xl">
                 {children}

@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Bot } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Plus, Bot, Search } from 'lucide-react'
 import { AgentCard } from '@/components/agents/agent-card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
@@ -16,13 +15,19 @@ export default function AgentsPage() {
   const updateAgent = useUpdateAgent()
   const deleteAgent = useDeleteAgent()
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredAgents = agents?.filter(agent =>
+    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.agent_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   async function handleToggleActive(id: string, isActive: boolean) {
     try {
       await updateAgent.mutateAsync({ id, is_active: isActive })
-      toast.success(isActive ? 'Agent aktiviert' : 'Agent deaktiviert')
-    } catch (error) {
-      toast.error('Fehler beim Aktualisieren')
+      toast.success(isActive ? 'Agent activated' : 'Agent deactivated')
+    } catch {
+      toast.error('Failed to update agent')
     }
   }
 
@@ -31,9 +36,9 @@ export default function AgentsPage() {
 
     try {
       await deleteAgent.mutateAsync(deleteId)
-      toast.success('Agent erfolgreich gelöscht')
-    } catch (error) {
-      toast.error('Fehler beim Löschen des Agents')
+      toast.success('Agent deleted successfully')
+    } catch {
+      toast.error('Failed to delete agent')
     } finally {
       setDeleteId(null)
     }
@@ -47,32 +52,52 @@ export default function AgentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Agents</h1>
-          <p className="text-muted-foreground">
-            Erstelle und verwalte deine KI-Agenten
+          <h1 className="text-3xl font-bold tracking-tight text-white">AI Agents</h1>
+          <p className="text-gray-400">
+            Create and manage your AI agents
           </p>
         </div>
-        <Link href="/agents/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Agent erstellen
-          </Button>
+        <Link
+          href="/agents/new"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          New Agent
         </Link>
       </div>
 
-      {!agents || agents.length === 0 ? (
-        <EmptyState
-          icon={Bot}
-          title="Keine Agents"
-          description="Erstelle deinen ersten KI-Agenten, um automatisierte Konversationen zu führen."
-          action={{
-            label: 'Agent erstellen',
-            onClick: () => window.location.href = '/agents/new',
-          }}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+        <input
+          type="text"
+          placeholder="Search agents..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
         />
+      </div>
+
+      {!filteredAgents || filteredAgents.length === 0 ? (
+        searchQuery ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Search className="h-12 w-12 text-gray-600 mb-4" />
+            <p className="text-gray-400">No agents found for &quot;{searchQuery}&quot;</p>
+          </div>
+        ) : (
+          <EmptyState
+            icon={Bot}
+            title="No Agents"
+            description="Create your first AI agent to start automated conversations."
+            action={{
+              label: 'Create Agent',
+              onClick: () => window.location.href = '/agents/new',
+            }}
+          />
+        )
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredAgents.map((agent) => (
             <AgentCard
               key={agent.id}
               agent={agent}
@@ -86,9 +111,9 @@ export default function AgentsPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Agent löschen?"
-        description="Bist du sicher, dass du diesen Agent löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden."
-        confirmLabel="Löschen"
+        title="Delete Agent?"
+        description="Are you sure you want to delete this agent? This action cannot be undone."
+        confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteAgent.isPending}

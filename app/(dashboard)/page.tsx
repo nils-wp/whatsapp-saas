@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { StatsCards } from '@/components/dashboard/stats-cards'
 import { RecentConversations } from '@/components/dashboard/recent-conversations'
 import { ActivityChart } from '@/components/dashboard/activity-chart'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useTenant } from '@/providers/tenant-provider'
+import { MessageSquare, Clock } from 'lucide-react'
 import type { Tables } from '@/types/database'
 
 type Conversation = Tables<'conversations'>
@@ -19,12 +21,12 @@ export default function DashboardPage() {
     appointmentsBooked: 0,
     activeConversations: 0,
     conversionRate: 0,
-    totalConversations: 0,
+    connectedNumbers: 0,
     changes: {
       appointmentsBooked: 0,
       activeConversations: 0,
       conversionRate: 0,
-      totalConversations: 0,
+      connectedNumbers: 0,
     },
   })
   const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
@@ -49,6 +51,7 @@ export default function DashboardPage() {
         { count: activeCount },
         { count: totalCount },
         { count: bookedCount },
+        { count: connectedCount },
         analyticsResult,
         { data: conversationsData },
         { count: prevTotalCount },
@@ -70,6 +73,11 @@ export default function DashboardPage() {
           .eq('tenant_id', tenantId)
           .eq('outcome', 'booked')
           .gte('booked_at', weekAgo),
+        supabase
+          .from('whatsapp_accounts')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('status', 'connected'),
         supabase
           .from('analytics_daily')
           .select('*')
@@ -121,12 +129,12 @@ export default function DashboardPage() {
         appointmentsBooked: bookedCount || 0,
         activeConversations: activeCount || 0,
         conversionRate,
-        totalConversations: totalCount || 0,
+        connectedNumbers: connectedCount || 0,
         changes: {
           appointmentsBooked: calcChange(bookedCount || 0, prevBookedCount || 0),
           activeConversations: 0, // Active is point-in-time, no change calc
           conversionRate: Math.round((conversionRate - prevConversionRate) * 10) / 10,
-          totalConversations: calcChange(totalCount || 0, prevTotalCount || 0),
+          connectedNumbers: 0, // No historical comparison for connected numbers
         },
       })
 
@@ -160,11 +168,29 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Willkommen zurück! Hier ist deine Übersicht.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+          <p className="text-gray-400">
+            Welcome back! Here&apos;s your overview.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/conversations"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:bg-[#252525] hover:text-white transition-colors"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Conversations
+          </Link>
+          <Link
+            href="/queue"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:bg-[#252525] hover:text-white transition-colors"
+          >
+            <Clock className="h-4 w-4" />
+            Queue
+          </Link>
+        </div>
       </div>
 
       <StatsCards stats={stats} />

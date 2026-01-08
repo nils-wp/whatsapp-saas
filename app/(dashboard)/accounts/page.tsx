@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Smartphone, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Plus, Phone, RefreshCw, MessageSquare, Clock } from 'lucide-react'
 import { AccountCard } from '@/components/accounts/account-card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
@@ -17,14 +16,19 @@ export default function AccountsPage() {
   const syncStatuses = useSyncAccountStatuses()
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  // Calculate stats
+  const activeNumbers = accounts?.filter(a => a.status === 'connected').length || 0
+  const totalMessages = accounts?.reduce((sum, a) => sum + (a.messages_sent_today || 0), 0) || 0
+  const avgResponseTime = '< 1 min' // Placeholder - could be calculated from analytics
+
   async function handleDelete() {
     if (!deleteId) return
 
     try {
       await deleteAccount.mutateAsync(deleteId)
-      toast.success('Account erfolgreich gelöscht')
-    } catch (error) {
-      toast.error('Fehler beim Löschen des Accounts')
+      toast.success('Account deleted successfully')
+    } catch {
+      toast.error('Failed to delete account')
     } finally {
       setDeleteId(null)
     }
@@ -39,9 +43,9 @@ export default function AccountsPage() {
       })
 
       if (!response.ok) throw new Error('Failed to disconnect')
-      toast.success('Account getrennt')
-    } catch (error) {
-      toast.error('Fehler beim Trennen des Accounts')
+      toast.success('Account disconnected')
+    } catch {
+      toast.error('Failed to disconnect account')
     }
   }
 
@@ -50,9 +54,9 @@ export default function AccountsPage() {
 
     try {
       await syncStatuses.mutateAsync(accounts.map(a => a.id))
-      toast.success('Status aktualisiert')
-    } catch (error) {
-      toast.error('Fehler beim Aktualisieren des Status')
+      toast.success('Status updated')
+    } catch {
+      toast.error('Failed to update status')
     }
   }
 
@@ -64,38 +68,78 @@ export default function AccountsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">WhatsApp Accounts</h1>
-          <p className="text-muted-foreground">
-            Verwalte deine verbundenen WhatsApp-Nummern
+          <h1 className="text-3xl font-bold tracking-tight text-white">Phone Numbers</h1>
+          <p className="text-gray-400">
+            Manage your connected WhatsApp numbers
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {accounts && accounts.length > 0 && (
-            <Button
-              variant="outline"
+            <button
               onClick={handleRefreshStatuses}
               disabled={syncStatuses.isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:bg-[#252525] hover:text-white transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${syncStatuses.isPending ? 'animate-spin' : ''}`} />
-              Status aktualisieren
-            </Button>
+              <RefreshCw className={`h-4 w-4 ${syncStatuses.isPending ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           )}
-          <Link href="/accounts/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nummer verbinden
-            </Button>
+          <Link
+            href="/accounts/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Connect Number
           </Link>
         </div>
       </div>
 
+      {/* Stats Cards */}
+      {accounts && accounts.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Active Numbers</p>
+                <p className="text-2xl font-bold text-white mt-1">{activeNumbers}</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Phone className="h-5 w-5 text-emerald-500" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Messages Today</p>
+                <p className="text-2xl font-bold text-white mt-1">{totalMessages}</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <MessageSquare className="h-5 w-5 text-blue-500" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Avg Response Time</p>
+                <p className="text-2xl font-bold text-white mt-1">{avgResponseTime}</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-purple-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!accounts || accounts.length === 0 ? (
         <EmptyState
-          icon={Smartphone}
-          title="Keine Accounts"
-          description="Verbinde deine erste WhatsApp-Nummer, um loszulegen."
+          icon={Phone}
+          title="No Phone Numbers"
+          description="Connect your first WhatsApp number to get started."
           action={{
-            label: 'Nummer verbinden',
+            label: 'Connect Number',
             onClick: () => window.location.href = '/accounts/new',
           }}
         />
@@ -115,9 +159,9 @@ export default function AccountsPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Account löschen?"
-        description="Bist du sicher, dass du diesen Account löschen möchtest? Alle zugehörigen Konversationen bleiben erhalten."
-        confirmLabel="Löschen"
+        title="Delete Account?"
+        description="Are you sure you want to delete this account? All associated conversations will be preserved."
+        confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteAccount.isPending}

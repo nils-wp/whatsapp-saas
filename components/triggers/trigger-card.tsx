@@ -1,10 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Zap, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, ExternalLink } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Zap, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, Bot, Phone } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,107 +23,139 @@ interface TriggerCardProps {
   onDelete?: (id: string) => void
 }
 
-const typeLabels: Record<string, string> = {
-  webhook: 'Webhook',
-  activecampaign: 'ActiveCampaign',
-  close: 'Close CRM',
+const typeConfig: Record<string, { label: string; bg: string; text: string }> = {
+  webhook: { label: 'Webhook', bg: 'bg-blue-500/10', text: 'text-blue-400' },
+  activecampaign: { label: 'ActiveCampaign', bg: 'bg-purple-500/10', text: 'text-purple-400' },
+  close: { label: 'Close CRM', bg: 'bg-orange-500/10', text: 'text-orange-400' },
 }
 
 export function TriggerCard({ trigger, onToggleActive, onDelete }: TriggerCardProps) {
+  const typeStyle = typeConfig[trigger.type] || { label: trigger.type, bg: 'bg-gray-500/10', text: 'text-gray-400' }
+  const conversionRate = trigger.total_triggered > 0
+    ? Math.round((trigger.total_bookings / trigger.total_triggered) * 100)
+    : 0
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Zap className="h-6 w-6 text-primary" />
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
+      <div className="flex items-center gap-4">
+        {/* Status Indicator */}
+        <div className="relative">
+          <div className={cn(
+            'h-10 w-10 rounded-xl flex items-center justify-center',
+            trigger.is_active ? 'bg-emerald-500/10' : 'bg-gray-500/10'
+          )}>
+            <Zap className={cn(
+              'h-5 w-5',
+              trigger.is_active ? 'text-emerald-500' : 'text-gray-500'
+            )} />
           </div>
-          <div>
+          {trigger.is_active && (
+            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+          )}
+        </div>
+
+        {/* Name & Type */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
             <Link
               href={`/triggers/${trigger.id}`}
-              className="font-semibold hover:underline"
+              className="font-semibold text-white hover:text-emerald-400 transition-colors truncate"
             >
               {trigger.name}
             </Link>
-            <p className="text-sm text-muted-foreground">
-              {typeLabels[trigger.type] || trigger.type}
-            </p>
+            <span className={cn(
+              'px-2 py-0.5 rounded text-xs font-medium shrink-0',
+              typeStyle.bg,
+              typeStyle.text
+            )}>
+              {typeStyle.label}
+            </span>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={trigger.is_active ? 'default' : 'secondary'}>
-            {trigger.is_active ? 'Aktiv' : 'Inaktiv'}
-          </Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/triggers/${trigger.id}`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Bearbeiten
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onToggleActive?.(trigger.id, !trigger.is_active)}
-              >
-                {trigger.is_active ? (
-                  <>
-                    <PauseCircle className="mr-2 h-4 w-4" />
-                    Deaktivieren
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="mr-2 h-4 w-4" />
-                    Aktivieren
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete?.(trigger.id)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Löschen
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Account</p>
-            <p className="font-medium">
-              {trigger.whatsapp_accounts?.phone_number ||
-                trigger.whatsapp_accounts?.instance_name ||
-                '-'}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Agent</p>
-            <p className="font-medium">{trigger.agents?.name || '-'}</p>
+          <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Phone className="h-3.5 w-3.5" />
+              {trigger.whatsapp_accounts?.phone_number || trigger.whatsapp_accounts?.instance_name || 'No number'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Bot className="h-3.5 w-3.5" />
+              {trigger.agents?.name || 'No agent'}
+            </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t text-center text-sm">
+        {/* Stats */}
+        <div className="hidden sm:flex items-center gap-6 text-center">
           <div>
-            <p className="text-2xl font-bold">{trigger.total_triggered}</p>
-            <p className="text-xs text-muted-foreground">Ausgelöst</p>
+            <p className="text-lg font-bold text-white">{trigger.total_conversations}</p>
+            <p className="text-xs text-gray-500">Responses</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">{trigger.total_conversations}</p>
-            <p className="text-xs text-muted-foreground">Konversationen</p>
+            <p className="text-lg font-bold text-white">{trigger.total_bookings}</p>
+            <p className="text-xs text-gray-500">Conversions</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">{trigger.total_bookings}</p>
-            <p className="text-xs text-muted-foreground">Buchungen</p>
+            <p className="text-lg font-bold text-emerald-400">{conversionRate}%</p>
+            <p className="text-xs text-gray-500">Rate</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#252525] transition-colors">
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-[#2a2a2a]">
+            <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
+              <Link href={`/triggers/${trigger.id}`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onToggleActive?.(trigger.id, !trigger.is_active)}
+              className="text-gray-300 focus:text-white focus:bg-[#252525]"
+            >
+              {trigger.is_active ? (
+                <>
+                  <PauseCircle className="mr-2 h-4 w-4" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Activate
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-[#2a2a2a]" />
+            <DropdownMenuItem
+              onClick={() => onDelete?.(trigger.id)}
+              className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Mobile Stats */}
+      <div className="sm:hidden flex items-center justify-between mt-4 pt-4 border-t border-[#2a2a2a]">
+        <div className="text-center">
+          <p className="text-lg font-bold text-white">{trigger.total_conversations}</p>
+          <p className="text-xs text-gray-500">Responses</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-white">{trigger.total_bookings}</p>
+          <p className="text-xs text-gray-500">Conversions</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-emerald-400">{conversionRate}%</p>
+          <p className="text-xs text-gray-500">Rate</p>
+        </div>
+      </div>
+    </div>
   )
 }

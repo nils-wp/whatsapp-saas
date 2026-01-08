@@ -1,10 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle, Zap } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,92 +26,111 @@ export function AgentCard({ agent, onToggleActive, onDelete }: AgentCardProps) {
   const faqEntries = (agent.faq_entries as FAQEntry[]) || []
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Bot className="h-6 w-6 text-primary" />
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+            <Bot className="h-6 w-6 text-white" />
           </div>
           <div>
             <Link
               href={`/agents/${agent.id}`}
-              className="font-semibold hover:underline"
+              className="font-semibold text-white hover:text-emerald-400 transition-colors"
             >
               {agent.name}
             </Link>
-            <p className="text-sm text-muted-foreground">
-              {agent.agent_name}
+            <p className="text-sm text-gray-500">
+              {agent.agent_name || 'AI Assistant'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={agent.is_active ? 'default' : 'secondary'}>
-            {agent.is_active ? 'Aktiv' : 'Inaktiv'}
-          </Badge>
+          <span
+            className={cn(
+              'px-2.5 py-1 rounded-full text-xs font-medium',
+              agent.is_active
+                ? 'bg-emerald-500/10 text-emerald-500'
+                : 'bg-gray-500/10 text-gray-500'
+            )}
+          >
+            {agent.is_active ? 'Active' : 'Inactive'}
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <button className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#252525] transition-colors">
                 <MoreVertical className="h-4 w-4" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
+            <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
                 <Link href={`/agents/${agent.id}`}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Bearbeiten
+                  Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
                 <Link href={`/agents/${agent.id}/test`}>
                   <PlayCircle className="mr-2 h-4 w-4" />
-                  Testen
+                  Test
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-[#2a2a2a]" />
               <DropdownMenuItem
                 onClick={() => onToggleActive?.(agent.id, !agent.is_active)}
+                className="text-gray-300 focus:text-white focus:bg-[#252525]"
               >
                 {agent.is_active ? (
                   <>
                     <PauseCircle className="mr-2 h-4 w-4" />
-                    Deaktivieren
+                    Deactivate
                   </>
                 ) : (
                   <>
                     <PlayCircle className="mr-2 h-4 w-4" />
-                    Aktivieren
+                    Activate
                   </>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-[#2a2a2a]" />
               <DropdownMenuItem
                 onClick={() => onDelete?.(agent.id)}
-                className="text-destructive"
+                className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Löschen
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </CardHeader>
-      <CardContent>
-        {agent.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {agent.description}
-          </p>
-        )}
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <MessageSquare className="h-4 w-4" />
-            <span>{scriptSteps.length} Skript-Schritte</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <HelpCircle className="h-4 w-4" />
-            <span>{faqEntries.length} FAQ-Einträge</span>
-          </div>
+      </div>
+
+      {/* Description */}
+      {agent.description && (
+        <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+          {agent.description}
+        </p>
+      )}
+
+      {/* Mapped Trigger */}
+      <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a]">
+        <Zap className="h-4 w-4 text-yellow-500" />
+        <span className="text-sm text-gray-400">
+          {agent.is_active ? 'Ready to respond' : 'Inactive'}
+        </span>
+      </div>
+
+      {/* Stats */}
+      <div className="flex gap-4 text-sm">
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <MessageSquare className="h-4 w-4" />
+          <span>{scriptSteps.length} Script Steps</span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <HelpCircle className="h-4 w-4" />
+          <span>{faqEntries.length} FAQ Entries</span>
+        </div>
+      </div>
+    </div>
   )
 }

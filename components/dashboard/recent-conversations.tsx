@@ -4,10 +4,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { MessageSquare, ArrowRight } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 
 type Conversation = Tables<'conversations'>
@@ -16,94 +13,85 @@ interface RecentConversationsProps {
   conversations: Conversation[]
 }
 
-const statusColors: Record<string, string> = {
-  active: 'bg-green-500',
-  paused: 'bg-yellow-500',
-  escalated: 'bg-red-500',
-  completed: 'bg-blue-500',
-  disqualified: 'bg-gray-500',
-}
-
-const statusLabels: Record<string, string> = {
-  active: 'Aktiv',
-  paused: 'Pausiert',
-  escalated: 'Eskaliert',
-  completed: 'Abgeschlossen',
-  disqualified: 'Disqualifiziert',
+const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+  active: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', label: 'Active' },
+  paused: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', label: 'Paused' },
+  escalated: { bg: 'bg-red-500/10', text: 'text-red-500', label: 'Escalated' },
+  completed: { bg: 'bg-blue-500/10', text: 'text-blue-500', label: 'Completed' },
+  disqualified: { bg: 'bg-gray-500/10', text: 'text-gray-500', label: 'Disqualified' },
 }
 
 export function RecentConversations({ conversations }: RecentConversationsProps) {
   if (conversations.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Letzte Konversationen
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Noch keine Konversationen vorhanden
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-gray-400" />
+            Recent Conversations
+          </h3>
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <MessageSquare className="h-12 w-12 text-gray-600 mb-4" />
+          <p className="text-gray-500">No conversations yet</p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Letzte Konversationen
-        </CardTitle>
-        <Link href="/conversations">
-          <Button variant="ghost" size="sm">
-            Alle anzeigen
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-gray-400" />
+          Recent Conversations
+        </h3>
+        <Link
+          href="/conversations"
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          View all
+          <ArrowRight className="h-4 w-4" />
         </Link>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {conversations.map((conversation) => (
+      </div>
+      <div className="space-y-3">
+        {conversations.map((conversation) => {
+          const status = statusConfig[conversation.status] || statusConfig.active
+          return (
             <Link
               key={conversation.id}
               href={`/conversations/${conversation.id}`}
-              className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#252525] transition-colors"
             >
-              <Avatar>
-                <AvatarFallback>
-                  {conversation.contact_name?.[0] || conversation.contact_phone.slice(-2)}
-                </AvatarFallback>
-              </Avatar>
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold">
+                {conversation.contact_name?.[0] || conversation.contact_phone.slice(-2)}
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">
+                <p className="font-medium text-white truncate">
                   {conversation.contact_name || conversation.contact_phone}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-500">
                   {conversation.last_message_at
                     ? formatDistanceToNow(new Date(conversation.last_message_at), {
                         addSuffix: true,
                         locale: de,
                       })
-                    : 'Keine Nachrichten'}
+                    : 'No messages'}
                 </p>
               </div>
-              <Badge
-                variant="secondary"
-                className={`${statusColors[conversation.status]} text-white`}
+              <span
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-xs font-medium',
+                  status.bg,
+                  status.text
+                )}
               >
-                {statusLabels[conversation.status]}
-              </Badge>
+                {status.label}
+              </span>
             </Link>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          )
+        })}
+      </div>
+    </div>
   )
 }
