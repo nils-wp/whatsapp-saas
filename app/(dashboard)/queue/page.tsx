@@ -31,7 +31,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { EmptyState } from '@/components/shared/empty-state'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
-import { de } from 'date-fns/locale'
 
 type QueueItem = {
   id: string
@@ -51,9 +50,9 @@ const MOCK_QUEUE: QueueItem[] = [
     type: 'human_review',
     contactName: 'Max Mustermann',
     contactPhone: '+49 151 12345678',
-    message: 'Was kostet das ganze? Habt ihr auch eine Garantie?',
-    reason: 'Preisfrage erkannt',
-    suggestedResponse: 'Gute Frage! Die Investition besprechen wir am besten im persönlichen Gespräch, da sie von deiner Situation abhängt. Sollen wir kurz telefonieren?',
+    message: 'How much does it cost? Do you also offer a guarantee?',
+    reason: 'Price question detected',
+    suggestedResponse: 'Great question! The investment depends on your situation, so we should discuss it in a personal call. Would you like to schedule a quick chat?',
     createdAt: new Date(Date.now() - 5 * 60 * 1000),
     conversationId: 'conv_1',
   },
@@ -62,8 +61,8 @@ const MOCK_QUEUE: QueueItem[] = [
     type: 'human_review',
     contactName: 'Anna Schmidt',
     contactPhone: '+49 171 98765432',
-    message: 'Ich möchte mich beschweren, das letzte Gespräch war nicht hilfreich',
-    reason: 'Beschwerde erkannt',
+    message: 'I want to complain, the last conversation was not helpful',
+    reason: 'Complaint detected',
     createdAt: new Date(Date.now() - 15 * 60 * 1000),
     conversationId: 'conv_2',
   },
@@ -72,7 +71,7 @@ const MOCK_QUEUE: QueueItem[] = [
     type: 'outside_hours',
     contactName: 'Peter Schulz',
     contactPhone: '+49 162 11223344',
-    message: 'Hallo, ich habe euer Webinar gesehen und würde gerne mehr erfahren!',
+    message: 'Hello, I saw your webinar and would like to learn more!',
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
     conversationId: 'conv_3',
   },
@@ -81,7 +80,7 @@ const MOCK_QUEUE: QueueItem[] = [
     type: 'outside_hours',
     contactName: 'Lisa Meyer',
     contactPhone: '+49 176 55667788',
-    message: 'Hey, habt ihr auch was für B2B?',
+    message: 'Hey, do you also have something for B2B?',
     createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
     conversationId: 'conv_4',
   },
@@ -98,7 +97,7 @@ export default function QueuePage() {
   const handleSendResponse = () => {
     if (!selectedItem || !response.trim()) return
 
-    toast.success('Antwort gesendet')
+    toast.success('Response sent')
     setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
     setSelectedItem(null)
     setResponse('')
@@ -107,7 +106,7 @@ export default function QueuePage() {
   const handleReturnToAgent = () => {
     if (!selectedItem) return
 
-    toast.success('Zurück an Agent übergeben')
+    toast.success('Returned to agent')
     setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
     setSelectedItem(null)
     setResponse('')
@@ -116,7 +115,7 @@ export default function QueuePage() {
   const handleDismiss = () => {
     if (!selectedItem) return
 
-    toast.success('Item entfernt')
+    toast.success('Item removed')
     setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
     setSelectedItem(null)
     setResponse('')
@@ -130,9 +129,9 @@ export default function QueuePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Queue</h1>
-        <p className="text-muted-foreground">
-          Nachrichten die auf deine Aufmerksamkeit warten.
+        <h1 className="text-3xl font-bold tracking-tight text-white">Queue</h1>
+        <p className="text-gray-400">
+          Messages waiting for your attention
         </p>
       </div>
 
@@ -140,21 +139,21 @@ export default function QueuePage() {
         {/* Queue List */}
         <div className="space-y-4">
           <Tabs defaultValue="human_review">
-            <TabsList className="bg-secondary">
-              <TabsTrigger value="human_review" className="gap-2">
+            <TabsList className="bg-[#1a1a1a] border border-[#2a2a2a]">
+              <TabsTrigger value="human_review" className="gap-2 data-[state=active]:bg-[#2a2a2a] data-[state=active]:text-white">
                 <AlertTriangle className="h-4 w-4" />
-                Eskaliert
+                Escalated
                 {humanReviewItems.length > 0 && (
                   <Badge variant="destructive" className="ml-1 h-5 px-1.5">
                     {humanReviewItems.length}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="outside_hours" className="gap-2">
+              <TabsTrigger value="outside_hours" className="gap-2 data-[state=active]:bg-[#2a2a2a] data-[state=active]:text-white">
                 <Clock className="h-4 w-4" />
-                Außerhalb Geschäftszeit
+                Outside Hours
                 {outsideHoursItems.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                  <Badge className="ml-1 h-5 px-1.5 bg-gray-600">
                     {outsideHoursItems.length}
                   </Badge>
                 )}
@@ -165,8 +164,8 @@ export default function QueuePage() {
               {humanReviewItems.length === 0 ? (
                 <EmptyState
                   icon={Check}
-                  title="Alles erledigt"
-                  description="Keine eskalierten Konversationen"
+                  title="All done"
+                  description="No escalated conversations"
                 />
               ) : (
                 <div className="space-y-2">
@@ -186,8 +185,8 @@ export default function QueuePage() {
               {outsideHoursItems.length === 0 ? (
                 <EmptyState
                   icon={Check}
-                  title="Alles erledigt"
-                  description="Keine Nachrichten außerhalb der Geschäftszeit"
+                  title="All done"
+                  description="No messages outside business hours"
                 />
               ) : (
                 <div className="space-y-2">
@@ -206,14 +205,14 @@ export default function QueuePage() {
         </div>
 
         {/* Response Panel */}
-        <Card className="h-fit lg:sticky lg:top-24">
+        <Card className="h-fit lg:sticky lg:top-24 bg-[#1a1a1a] border-[#2a2a2a]">
           {selectedItem ? (
             <>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-[#2a2a2a] text-white">
                         {selectedItem.contactName
                           .split(' ')
                           .map((n) => n[0])
@@ -221,18 +220,18 @@ export default function QueuePage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-base">
+                      <CardTitle className="text-base text-white">
                         {selectedItem.contactName}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-gray-500">
                         {selectedItem.contactPhone}
                       </CardDescription>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
+                  <Button variant="outline" size="sm" asChild className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
                     <a href={`/conversations/${selectedItem.conversationId}`}>
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Öffnen
+                      Open
                     </a>
                   </Button>
                 </div>
@@ -240,9 +239,9 @@ export default function QueuePage() {
               <CardContent className="space-y-4">
                 {/* Reason */}
                 {selectedItem.reason && (
-                  <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">
+                  <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <span className="text-sm font-medium text-red-500">
                       {selectedItem.reason}
                     </span>
                   </div>
@@ -250,63 +249,63 @@ export default function QueuePage() {
 
                 {/* Original Message */}
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Nachricht
+                  <div className="text-sm font-medium text-gray-400">
+                    Message
                   </div>
-                  <div className="rounded-lg bg-secondary p-3">
-                    <p className="text-sm">{selectedItem.message}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
+                  <div className="rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3">
+                    <p className="text-sm text-white">{selectedItem.message}</p>
+                    <p className="text-xs text-gray-500 mt-2">
                       {formatDistanceToNow(selectedItem.createdAt, {
                         addSuffix: true,
-                        locale: de,
                       })}
                     </p>
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="bg-[#2a2a2a]" />
 
                 {/* Response */}
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Deine Antwort
+                  <div className="text-sm font-medium text-gray-400">
+                    Your Response
                   </div>
                   <Textarea
                     value={response}
                     onChange={(e) => setResponse(e.target.value)}
-                    placeholder="Schreibe eine Antwort..."
+                    placeholder="Write a response..."
                     rows={4}
+                    className="bg-[#0f0f0f] border-[#2a2a2a] text-white placeholder:text-gray-500"
                   />
                   {selectedItem.suggestedResponse && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-gray-500">
                       <Bot className="inline h-3 w-3 mr-1" />
-                      AI-Vorschlag wurde eingefügt
+                      AI suggestion inserted
                     </p>
                   )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleSendResponse} disabled={!response.trim()}>
+                  <Button onClick={handleSendResponse} disabled={!response.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white">
                     <Send className="mr-2 h-4 w-4" />
-                    Senden
+                    Send
                   </Button>
-                  <Button variant="outline" onClick={handleReturnToAgent}>
+                  <Button variant="outline" onClick={handleReturnToAgent} className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
                     <Bot className="mr-2 h-4 w-4" />
-                    An Agent zurückgeben
+                    Return to Agent
                   </Button>
-                  <Button variant="ghost" onClick={handleDismiss}>
+                  <Button variant="ghost" onClick={handleDismiss} className="text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
                     <X className="mr-2 h-4 w-4" />
-                    Entfernen
+                    Remove
                   </Button>
                 </div>
               </CardContent>
             </>
           ) : (
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
-                Wähle eine Nachricht aus der Queue um zu antworten
+              <Inbox className="h-12 w-12 text-gray-500 mb-4" />
+              <p className="text-gray-500 text-center">
+                Select a message from the queue to respond
               </p>
             </CardContent>
           )}
@@ -330,14 +329,14 @@ function QueueCard({
       onClick={onClick}
       className={`w-full text-left rounded-lg border p-4 transition-colors ${
         selected
-          ? 'border-primary bg-primary/5'
-          : 'hover:border-primary/50 hover:bg-accent'
+          ? 'border-emerald-500 bg-emerald-500/5'
+          : 'border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] hover:bg-[#252525]'
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-10 w-10 shrink-0">
-            <AvatarFallback>
+            <AvatarFallback className="bg-[#2a2a2a] text-white">
               {item.contactName
                 .split(' ')
                 .map((n) => n[0])
@@ -345,25 +344,24 @@ function QueueCard({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <div className="font-medium truncate">{item.contactName}</div>
-            <div className="text-sm text-muted-foreground truncate">
+            <div className="font-medium truncate text-white">{item.contactName}</div>
+            <div className="text-sm text-gray-500 truncate">
               {item.message}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-500">
             {formatDistanceToNow(item.createdAt, {
               addSuffix: true,
-              locale: de,
             })}
           </span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-4 w-4 text-gray-500" />
         </div>
       </div>
       {item.reason && (
         <div className="mt-2">
-          <Badge variant="outline" className="text-xs text-destructive border-destructive/50">
+          <Badge variant="outline" className="text-xs text-red-500 border-red-500/50">
             {item.reason}
           </Badge>
         </div>
