@@ -74,14 +74,23 @@ export async function POST(request: Request) {
     let skipped = 0
 
     for (const chat of chats) {
+      // Log chat for debugging
+      console.log('Processing chat:', chat.id, chat.name || chat.pushName)
+
+      // Get the remoteJid - could be in different places
+      const remoteJid = chat.id || chat.remoteJid || chat.jid
+
       // Skip group chats and status broadcasts
-      if (chat.id?.includes('@g.us') || chat.id?.includes('@broadcast')) {
+      if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+        console.log('Skipping (group/broadcast):', remoteJid)
         skipped++
         continue
       }
 
-      const phone = chat.id?.replace('@s.whatsapp.net', '')
-      if (!phone) {
+      // Extract phone number - handle different formats
+      const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '')
+      if (!phone || phone.length < 5) {
+        console.log('Skipping (invalid phone):', phone)
         skipped++
         continue
       }
