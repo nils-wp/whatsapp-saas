@@ -43,10 +43,25 @@ export async function DELETE(
       // Continue anyway - instance might not exist in Evolution
     }
 
-    // Remove references from conversations (set whatsapp_account_id to NULL)
+    // Get all conversation IDs for this account
+    const { data: conversations } = await serviceSupabase
+      .from('conversations')
+      .select('id')
+      .eq('whatsapp_account_id', id)
+
+    // Delete messages for all conversations
+    if (conversations && conversations.length > 0) {
+      const conversationIds = conversations.map(c => c.id)
+      await serviceSupabase
+        .from('messages')
+        .delete()
+        .in('conversation_id', conversationIds)
+    }
+
+    // Delete conversations
     await serviceSupabase
       .from('conversations')
-      .update({ whatsapp_account_id: null })
+      .delete()
       .eq('whatsapp_account_id', id)
 
     // Remove references from triggers
@@ -55,10 +70,10 @@ export async function DELETE(
       .update({ whatsapp_account_id: null })
       .eq('whatsapp_account_id', id)
 
-    // Remove references from analytics_daily
+    // Delete analytics_daily for this account
     await serviceSupabase
       .from('analytics_daily')
-      .update({ whatsapp_account_id: null })
+      .delete()
       .eq('whatsapp_account_id', id)
 
     // Delete from database using service role (bypasses RLS)
