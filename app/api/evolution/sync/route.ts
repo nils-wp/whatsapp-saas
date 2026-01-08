@@ -133,37 +133,46 @@ export async function POST(request: Request) {
 
     for (const chat of chats) {
       // Log full chat object for first few to debug
-      if (synced + skipped < 5) {
+      if (synced + skipped < 3) {
         console.log('Full chat object:', JSON.stringify(chat, null, 2))
       }
 
-      // Get the remoteJid - could be in different places depending on Evolution API version
-      const remoteJid = chat.remoteJid || chat.id || chat.jid || chat.owner
+      // Try multiple fields to find phone/remoteJid
+      let remoteJid = chat.remoteJid || chat.id || chat.jid || chat.owner || ''
+      let phone = ''
+      const contactName = chat.name || chat.pushName || chat.contact?.name || null
 
-      // Log what we found
-      console.log('Processing chat:', remoteJid, chat.name || chat.pushName)
+      // If remoteJid contains @, extract phone from it
+      if (remoteJid.includes('@')) {
+        // Skip groups and broadcasts
+        if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+          skipped++
+          continue
+        }
+        phone = remoteJid.split('@')[0]
+      } else {
+        // Try other fields for phone number
+        phone = chat.phone || chat.number || chat.contact?.phone || chat.participant || ''
 
-      // Skip if no valid remoteJid with @ symbol (WhatsApp format)
-      if (!remoteJid || !remoteJid.includes('@')) {
-        console.log('Skipping (not WhatsApp format):', remoteJid)
+        // If still no phone, check if remoteJid/id looks like a phone number (only digits)
+        if (!phone && /^\d{8,15}$/.test(remoteJid)) {
+          phone = remoteJid
+        }
+      }
+
+      // Clean phone number - remove non-digits
+      phone = phone.replace(/\D/g, '')
+
+      // Skip if no valid phone
+      if (!phone || phone.length < 8) {
+        if (synced + skipped < 10) {
+          console.log('Skipping (no valid phone):', { remoteJid, phone, keys: Object.keys(chat) })
+        }
         skipped++
         continue
       }
 
-      // Skip group chats and status broadcasts
-      if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
-        console.log('Skipping (group/broadcast):', remoteJid)
-        skipped++
-        continue
-      }
-
-      // Extract phone number - handle different formats (@c.us or @s.whatsapp.net)
-      const phone = remoteJid.split('@')[0]
-      if (!phone || phone.length < 5) {
-        console.log('Skipping (invalid phone):', phone)
-        skipped++
-        continue
-      }
+      console.log('Processing:', phone, contactName)
 
       // Fetch profile picture for this contact
       const profilePictureUrl = await fetchProfilePicture(
@@ -176,7 +185,7 @@ export async function POST(request: Request) {
       // Check if conversation already exists
       const { data: existingConv } = await supabase
         .from('conversations')
-        .select('id, profile_picture_url')
+        .select('id, profile_picture_url, contact_name')
         .eq('tenant_id', account.tenant_id)
         .eq('contact_phone', phone)
         .limit(1)
@@ -193,7 +202,7 @@ export async function POST(request: Request) {
             whatsapp_account_id: account.id,
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
-            contact_name: chat.name || chat.pushName || null,
+            contact_name: contactName,
             profile_picture_url: profilePictureUrl,
             status: 'active',
             current_script_step: 1,
@@ -208,15 +217,21 @@ export async function POST(request: Request) {
         }
 
         conversationId = newConv.id
-      } else if (existingConv && profilePictureUrl && !existingConv.profile_picture_url) {
-        // Update existing conversation with profile picture if missing
-        await supabase
-          .from('conversations')
-          .update({
-            profile_picture_url: profilePictureUrl,
-            contact_name: chat.name || chat.pushName || undefined,
-          })
-          .eq('id', existingConv.id)
+      } else if (existingConv && (profilePictureUrl || contactName)) {
+        // Update existing conversation with profile picture or name if missing
+        const updates: Record<string, string> = {}
+        if (profilePictureUrl && !existingConv.profile_picture_url) {
+          updates.profile_picture_url = profilePictureUrl
+        }
+        if (contactName && !existingConv.contact_name) {
+          updates.contact_name = contactName
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase
+            .from('conversations')
+            .update(updates)
+            .eq('id', existingConv.id)
+        }
       }
 
       // Fetch messages for this chat using the remoteJid
