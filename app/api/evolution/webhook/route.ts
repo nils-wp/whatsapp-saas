@@ -35,6 +35,7 @@ export async function POST(request: Request) {
 
       const supabase = getSupabase()
       const phone = message.key?.remoteJid?.replace('@s.whatsapp.net', '')
+      const pushName = message.pushName || data.pushName || null
       const content = message.message?.conversation ||
                       message.message?.extendedTextMessage?.text ||
                       message.message?.imageMessage?.caption ||
@@ -92,10 +93,42 @@ export async function POST(request: Request) {
         }
       }
 
+      // Keine aktive Conversation? Erstelle eine neue!
       if (!conversation) {
-        console.log('No active conversation for phone:', phone)
-        // Optional: Könnte hier eine neue Conversation starten
-        return NextResponse.json({ success: true, no_conversation: true })
+        console.log('Creating new conversation for phone:', phone)
+
+        // Finde einen aktiven Agent für diesen Tenant
+        const { data: defaultAgent } = await supabase
+          .from('agents')
+          .select('id')
+          .eq('tenant_id', account.tenant_id)
+          .eq('is_active', true)
+          .limit(1)
+          .single()
+
+        // Erstelle neue Conversation
+        const { data: newConversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            tenant_id: account.tenant_id,
+            whatsapp_account_id: account.id,
+            agent_id: defaultAgent?.id || null,
+            contact_phone: phone,
+            contact_name: pushName,
+            contact_push_name: pushName,
+            status: 'active',
+            current_script_step: 1,
+          })
+          .select()
+          .single()
+
+        if (convError || !newConversation) {
+          console.error('Failed to create conversation:', convError)
+          return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
+        }
+
+        conversation = newConversation
+        console.log('Created new conversation:', conversation.id)
       }
 
       // Reaktiviere pausierte Conversations
