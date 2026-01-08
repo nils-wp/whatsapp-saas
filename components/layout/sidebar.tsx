@@ -123,7 +123,7 @@ export function Sidebar() {
                       <Building2 className="h-4 w-4 text-gray-400" />
                     </div>
                     <span className="truncate text-sm text-gray-200">
-                      {isLoading ? 'Laden...' : (currentTenant?.name || 'Projekt wählen')}
+                      {isLoading ? 'Loading...' : (currentTenant?.name || 'Select Project')}
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -131,9 +131,9 @@ export function Sidebar() {
               </PopoverTrigger>
               <PopoverContent className="w-[232px] p-0 bg-[#1a1a1a] border-[#2a2a2a]" align="start">
                 <Command className="bg-transparent">
-                  <CommandInput placeholder="Projekt suchen..." className="border-[#2a2a2a]" />
+                  <CommandInput placeholder="Search projects..." className="border-[#2a2a2a]" />
                   <CommandList>
-                    <CommandEmpty>Keine Projekte gefunden.</CommandEmpty>
+                    <CommandEmpty>No projects found.</CommandEmpty>
                     <CommandGroup>
                       {tenants.map((project) => (
                         <CommandItem
@@ -167,7 +167,7 @@ export function Sidebar() {
                         className="cursor-pointer"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        Neues Projekt
+                        New Project
                       </CommandItem>
                     </CommandGroup>
                   </CommandList>
@@ -219,17 +219,17 @@ export function Sidebar() {
       <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle>Neues Projekt erstellen</DialogTitle>
+            <DialogTitle>Create New Project</DialogTitle>
             <DialogDescription>
-              Erstelle ein neues Projekt um deine WhatsApp-Automatisierungen zu organisieren.
+              Create a new project to organize your WhatsApp automations.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Projektname</Label>
+              <Label htmlFor="name">Project Name</Label>
               <Input
                 id="name"
-                placeholder="z.B. Meine Firma"
+                placeholder="e.g. My Company"
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 onKeyDown={(e) => {
@@ -241,10 +241,10 @@ export function Sidebar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewProjectDialog(false)} className="border-[#2a2a2a]">
-              Abbrechen
+              Cancel
             </Button>
             <Button onClick={handleCreateProject} disabled={!newProjectName.trim()} className="bg-emerald-500 hover:bg-emerald-600">
-              Erstellen
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -14,93 +14,56 @@ import {
   Briefcase,
   GraduationCap,
   Car,
+  Bot,
+  LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useTemplates, useTemplateCategories } from '@/lib/hooks/use-templates'
+import { PageLoader } from '@/components/shared/loading-spinner'
+import { EmptyState } from '@/components/shared/empty-state'
+import type { Tables } from '@/types/database'
 
-// Template data - in production this would come from database
-const templates = [
-  {
-    id: '1',
-    name: 'Real Estate Lead Qualifier',
-    description: 'Automatically qualify leads, schedule property viewings, and follow up with potential buyers.',
-    category: 'Real Estate',
-    icon: Home,
-    isFeatured: true,
-    conversionRate: 94,
-    activeUsers: 1200,
-  },
-  {
-    id: '2',
-    name: 'Medical Practice',
-    description: 'Book appointments and handle patient inquiries with empathy and professionalism.',
-    category: 'Healthcare',
-    icon: Heart,
-    isFeatured: false,
-    conversionRate: 89,
-    activeUsers: 856,
-  },
-  {
-    id: '3',
-    name: 'E-commerce Store',
-    description: 'Product recommendations, order support, and customer service automation.',
-    category: 'E-commerce',
-    icon: ShoppingCart,
-    isFeatured: false,
-    conversionRate: 76,
-    activeUsers: 2340,
-  },
-  {
-    id: '4',
-    name: 'Business Consulting',
-    description: 'Qualify leads, book discovery calls, and provide initial consultation.',
-    category: 'B2B',
-    icon: Briefcase,
-    isFeatured: false,
-    conversionRate: 82,
-    activeUsers: 534,
-  },
-  {
-    id: '5',
-    name: 'Online Course',
-    description: 'Answer student questions, promote courses, and handle enrollments.',
-    category: 'Education',
-    icon: GraduationCap,
-    isFeatured: false,
-    conversionRate: 71,
-    activeUsers: 423,
-  },
-  {
-    id: '6',
-    name: 'Car Dealership',
-    description: 'Schedule test drives, answer vehicle questions, and follow up on leads.',
-    category: 'Automotive',
-    icon: Car,
-    isFeatured: false,
-    conversionRate: 85,
-    activeUsers: 678,
-  },
-]
+type Template = Tables<'templates'>
 
-const categories = ['All', 'Real Estate', 'Healthcare', 'E-commerce', 'B2B', 'Education', 'Automotive']
+// Icon mapping for template icons
+const iconMap: Record<string, LucideIcon> = {
+  home: Home,
+  heart: Heart,
+  'shopping-cart': ShoppingCart,
+  briefcase: Briefcase,
+  'graduation-cap': GraduationCap,
+  car: Car,
+  bot: Bot,
+}
+
+function getIcon(iconName: string): LucideIcon {
+  return iconMap[iconName] || Bot
+}
 
 export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
 
-  const filteredTemplates = templates.filter(template => {
+  const { data: templates, isLoading } = useTemplates()
+  const { data: categories } = useTemplateCategories()
+
+  if (isLoading) {
+    return <PageLoader />
+  }
+
+  const filteredTemplates = templates?.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase())
+      template.description?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = selectedCategory === 'All' || template.category === selectedCategory
     return matchesSearch && matchesCategory
-  })
+  }) || []
 
-  const featuredTemplate = templates.find(t => t.isFeatured)
-  const regularTemplates = filteredTemplates.filter(t => !t.isFeatured)
+  const featuredTemplate = templates?.find(t => t.is_featured)
+  const regularTemplates = filteredTemplates.filter(t => !t.is_featured)
 
   const handleUseTemplate = (templateId: string, templateName: string) => {
     toast.success(`Creating agent from "${templateName}" template...`)
-    // In production, this would create a new agent with the template's script
     window.location.href = `/agents/new?template=${templateId}`
   }
 
@@ -128,7 +91,7 @@ export default function TemplatesPage() {
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-          {categories.map((category) => (
+          {(categories || ['All']).map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
@@ -147,45 +110,20 @@ export default function TemplatesPage() {
 
       {/* Featured Template */}
       {featuredTemplate && selectedCategory === 'All' && !searchQuery && (
-        <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-[#1a1a1a] to-emerald-500/5 p-6">
-          <div className="flex items-start gap-2 mb-2">
-            <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-            <span className="text-sm font-medium text-yellow-500">Featured Template</span>
-          </div>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
-                <featuredTemplate.icon className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white mb-1">{featuredTemplate.name}</h3>
-                <p className="text-gray-400 max-w-xl">{featuredTemplate.description}</p>
-                <div className="flex items-center gap-6 mt-3">
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                    <span className="text-white font-medium">{featuredTemplate.conversionRate}%</span>
-                    <span className="text-gray-500">conversion</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <span className="text-white font-medium">{featuredTemplate.activeUsers.toLocaleString()}</span>
-                    <span className="text-gray-500">active users</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => handleUseTemplate(featuredTemplate.id, featuredTemplate.name)}
-              className="px-6 py-3 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors whitespace-nowrap"
-            >
-              Use This Template
-            </button>
-          </div>
-        </div>
+        <FeaturedTemplateCard
+          template={featuredTemplate}
+          onUse={() => handleUseTemplate(featuredTemplate.id, featuredTemplate.name)}
+        />
       )}
 
       {/* Template Grid */}
-      {regularTemplates.length === 0 ? (
+      {!templates || templates.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No Templates Available"
+          description="Templates will appear here once they're added to the system."
+        />
+      ) : regularTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <FileText className="h-12 w-12 text-gray-600 mb-4" />
           <p className="text-gray-400">No templates found</p>
@@ -196,42 +134,105 @@ export default function TemplatesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {regularTemplates.map((template) => (
-            <div
+            <TemplateCard
               key={template.id}
-              className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center">
-                  <template.icon className="h-6 w-6 text-emerald-500" />
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#252525] text-gray-400">
-                  {template.category}
-                </span>
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{template.name}</h3>
-              <p className="text-sm text-gray-400 mb-4 line-clamp-2">{template.description}</p>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="text-gray-300">{template.conversionRate}%</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-gray-300">{template.activeUsers.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => handleUseTemplate(template.id, template.name)}
-                className="w-full py-2.5 rounded-lg bg-[#252525] text-white font-medium hover:bg-[#303030] transition-colors"
-              >
-                Use Template
-              </button>
-            </div>
+              template={template}
+              onUse={() => handleUseTemplate(template.id, template.name)}
+            />
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function FeaturedTemplateCard({
+  template,
+  onUse,
+}: {
+  template: Template
+  onUse: () => void
+}) {
+  const Icon = getIcon(template.icon)
+
+  return (
+    <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-[#1a1a1a] to-emerald-500/5 p-6">
+      <div className="flex items-start gap-2 mb-2">
+        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+        <span className="text-sm font-medium text-yellow-500">Featured Template</span>
+      </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
+            <Icon className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-white mb-1">{template.name}</h3>
+            <p className="text-gray-400 max-w-xl">{template.description}</p>
+            <div className="flex items-center gap-6 mt-3">
+              <div className="flex items-center gap-1.5 text-sm">
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                <span className="text-white font-medium">{template.conversion_rate}%</span>
+                <span className="text-gray-500">conversion</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm">
+                <Users className="h-4 w-4 text-blue-500" />
+                <span className="text-white font-medium">{template.active_users.toLocaleString()}</span>
+                <span className="text-gray-500">active users</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onUse}
+          className="px-6 py-3 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors whitespace-nowrap"
+        >
+          Use This Template
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TemplateCard({
+  template,
+  onUse,
+}: {
+  template: Template
+  onUse: () => void
+}) {
+  const Icon = getIcon(template.icon)
+
+  return (
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
+      <div className="flex items-start justify-between mb-4">
+        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center">
+          <Icon className="h-6 w-6 text-emerald-500" />
+        </div>
+        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#252525] text-gray-400">
+          {template.category}
+        </span>
+      </div>
+      <h3 className="text-lg font-semibold text-white mb-2">{template.name}</h3>
+      <p className="text-sm text-gray-400 mb-4 line-clamp-2">{template.description}</p>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-1">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="text-gray-300">{template.conversion_rate}%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="h-3.5 w-3.5 text-blue-500" />
+            <span className="text-gray-300">{template.active_users.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={onUse}
+        className="w-full py-2.5 rounded-lg bg-[#252525] text-white font-medium hover:bg-[#303030] transition-colors"
+      >
+        Use Template
+      </button>
     </div>
   )
 }

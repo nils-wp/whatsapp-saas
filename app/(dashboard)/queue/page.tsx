@@ -5,12 +5,10 @@ import {
   Inbox,
   Clock,
   AlertTriangle,
-  MessageSquare,
   Send,
   Check,
   X,
   ExternalLink,
-  User,
   Bot,
   ChevronRight,
 } from 'lucide-react'
@@ -27,103 +25,100 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { EmptyState } from '@/components/shared/empty-state'
+import { PageLoader } from '@/components/shared/loading-spinner'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { useMessageQueue, useResolveQueueItem, useSendQueueResponse } from '@/lib/hooks/use-message-queue'
+import type { Tables } from '@/types/database'
 
-type QueueItem = {
+type Conversation = Tables<'conversations'>
+
+interface QueueItemWithConversation {
   id: string
-  type: 'outside_hours' | 'human_review'
-  contactName: string
-  contactPhone: string
-  message: string
-  reason?: string
-  suggestedResponse?: string
-  createdAt: Date
-  conversationId: string
+  tenant_id: string
+  conversation_id: string | null
+  queue_type: string
+  status: string
+  priority: number
+  original_message: string
+  reason: string | null
+  suggested_response: string | null
+  resolved_by: string | null
+  resolved_at: string | null
+  resolution_message: string | null
+  scheduled_for: string | null
+  created_at: string
+  conversation: Pick<Conversation, 'id' | 'contact_name' | 'contact_phone'> | null
 }
 
-const MOCK_QUEUE: QueueItem[] = [
-  {
-    id: '1',
-    type: 'human_review',
-    contactName: 'Max Mustermann',
-    contactPhone: '+49 151 12345678',
-    message: 'How much does it cost? Do you also offer a guarantee?',
-    reason: 'Price question detected',
-    suggestedResponse: 'Great question! The investment depends on your situation, so we should discuss it in a personal call. Would you like to schedule a quick chat?',
-    createdAt: new Date(Date.now() - 5 * 60 * 1000),
-    conversationId: 'conv_1',
-  },
-  {
-    id: '2',
-    type: 'human_review',
-    contactName: 'Anna Schmidt',
-    contactPhone: '+49 171 98765432',
-    message: 'I want to complain, the last conversation was not helpful',
-    reason: 'Complaint detected',
-    createdAt: new Date(Date.now() - 15 * 60 * 1000),
-    conversationId: 'conv_2',
-  },
-  {
-    id: '3',
-    type: 'outside_hours',
-    contactName: 'Peter Schulz',
-    contactPhone: '+49 162 11223344',
-    message: 'Hello, I saw your webinar and would like to learn more!',
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    conversationId: 'conv_3',
-  },
-  {
-    id: '4',
-    type: 'outside_hours',
-    contactName: 'Lisa Meyer',
-    contactPhone: '+49 176 55667788',
-    message: 'Hey, do you also have something for B2B?',
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    conversationId: 'conv_4',
-  },
-]
-
 export default function QueuePage() {
-  const [items, setItems] = useState(MOCK_QUEUE)
-  const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null)
+  const { data: allItems, isLoading } = useMessageQueue()
+  const resolveItem = useResolveQueueItem()
+  const sendResponse = useSendQueueResponse()
+
+  const [selectedItem, setSelectedItem] = useState<QueueItemWithConversation | null>(null)
   const [response, setResponse] = useState('')
 
-  const humanReviewItems = items.filter((i) => i.type === 'human_review')
-  const outsideHoursItems = items.filter((i) => i.type === 'outside_hours')
+  const escalatedItems = allItems?.filter((i) => i.queue_type === 'escalated') || []
+  const outsideHoursItems = allItems?.filter((i) => i.queue_type === 'outside_hours') || []
 
-  const handleSendResponse = () => {
+  const handleSendResponse = async () => {
     if (!selectedItem || !response.trim()) return
 
-    toast.success('Response sent')
-    setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
-    setSelectedItem(null)
-    setResponse('')
+    try {
+      await sendResponse.mutateAsync({
+        queueItem: selectedItem,
+        message: response,
+      })
+      toast.success('Response sent')
+      setSelectedItem(null)
+      setResponse('')
+    } catch (error) {
+      toast.error('Failed to send response')
+    }
   }
 
-  const handleReturnToAgent = () => {
+  const handleReturnToAgent = async () => {
     if (!selectedItem) return
 
-    toast.success('Returned to agent')
-    setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
-    setSelectedItem(null)
-    setResponse('')
+    try {
+      await resolveItem.mutateAsync({
+        id: selectedItem.id,
+        status: 'resolved',
+        resolution_message: 'Returned to agent',
+      })
+      toast.success('Returned to agent')
+      setSelectedItem(null)
+      setResponse('')
+    } catch (error) {
+      toast.error('Failed to return to agent')
+    }
   }
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
     if (!selectedItem) return
 
-    toast.success('Item removed')
-    setItems((prev) => prev.filter((i) => i.id !== selectedItem.id))
-    setSelectedItem(null)
-    setResponse('')
+    try {
+      await resolveItem.mutateAsync({
+        id: selectedItem.id,
+        status: 'dismissed',
+      })
+      toast.success('Item removed')
+      setSelectedItem(null)
+      setResponse('')
+    } catch (error) {
+      toast.error('Failed to remove item')
+    }
   }
 
-  const selectItem = (item: QueueItem) => {
+  const selectItem = (item: QueueItemWithConversation) => {
     setSelectedItem(item)
-    setResponse(item.suggestedResponse || '')
+    setResponse(item.suggested_response || '')
+  }
+
+  if (isLoading) {
+    return <PageLoader />
   }
 
   return (
@@ -138,14 +133,14 @@ export default function QueuePage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Queue List */}
         <div className="space-y-4">
-          <Tabs defaultValue="human_review">
+          <Tabs defaultValue="escalated">
             <TabsList className="bg-[#1a1a1a] border border-[#2a2a2a]">
-              <TabsTrigger value="human_review" className="gap-2 data-[state=active]:bg-[#2a2a2a] data-[state=active]:text-white">
+              <TabsTrigger value="escalated" className="gap-2 data-[state=active]:bg-[#2a2a2a] data-[state=active]:text-white">
                 <AlertTriangle className="h-4 w-4" />
                 Escalated
-                {humanReviewItems.length > 0 && (
+                {escalatedItems.length > 0 && (
                   <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                    {humanReviewItems.length}
+                    {escalatedItems.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -160,8 +155,8 @@ export default function QueuePage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="human_review" className="mt-4">
-              {humanReviewItems.length === 0 ? (
+            <TabsContent value="escalated" className="mt-4">
+              {escalatedItems.length === 0 ? (
                 <EmptyState
                   icon={Check}
                   title="All done"
@@ -169,7 +164,7 @@ export default function QueuePage() {
                 />
               ) : (
                 <div className="space-y-2">
-                  {humanReviewItems.map((item) => (
+                  {escalatedItems.map((item) => (
                     <QueueCard
                       key={item.id}
                       item={item}
@@ -213,27 +208,30 @@ export default function QueuePage() {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-[#2a2a2a] text-white">
-                        {selectedItem.contactName
+                        {(selectedItem.conversation?.contact_name || 'U')
                           .split(' ')
                           .map((n) => n[0])
-                          .join('')}
+                          .join('')
+                          .slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <CardTitle className="text-base text-white">
-                        {selectedItem.contactName}
+                        {selectedItem.conversation?.contact_name || 'Unknown Contact'}
                       </CardTitle>
                       <CardDescription className="text-gray-500">
-                        {selectedItem.contactPhone}
+                        {selectedItem.conversation?.contact_phone || 'No phone'}
                       </CardDescription>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" asChild className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
-                    <a href={`/conversations/${selectedItem.conversationId}`}>
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open
-                    </a>
-                  </Button>
+                  {selectedItem.conversation_id && (
+                    <Button variant="outline" size="sm" asChild className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                      <a href={`/conversations/${selectedItem.conversation_id}`}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -253,9 +251,9 @@ export default function QueuePage() {
                     Message
                   </div>
                   <div className="rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3">
-                    <p className="text-sm text-white">{selectedItem.message}</p>
+                    <p className="text-sm text-white">{selectedItem.original_message}</p>
                     <p className="text-xs text-gray-500 mt-2">
-                      {formatDistanceToNow(selectedItem.createdAt, {
+                      {formatDistanceToNow(new Date(selectedItem.created_at), {
                         addSuffix: true,
                       })}
                     </p>
@@ -276,7 +274,7 @@ export default function QueuePage() {
                     rows={4}
                     className="bg-[#0f0f0f] border-[#2a2a2a] text-white placeholder:text-gray-500"
                   />
-                  {selectedItem.suggestedResponse && (
+                  {selectedItem.suggested_response && (
                     <p className="text-xs text-gray-500">
                       <Bot className="inline h-3 w-3 mr-1" />
                       AI suggestion inserted
@@ -286,15 +284,29 @@ export default function QueuePage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleSendResponse} disabled={!response.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                  <Button
+                    onClick={handleSendResponse}
+                    disabled={!response.trim() || sendResponse.isPending}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
                     <Send className="mr-2 h-4 w-4" />
                     Send
                   </Button>
-                  <Button variant="outline" onClick={handleReturnToAgent} className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                  <Button
+                    variant="outline"
+                    onClick={handleReturnToAgent}
+                    disabled={resolveItem.isPending}
+                    className="bg-transparent border-[#2a2a2a] text-gray-300 hover:bg-[#2a2a2a] hover:text-white"
+                  >
                     <Bot className="mr-2 h-4 w-4" />
                     Return to Agent
                   </Button>
-                  <Button variant="ghost" onClick={handleDismiss} className="text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
+                  <Button
+                    variant="ghost"
+                    onClick={handleDismiss}
+                    disabled={resolveItem.isPending}
+                    className="text-gray-400 hover:text-white hover:bg-[#2a2a2a]"
+                  >
                     <X className="mr-2 h-4 w-4" />
                     Remove
                   </Button>
@@ -320,10 +332,17 @@ function QueueCard({
   selected,
   onClick,
 }: {
-  item: QueueItem
+  item: QueueItemWithConversation
   selected: boolean
   onClick: () => void
 }) {
+  const contactName = item.conversation?.contact_name || 'Unknown Contact'
+  const initials = contactName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+
   return (
     <button
       onClick={onClick}
@@ -337,22 +356,19 @@ function QueueCard({
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-10 w-10 shrink-0">
             <AvatarFallback className="bg-[#2a2a2a] text-white">
-              {item.contactName
-                .split(' ')
-                .map((n) => n[0])
-                .join('')}
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <div className="font-medium truncate text-white">{item.contactName}</div>
+            <div className="font-medium truncate text-white">{contactName}</div>
             <div className="text-sm text-gray-500 truncate">
-              {item.message}
+              {item.original_message}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-gray-500">
-            {formatDistanceToNow(item.createdAt, {
+            {formatDistanceToNow(new Date(item.created_at), {
               addSuffix: true,
             })}
           </span>

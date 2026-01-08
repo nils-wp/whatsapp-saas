@@ -518,6 +518,62 @@ export interface Database {
           bookings?: number
         }
       }
+      templates: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category: string
+          icon: string
+          is_featured: boolean
+          is_active: boolean
+          conversion_rate: number
+          active_users: number
+          personality: string | null
+          goal: string | null
+          script_steps: Json
+          faq_entries: Json
+          escalation_keywords: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          category: string
+          icon?: string
+          is_featured?: boolean
+          is_active?: boolean
+          conversion_rate?: number
+          active_users?: number
+          personality?: string | null
+          goal?: string | null
+          script_steps?: Json
+          faq_entries?: Json
+          escalation_keywords?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category?: string
+          icon?: string
+          is_featured?: boolean
+          is_active?: boolean
+          conversion_rate?: number
+          active_users?: number
+          personality?: string | null
+          goal?: string | null
+          script_steps?: Json
+          faq_entries?: Json
+          escalation_keywords?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
