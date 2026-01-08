@@ -44,6 +44,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/analytics') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/integrations') ||
+    pathname.startsWith('/templates') ||
     pathname === '/'
 
   // Auth routes
