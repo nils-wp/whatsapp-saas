@@ -64,33 +64,59 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
 
-    const evolutionUrl = process.env.EVOLUTION_API_URL
+    const evolutionUrl = process.env.EVOLUTION_API_URL?.replace(/\/$/, '') // Remove trailing slash
     const evolutionKey = process.env.EVOLUTION_API_KEY
 
     if (!evolutionUrl || !evolutionKey) {
       return NextResponse.json({ error: 'Evolution API not configured' }, { status: 500 })
     }
 
-    // Fetch all chats from Evolution API (GET request)
-    const chatsResponse = await fetch(
+    console.log(`[Sync] Fetching chats for instance: ${account.instance_name}`)
+    console.log(`[Sync] Evolution URL: ${evolutionUrl}`)
+
+    // Fetch all chats from Evolution API
+    // Try POST first (some Evolution API versions require POST)
+    let chatsResponse = await fetch(
       `${evolutionUrl}/chat/findChats/${account.instance_name}`,
       {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'apikey': evolutionKey,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({}),
       }
     )
 
+    // If POST fails with 404/405, try GET
+    if (!chatsResponse.ok && (chatsResponse.status === 404 || chatsResponse.status === 405)) {
+      console.log('POST failed, trying GET...')
+      chatsResponse = await fetch(
+        `${evolutionUrl}/chat/findChats/${account.instance_name}`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': evolutionKey,
+          },
+        }
+      )
+    }
+
     if (!chatsResponse.ok) {
       const errorText = await chatsResponse.text()
-      console.error('Failed to fetch chats:', errorText)
-      return NextResponse.json({ error: 'Failed to fetch chats from Evolution' }, { status: 500 })
+      console.error('Failed to fetch chats:', chatsResponse.status, errorText)
+      return NextResponse.json({
+        error: 'Failed to fetch chats from Evolution',
+        details: errorText,
+        status: chatsResponse.status
+      }, { status: 500 })
     }
 
     const chatsData = await chatsResponse.json()
+    console.log('Chats response:', JSON.stringify(chatsData).substring(0, 500))
+
     // Handle both array response and { chats: [...] } format
-    const chats = Array.isArray(chatsData) ? chatsData : (chatsData.chats || [])
+    const chats = Array.isArray(chatsData) ? chatsData : (chatsData.chats || chatsData || [])
     console.log(`Found ${chats.length} chats to sync`)
 
     // Get default agent for this tenant
