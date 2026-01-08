@@ -39,16 +39,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Evolution API not configured' }, { status: 500 })
     }
 
-    // Fetch all chats from Evolution API
+    // Fetch all chats from Evolution API (GET request)
     const chatsResponse = await fetch(
       `${evolutionUrl}/chat/findChats/${account.instance_name}`,
       {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'apikey': evolutionKey,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
       }
     )
 
@@ -58,7 +56,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch chats from Evolution' }, { status: 500 })
     }
 
-    const chats = await chatsResponse.json()
+    const chatsData = await chatsResponse.json()
+    // Handle both array response and { chats: [...] } format
+    const chats = Array.isArray(chatsData) ? chatsData : (chatsData.chats || [])
     console.log(`Found ${chats.length} chats to sync`)
 
     // Get default agent for this tenant
@@ -99,8 +99,8 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Extract phone number - handle different formats
-      const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '')
+      // Extract phone number - handle different formats (@c.us or @s.whatsapp.net)
+      const phone = remoteJid.split('@')[0]
       if (!phone || phone.length < 5) {
         console.log('Skipping (invalid phone):', phone)
         skipped++
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
         conversationId = newConv.id
       }
 
-      // Fetch messages for this chat
+      // Fetch messages for this chat using the remoteJid
       try {
         const messagesResponse = await fetch(
           `${evolutionUrl}/chat/findMessages/${account.instance_name}`,
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
             body: JSON.stringify({
               where: {
                 key: {
-                  remoteJid: chat.id,
+                  remoteJid: remoteJid,
                 },
               },
               limit: 100, // Last 100 messages
