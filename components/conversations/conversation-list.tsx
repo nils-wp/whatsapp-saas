@@ -10,6 +10,7 @@ import type { Tables } from '@/types/database'
 type Conversation = Tables<'conversations'> & {
   whatsapp_accounts?: { instance_name: string | null; phone_number: string | null } | null
   agents?: { name: string; agent_name?: string | null } | null
+  profile_picture_url?: string | null
 }
 
 interface ConversationListProps {
@@ -76,7 +77,10 @@ export function ConversationList({ conversations, selectedId }: ConversationList
               )}
             >
               <Avatar className="h-11 w-11 border border-[#3a3a3a]">
-                <AvatarImage src={undefined} />
+                <AvatarImage
+                  src={conversation.profile_picture_url || undefined}
+                  alt={conversation.contact_name || conversation.contact_phone}
+                />
                 <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 text-emerald-500 font-medium">
                   {getInitials(conversation.contact_name, conversation.contact_phone)}
                 </AvatarFallback>

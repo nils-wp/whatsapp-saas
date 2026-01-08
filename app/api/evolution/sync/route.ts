@@ -9,6 +9,38 @@ function getSupabase() {
 }
 
 /**
+ * Fetch profile picture URL from Evolution API
+ */
+async function fetchProfilePicture(
+  evolutionUrl: string,
+  evolutionKey: string,
+  instanceName: string,
+  phone: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${evolutionUrl}/chat/fetchProfilePictureUrl/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': evolutionKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ number: phone }),
+      }
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      return data.profilePictureUrl || null
+    }
+  } catch (error) {
+    console.log('Failed to fetch profile picture for:', phone)
+  }
+  return null
+}
+
+/**
  * Sync all chats from Evolution API to the database
  */
 export async function POST(request: Request) {
@@ -107,10 +139,18 @@ export async function POST(request: Request) {
         continue
       }
 
+      // Fetch profile picture for this contact
+      const profilePictureUrl = await fetchProfilePicture(
+        evolutionUrl,
+        evolutionKey,
+        account.instance_name,
+        phone
+      )
+
       // Check if conversation already exists
       const { data: existingConv } = await supabase
         .from('conversations')
-        .select('id')
+        .select('id, profile_picture_url')
         .eq('tenant_id', account.tenant_id)
         .eq('contact_phone', phone)
         .limit(1)
@@ -128,6 +168,7 @@ export async function POST(request: Request) {
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
             contact_name: chat.name || chat.pushName || null,
+            profile_picture_url: profilePictureUrl,
             status: 'active',
             current_script_step: 1,
           })
@@ -141,6 +182,15 @@ export async function POST(request: Request) {
         }
 
         conversationId = newConv.id
+      } else if (existingConv && profilePictureUrl && !existingConv.profile_picture_url) {
+        // Update existing conversation with profile picture if missing
+        await supabase
+          .from('conversations')
+          .update({
+            profile_picture_url: profilePictureUrl,
+            contact_name: chat.name || chat.pushName || undefined,
+          })
+          .eq('id', existingConv.id)
       }
 
       // Fetch messages for this chat using the remoteJid
