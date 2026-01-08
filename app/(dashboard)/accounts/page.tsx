@@ -9,12 +9,15 @@ import { PageLoader } from '@/components/shared/loading-spinner'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useAccounts, useDeleteAccount, useSyncAccountStatuses } from '@/lib/hooks/use-accounts'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts()
   const deleteAccount = useDeleteAccount()
   const syncStatuses = useSyncAccountStatuses()
+  const queryClient = useQueryClient()
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
 
   // Calculate stats
   const activeNumbers = accounts?.filter(a => a.status === 'connected').length || 0
@@ -57,6 +60,30 @@ export default function AccountsPage() {
       toast.success('Status updated')
     } catch {
       toast.error('Failed to update status')
+    }
+  }
+
+  async function handleSyncChats(accountId: string) {
+    setSyncingAccountId(accountId)
+    try {
+      const response = await fetch('/api/evolution/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Sync failed')
+      }
+
+      toast.success(`Synced ${data.synced} chats (${data.skipped} skipped)`)
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sync chats')
+    } finally {
+      setSyncingAccountId(null)
     }
   }
 
@@ -151,6 +178,8 @@ export default function AccountsPage() {
               account={account}
               onDisconnect={handleDisconnect}
               onDelete={setDeleteId}
+              onSync={handleSyncChats}
+              isSyncing={syncingAccountId === account.id}
             />
           ))}
         </div>

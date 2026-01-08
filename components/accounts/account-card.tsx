@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Phone, MoreVertical, Settings, Trash2, Unplug, MessageSquare, Calendar } from 'lucide-react'
+import { Phone, MoreVertical, Settings, Trash2, Unplug, MessageSquare, Calendar, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -19,6 +19,8 @@ interface AccountCardProps {
   account: WhatsAppAccount
   onDisconnect?: (id: string) => void
   onDelete?: (id: string) => void
+  onSync?: (id: string) => void
+  isSyncing?: boolean
 }
 
 const statusConfig = {
@@ -42,7 +44,7 @@ const statusConfig = {
   },
 }
 
-export function AccountCard({ account, onDisconnect, onDelete }: AccountCardProps) {
+export function AccountCard({ account, onDisconnect, onDelete, onSync, isSyncing }: AccountCardProps) {
   const status = statusConfig[account.status as keyof typeof statusConfig] || statusConfig.disconnected
   const usageProgress = (account.messages_sent_today / account.daily_limit) * 100
 
@@ -85,6 +87,16 @@ export function AccountCard({ account, onDisconnect, onDelete }: AccountCardProp
                   Settings
                 </Link>
               </DropdownMenuItem>
+              {account.status === 'connected' && (
+                <DropdownMenuItem
+                  onClick={() => onSync?.(account.id)}
+                  disabled={isSyncing}
+                  className="text-gray-300 focus:text-white focus:bg-[#252525]"
+                >
+                  <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+                  {isSyncing ? 'Syncing...' : 'Sync Chats'}
+                </DropdownMenuItem>
+              )}
               {account.status === 'connected' && (
                 <DropdownMenuItem
                   onClick={() => onDisconnect?.(account.id)}
