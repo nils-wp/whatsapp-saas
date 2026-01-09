@@ -8,6 +8,11 @@ import type { Tables, InsertTables, UpdateTables } from '@/types/database'
 type Agent = Tables<'agents'> & {
   created_by?: string | null
   updated_by?: string | null
+  whatsapp_account_id?: string | null
+  whatsapp_accounts?: {
+    phone_number: string | null
+    instance_name: string | null
+  } | null
 }
 type InsertAgent = InsertTables<'agents'>
 type UpdateAgent = UpdateTables<'agents'>
@@ -23,7 +28,7 @@ export function useAgents() {
 
       const { data, error } = await supabase
         .from('agents')
-        .select('*')
+        .select('*, whatsapp_accounts(phone_number, instance_name)')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false })
 
@@ -42,7 +47,7 @@ export function useAgent(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('agents')
-        .select('*')
+        .select('*, whatsapp_accounts(phone_number, instance_name)')
         .eq('id', id)
         .single()
 
@@ -59,7 +64,7 @@ export function useCreateAgent() {
   const supabase = createClient()
 
   return useMutation({
-    mutationFn: async (data: Omit<InsertAgent, 'tenant_id'>): Promise<Agent> => {
+    mutationFn: async (data: Omit<InsertAgent, 'tenant_id'> & { whatsapp_account_id?: string | null }): Promise<Agent> => {
       if (!currentTenant) throw new Error('No tenant')
 
       // Build insert data - only add created_by/updated_by if they're likely to exist

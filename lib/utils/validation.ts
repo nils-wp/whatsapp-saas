@@ -44,6 +44,7 @@ export const agentSchema = z.object({
   response_delay_min: z.number().min(0).max(60),
   response_delay_max: z.number().min(0).max(120),
   max_messages_per_conversation: z.number().min(1).max(100),
+  whatsapp_account_id: z.string().optional(),
 })
 
 export const triggerSchema = z.object({

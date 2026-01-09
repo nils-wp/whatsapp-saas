@@ -13,4 +13,11 @@ ADD COLUMN IF NOT EXISTS escalation_topics TEXT[] DEFAULT ARRAY[]::TEXT[],
 ADD COLUMN IF NOT EXISTS escalation_message TEXT,
 ADD COLUMN IF NOT EXISTS disqualify_criteria TEXT[] DEFAULT ARRAY[]::TEXT[],
 ADD COLUMN IF NOT EXISTS disqualify_message TEXT,
-ADD COLUMN IF NOT EXISTS faq_entries JSONB DEFAULT '[]'::jsonb;
+ADD COLUMN IF NOT EXISTS faq_entries JSONB DEFAULT '[]'::jsonb,
+ADD COLUMN IF NOT EXISTS whatsapp_account_id UUID REFERENCES whatsapp_accounts(id) ON DELETE SET NULL;
+
+-- Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_agents_whatsapp_account ON agents(whatsapp_account_id);
+
+-- Comment explaining the field
+COMMENT ON COLUMN agents.whatsapp_account_id IS 'Optional: Link agent to specific WhatsApp account. NULL means available for all accounts.';

@@ -105,14 +105,29 @@ export async function POST(request: Request) {
       if (!conversation) {
         console.log('Creating new conversation for phone:', phone)
 
-        // Finde einen aktiven Agent für diesen Tenant
-        const { data: defaultAgent } = await supabase
+        // Finde einen aktiven Agent für diesen WhatsApp-Account
+        // 1. Erst Agent suchen, der spezifisch für diese Nummer ist
+        let { data: defaultAgent } = await supabase
           .from('agents')
           .select('id')
           .eq('tenant_id', account.tenant_id)
+          .eq('whatsapp_account_id', account.id)
           .eq('is_active', true)
           .limit(1)
           .single()
+
+        // 2. Falls keiner gefunden, Agent ohne spezifische Nummer suchen
+        if (!defaultAgent) {
+          const { data: fallbackAgent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('tenant_id', account.tenant_id)
+            .is('whatsapp_account_id', null)
+            .eq('is_active', true)
+            .limit(1)
+            .single()
+          defaultAgent = fallbackAgent
+        }
 
         // Erstelle neue Conversation
         const { data: newConversation, error: convError } = await supabase

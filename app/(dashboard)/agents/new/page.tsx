@@ -10,7 +10,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useCreateAgent } from '@/lib/hooks/use-agents'
+import { useAccounts } from '@/lib/hooks/use-accounts'
 import { agentSchema, type AgentFormData } from '@/lib/utils/validation'
 import { DEFAULT_SCRIPT_STEPS, ESCALATION_TOPICS, DISQUALIFY_CRITERIA } from '@/lib/constants'
 import { toast } from 'sonner'
@@ -18,10 +26,13 @@ import { toast } from 'sonner'
 export default function NewAgentPage() {
   const router = useRouter()
   const createAgent = useCreateAgent()
+  const { data: accounts } = useAccounts()
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
@@ -30,13 +41,18 @@ export default function NewAgentPage() {
       response_delay_max: 15,
       max_messages_per_conversation: 20,
       booking_cta: 'Buch dir hier ein kurzes Gespräch:',
+      whatsapp_account_id: '',
     },
   })
 
+  const selectedAccountId = watch('whatsapp_account_id')
+
   async function onSubmit(data: AgentFormData) {
     try {
+      const { whatsapp_account_id, ...rest } = data
       const agent = await createAgent.mutateAsync({
-        ...data,
+        ...rest,
+        whatsapp_account_id: whatsapp_account_id || null,
         script_steps: DEFAULT_SCRIPT_STEPS,
         faq_entries: [],
         escalation_topics: ESCALATION_TOPICS,
@@ -96,6 +112,29 @@ export default function NewAgentPage() {
                 placeholder="Wofür wird dieser Agent verwendet?"
                 {...register('description')}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp_account_id">WhatsApp Nummer</Label>
+              <Select
+                value={selectedAccountId}
+                onValueChange={(value) => setValue('whatsapp_account_id', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Alle Nummern (Standard)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Alle Nummern</SelectItem>
+                  {accounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.phone_number || account.instance_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Optional: Agent nur für eine bestimmte Nummer verwenden
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

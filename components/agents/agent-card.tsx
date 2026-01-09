@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle, Zap, User } from 'lucide-react'
+import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle, Zap, User, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -16,6 +16,11 @@ import type { ScriptStep, FAQEntry } from '@/types'
 type Agent = Tables<'agents'> & {
   created_by?: string | null
   updated_by?: string | null
+  whatsapp_account_id?: string | null
+  whatsapp_accounts?: {
+    phone_number: string | null
+    instance_name: string | null
+  } | null
 }
 
 interface AgentCardProps {
@@ -118,11 +123,13 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
         </p>
       )}
 
-      {/* Mapped Trigger */}
+      {/* Linked Account */}
       <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a]">
-        <Zap className="h-4 w-4 text-yellow-500" />
+        <Phone className="h-4 w-4 text-blue-500" />
         <span className="text-sm text-gray-400">
-          {agent.is_active ? 'Ready to respond' : 'Inactive'}
+          {agent.whatsapp_accounts
+            ? (agent.whatsapp_accounts.phone_number || agent.whatsapp_accounts.instance_name)
+            : 'Alle Nummern'}
         </span>
       </div>
 
