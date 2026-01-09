@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Send, Pause, Play, Flag, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageBubble } from './message-bubble'
 import { createClient } from '@/lib/supabase/client'
 import { useMessages, useSendMessage, useUpdateConversation } from '@/lib/hooks/use-conversations'
+import { useUserNames, getUserDisplayName } from '@/lib/hooks/use-user-names'
 import type { Tables } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -28,6 +29,18 @@ export function ConversationDetail({ conversation }: ConversationDetailProps) {
   const updateConversation = useUpdateConversation()
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Collect all user IDs for name lookup
+  const userIds = useMemo(() => {
+    if (!messages) return []
+    const ids: string[] = []
+    messages.forEach(msg => {
+      if (msg.sent_by) ids.push(msg.sent_by)
+    })
+    return [...new Set(ids)]
+  }, [messages])
+
+  const { data: userNames } = useUserNames(userIds)
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -165,7 +178,11 @@ export function ConversationDetail({ conversation }: ConversationDetailProps) {
       {/* Messages */}
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
         {messages?.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            sentByName={getUserDisplayName(userNames, message.sent_by)}
+          />
         ))}
 
         {(!messages || messages.length === 0) && (

@@ -5,8 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useTenant } from '@/providers/tenant-provider'
 import type { Tables, UpdateTables } from '@/types/database'
 
-type Conversation = Tables<'conversations'>
-type Message = Tables<'messages'>
+type Conversation = Tables<'conversations'> & {
+  updated_by?: string | null
+}
+type Message = Tables<'messages'> & {
+  sent_by?: string | null
+}
 
 type ConversationWithRelations = Conversation & {
   whatsapp_accounts?: {
@@ -98,6 +102,7 @@ export function useMessages(conversationId: string) {
 
 export function useUpdateConversation() {
   const queryClient = useQueryClient()
+  const { user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
@@ -107,7 +112,10 @@ export function useUpdateConversation() {
     }: UpdateTables<'conversations'> & { id: string }) => {
       const { data: conversation, error } = await supabase
         .from('conversations')
-        .update(data)
+        .update({
+          ...data,
+          updated_by: user?.id,
+        })
         .eq('id', id)
         .select()
         .single()
@@ -166,7 +174,7 @@ export function useCleanupOrphanedConversations() {
 
 export function useSendMessage() {
   const queryClient = useQueryClient()
-  const { currentTenant } = useTenant()
+  const { currentTenant, user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
@@ -188,6 +196,7 @@ export function useSendMessage() {
           sender_type: 'human',
           content,
           status: 'pending',
+          sent_by: user?.id,
         })
         .select()
         .single()
@@ -200,6 +209,7 @@ export function useSendMessage() {
         .update({
           last_message_at: new Date().toISOString(),
           last_agent_message_at: new Date().toISOString(),
+          updated_by: user?.id,
         })
         .eq('id', conversationId)
 

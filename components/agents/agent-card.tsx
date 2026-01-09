@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle, Zap } from 'lucide-react'
+import { Bot, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, MessageSquare, HelpCircle, Zap, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -13,17 +13,23 @@ import {
 import type { Tables } from '@/types/database'
 import type { ScriptStep, FAQEntry } from '@/types'
 
-type Agent = Tables<'agents'>
+type Agent = Tables<'agents'> & {
+  created_by?: string | null
+  updated_by?: string | null
+}
 
 interface AgentCardProps {
   agent: Agent
   onToggleActive?: (id: string, isActive: boolean) => void
   onDelete?: (id: string) => void
+  createdByName?: string | null
+  updatedByName?: string | null
 }
 
-export function AgentCard({ agent, onToggleActive, onDelete }: AgentCardProps) {
+export function AgentCard({ agent, onToggleActive, onDelete, createdByName, updatedByName }: AgentCardProps) {
   const scriptSteps = (agent.script_steps as ScriptStep[]) || []
   const faqEntries = (agent.faq_entries as FAQEntry[]) || []
+  const displayName = updatedByName || createdByName
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
@@ -121,15 +127,23 @@ export function AgentCard({ agent, onToggleActive, onDelete }: AgentCardProps) {
       </div>
 
       {/* Stats */}
-      <div className="flex gap-4 text-sm">
-        <div className="flex items-center gap-1.5 text-gray-400">
-          <MessageSquare className="h-4 w-4" />
-          <span>{scriptSteps.length} Script Steps</span>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex gap-4">
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <MessageSquare className="h-4 w-4" />
+            <span>{scriptSteps.length} Script Steps</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <HelpCircle className="h-4 w-4" />
+            <span>{faqEntries.length} FAQ Entries</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-gray-400">
-          <HelpCircle className="h-4 w-4" />
-          <span>{faqEntries.length} FAQ Entries</span>
-        </div>
+        {displayName && (
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <User className="h-3.5 w-3.5" />
+            <span className="text-xs">by {displayName}</span>
+          </div>
+        )}
       </div>
     </div>
   )

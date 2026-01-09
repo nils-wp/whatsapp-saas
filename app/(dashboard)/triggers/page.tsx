@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Plus, Zap, Filter } from 'lucide-react'
 import { TriggerCard } from '@/components/triggers/trigger-card'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useTriggers, useUpdateTrigger, useDeleteTrigger } from '@/lib/hooks/use-triggers'
+import { useUserNames, getUserDisplayName } from '@/lib/hooks/use-user-names'
 import { toast } from 'sonner'
 
 export default function TriggersPage() {
@@ -16,6 +17,19 @@ export default function TriggersPage() {
   const deleteTrigger = useDeleteTrigger()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
+
+  // Collect all user IDs for name lookup
+  const userIds = useMemo(() => {
+    if (!triggers) return []
+    const ids: string[] = []
+    triggers.forEach(trigger => {
+      if (trigger.created_by) ids.push(trigger.created_by)
+      if (trigger.updated_by) ids.push(trigger.updated_by)
+    })
+    return [...new Set(ids)]
+  }, [triggers])
+
+  const { data: userNames } = useUserNames(userIds)
 
   const filteredTriggers = filterType
     ? triggers?.filter(t => t.type === filterType)
@@ -105,6 +119,8 @@ export default function TriggersPage() {
               trigger={trigger}
               onToggleActive={handleToggleActive}
               onDelete={setDeleteId}
+              createdByName={getUserDisplayName(userNames, trigger.created_by)}
+              updatedByName={getUserDisplayName(userNames, trigger.updated_by)}
             />
           ))}
         </div>

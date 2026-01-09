@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Zap, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, Bot, Phone } from 'lucide-react'
+import { Zap, MoreVertical, Edit, Trash2, PlayCircle, PauseCircle, Bot, Phone, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -15,12 +15,16 @@ import type { Tables } from '@/types/database'
 type Trigger = Tables<'triggers'> & {
   whatsapp_accounts?: { instance_name: string | null; phone_number: string | null } | null
   agents?: { name: string } | null
+  created_by?: string | null
+  updated_by?: string | null
 }
 
 interface TriggerCardProps {
   trigger: Trigger
   onToggleActive?: (id: string, isActive: boolean) => void
   onDelete?: (id: string) => void
+  createdByName?: string | null
+  updatedByName?: string | null
 }
 
 const typeConfig: Record<string, { label: string; bg: string; text: string }> = {
@@ -29,11 +33,12 @@ const typeConfig: Record<string, { label: string; bg: string; text: string }> = 
   close: { label: 'Close CRM', bg: 'bg-orange-500/10', text: 'text-orange-400' },
 }
 
-export function TriggerCard({ trigger, onToggleActive, onDelete }: TriggerCardProps) {
+export function TriggerCard({ trigger, onToggleActive, onDelete, createdByName, updatedByName }: TriggerCardProps) {
   const typeStyle = typeConfig[trigger.type] || { label: trigger.type, bg: 'bg-gray-500/10', text: 'text-gray-400' }
   const conversionRate = trigger.total_triggered > 0
     ? Math.round((trigger.total_bookings / trigger.total_triggered) * 100)
     : 0
+  const displayName = updatedByName || createdByName
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
@@ -80,6 +85,12 @@ export function TriggerCard({ trigger, onToggleActive, onDelete }: TriggerCardPr
               <Bot className="h-3.5 w-3.5" />
               {trigger.agents?.name || 'No agent'}
             </span>
+            {displayName && (
+              <span className="flex items-center gap-1">
+                <User className="h-3.5 w-3.5" />
+                by {displayName}
+              </span>
+            )}
           </div>
         </div>
 

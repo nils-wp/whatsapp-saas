@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useTenant } from '@/providers/tenant-provider'
 import type { Tables, InsertTables, UpdateTables } from '@/types/database'
 
-type Agent = Tables<'agents'>
+type Agent = Tables<'agents'> & {
+  created_by?: string | null
+  updated_by?: string | null
+}
 type InsertAgent = InsertTables<'agents'>
 type UpdateAgent = UpdateTables<'agents'>
 
@@ -52,7 +55,7 @@ export function useAgent(id: string) {
 
 export function useCreateAgent() {
   const queryClient = useQueryClient()
-  const { currentTenant } = useTenant()
+  const { currentTenant, user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
@@ -61,7 +64,12 @@ export function useCreateAgent() {
 
       const { data: agent, error } = await supabase
         .from('agents')
-        .insert({ ...data, tenant_id: currentTenant.id })
+        .insert({
+          ...data,
+          tenant_id: currentTenant.id,
+          created_by: user?.id,
+          updated_by: user?.id,
+        })
         .select()
         .single()
 
@@ -77,13 +85,17 @@ export function useCreateAgent() {
 
 export function useUpdateAgent() {
   const queryClient = useQueryClient()
+  const { user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateAgent & { id: string }) => {
       const { data: agent, error } = await supabase
         .from('agents')
-        .update(data)
+        .update({
+          ...data,
+          updated_by: user?.id,
+        })
         .eq('id', id)
         .select()
         .single()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Plus, Bot, Search } from 'lucide-react'
 import { AgentCard } from '@/components/agents/agent-card'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useAgents, useUpdateAgent, useDeleteAgent } from '@/lib/hooks/use-agents'
+import { useUserNames, getUserDisplayName } from '@/lib/hooks/use-user-names'
 import { toast } from 'sonner'
 
 export default function AgentsPage() {
@@ -16,6 +17,19 @@ export default function AgentsPage() {
   const deleteAgent = useDeleteAgent()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Collect all user IDs for name lookup
+  const userIds = useMemo(() => {
+    if (!agents) return []
+    const ids: string[] = []
+    agents.forEach(agent => {
+      if (agent.created_by) ids.push(agent.created_by)
+      if (agent.updated_by) ids.push(agent.updated_by)
+    })
+    return [...new Set(ids)]
+  }, [agents])
+
+  const { data: userNames } = useUserNames(userIds)
 
   const filteredAgents = agents?.filter(agent =>
     agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -103,6 +117,8 @@ export default function AgentsPage() {
               agent={agent}
               onToggleActive={handleToggleActive}
               onDelete={setDeleteId}
+              createdByName={getUserDisplayName(userNames, agent.created_by)}
+              updatedByName={getUserDisplayName(userNames, agent.updated_by)}
             />
           ))}
         </div>

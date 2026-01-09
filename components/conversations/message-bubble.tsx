@@ -6,10 +6,13 @@ import { Check, CheckCheck, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 
-type Message = Tables<'messages'>
+type Message = Tables<'messages'> & {
+  sent_by?: string | null
+}
 
 interface MessageBubbleProps {
   message: Message
+  sentByName?: string | null
 }
 
 const statusIcons = {
@@ -20,9 +23,19 @@ const statusIcons = {
   failed: AlertCircle,
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, sentByName }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound'
   const StatusIcon = statusIcons[message.status as keyof typeof statusIcons] || Clock
+
+  // Determine sender label
+  const getSenderLabel = () => {
+    if (message.sender_type === 'agent') return 'Agent'
+    if (message.sender_type === 'human' && sentByName) return sentByName
+    if (message.sender_type === 'human') return 'Human'
+    return null
+  }
+
+  const senderLabel = getSenderLabel()
 
   return (
     <div
@@ -40,9 +53,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
       >
         {/* Sender indicator for outbound */}
-        {isOutbound && message.sender_type !== 'contact' && (
+        {isOutbound && senderLabel && (
           <p className="text-xs opacity-70 mb-1">
-            {message.sender_type === 'agent' ? 'Agent' : 'Human'}
+            {senderLabel}
           </p>
         )}
 

@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useTenant } from '@/providers/tenant-provider'
 import type { Tables, InsertTables, UpdateTables } from '@/types/database'
 
-type Trigger = Tables<'triggers'>
+type Trigger = Tables<'triggers'> & {
+  created_by?: string | null
+  updated_by?: string | null
+}
 type InsertTrigger = InsertTables<'triggers'>
 type UpdateTrigger = UpdateTables<'triggers'>
 
@@ -58,7 +61,7 @@ export function useTrigger(id: string) {
 
 export function useCreateTrigger() {
   const queryClient = useQueryClient()
-  const { currentTenant } = useTenant()
+  const { currentTenant, user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
@@ -67,7 +70,12 @@ export function useCreateTrigger() {
 
       const { data: trigger, error } = await supabase
         .from('triggers')
-        .insert({ ...data, tenant_id: currentTenant.id })
+        .insert({
+          ...data,
+          tenant_id: currentTenant.id,
+          created_by: user?.id,
+          updated_by: user?.id,
+        })
         .select()
         .single()
 
@@ -83,13 +91,17 @@ export function useCreateTrigger() {
 
 export function useUpdateTrigger() {
   const queryClient = useQueryClient()
+  const { user } = useTenant()
   const supabase = createClient()
 
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateTrigger & { id: string }) => {
       const { data: trigger, error } = await supabase
         .from('triggers')
-        .update(data)
+        .update({
+          ...data,
+          updated_by: user?.id,
+        })
         .eq('id', id)
         .select()
         .single()
