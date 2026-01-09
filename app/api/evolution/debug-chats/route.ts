@@ -77,12 +77,46 @@ export async function POST(request: Request) {
 
     // Return first 5 chats for debugging
     const chats = Array.isArray(data) ? data : (data.chats || data || [])
-    const sample = chats.slice(0, 5)
+    const sample = chats.slice(0, 10)
+
+    // Analyze chat types
+    let groups = 0
+    let broadcasts = 0
+    let individual = 0
+    let unknown = 0
+    const examples: { type: string; remoteJid: string; keys: string[] }[] = []
+
+    for (const chat of chats) {
+      const remoteJid = chat.remoteJid || chat.id || chat.jid || ''
+
+      if (remoteJid.includes('@g.us')) {
+        groups++
+        if (examples.filter(e => e.type === 'group').length < 2) {
+          examples.push({ type: 'group', remoteJid, keys: Object.keys(chat) })
+        }
+      } else if (remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+        broadcasts++
+        if (examples.filter(e => e.type === 'broadcast').length < 2) {
+          examples.push({ type: 'broadcast', remoteJid, keys: Object.keys(chat) })
+        }
+      } else if (remoteJid.includes('@s.whatsapp.net') || remoteJid.includes('@c.us')) {
+        individual++
+        if (examples.filter(e => e.type === 'individual').length < 2) {
+          examples.push({ type: 'individual', remoteJid, keys: Object.keys(chat) })
+        }
+      } else {
+        unknown++
+        if (examples.filter(e => e.type === 'unknown').length < 3) {
+          examples.push({ type: 'unknown', remoteJid, keys: Object.keys(chat) })
+        }
+      }
+    }
 
     return NextResponse.json({
       total: chats.length,
+      breakdown: { groups, broadcasts, individual, unknown },
+      examples,
       sample,
-      // Show all keys from first chat
       firstChatKeys: chats[0] ? Object.keys(chats[0]) : [],
     })
 
