@@ -54,6 +54,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type TeamMember = {
   id: string
+  userId?: string
   name: string | null
   email: string
   role: 'owner' | 'admin' | 'member'
@@ -77,57 +78,38 @@ export default function TeamPage() {
   const [isInviting, setIsInviting] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [showRoleDialog, setShowRoleDialog] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+  const [newRole, setNewRole] = useState<'admin' | 'member'>('member')
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
 
-  useEffect(() => {
-    async function fetchMembers() {
-      if (!currentTenant) return
+  const fetchMembers = async () => {
+    if (!currentTenant) return
 
-      const supabase = createClient()
+    try {
+      const response = await fetch(`/api/team/members?tenantId=${currentTenant.id}`)
+      const data = await response.json()
 
-      // Get active members
-      const { data: membersData } = await supabase
-        .from('tenant_members')
-        .select('id, user_id, role, invited_email, invited_at, accepted_at')
-        .eq('tenant_id', currentTenant.id)
-
-      if (!membersData) {
-        setIsLoading(false)
-        return
+      if (response.ok && data.members) {
+        setMembers(data.members.map((m: any) => ({
+          id: m.id,
+          userId: m.userId,
+          name: m.name,
+          email: m.email,
+          role: m.role as 'owner' | 'admin' | 'member',
+          status: m.status as 'active' | 'pending',
+          invitedAt: m.invitedAt,
+        })))
       }
-
-      // Get user details for active members
-      const membersList: TeamMember[] = []
-
-      for (const m of membersData) {
-        if (m.accepted_at && m.user_id) {
-          // Active member - fetch user details
-          const { data: userData } = await supabase
-            .rpc('get_user_email', { user_id: m.user_id })
-
-          membersList.push({
-            id: m.id,
-            name: null,
-            email: userData || m.invited_email || 'Unknown',
-            role: m.role as 'owner' | 'admin' | 'member',
-            status: 'active',
-          })
-        } else if (m.invited_email) {
-          // Pending invite
-          membersList.push({
-            id: m.id,
-            name: null,
-            email: m.invited_email,
-            role: m.role as 'owner' | 'admin' | 'member',
-            status: 'pending',
-            invitedAt: m.invited_at,
-          })
-        }
-      }
-
-      setMembers(membersList)
+    } catch (error) {
+      console.error('Failed to fetch members:', error)
+    } finally {
       setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchMembers()
   }, [currentTenant])
 
@@ -213,6 +195,80 @@ export default function TeamPage() {
     setInviteEmail('')
     setInviteUrl(null)
     setCopied(false)
+  }
+
+  const openRoleDialog = (member: TeamMember) => {
+    setSelectedMember(member)
+    setNewRole(member.role === 'owner' ? 'admin' : member.role)
+    setShowRoleDialog(true)
+  }
+
+  const handleChangeRole = async () => {
+    if (!selectedMember || !currentTenant) return
+
+    setIsUpdatingRole(true)
+    try {
+      const response = await fetch('/api/team/members', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: selectedMember.id,
+          tenantId: currentTenant.id,
+          newRole,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to change role')
+        return
+      }
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === selectedMember.id ? { ...m, role: newRole } : m
+        )
+      )
+      toast.success(`Role changed to ${newRole}`)
+      setShowRoleDialog(false)
+    } catch {
+      toast.error('Failed to change role')
+    } finally {
+      setIsUpdatingRole(false)
+    }
+  }
+
+  const handleRemoveMember = async (member: TeamMember) => {
+    if (!currentTenant) return
+
+    if (!confirm(`Remove ${member.name || member.email} from the team?`)) return
+
+    setIsRemoving(true)
+    try {
+      const response = await fetch('/api/team/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: member.id,
+          tenantId: currentTenant.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to remove member')
+        return
+      }
+
+      setMembers((prev) => prev.filter((m) => m.id !== member.id))
+      toast.success('Member removed')
+    } catch {
+      toast.error('Failed to remove member')
+    } finally {
+      setIsRemoving(false)
+    }
   }
 
   const getInitials = (name: string | null, email: string) => {
@@ -312,10 +368,15 @@ export default function TeamPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-[#2a2a2a]">
-                        <DropdownMenuItem className="text-gray-300 focus:text-white focus:bg-[#252525]">
-                          <UserCog className="mr-2 h-4 w-4" />
-                          Change Role
-                        </DropdownMenuItem>
+                        {member.status === 'active' && currentUserRole === 'owner' && (
+                          <DropdownMenuItem
+                            onClick={() => openRoleDialog(member)}
+                            className="text-gray-300 focus:text-white focus:bg-[#252525]"
+                          >
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Change Role
+                          </DropdownMenuItem>
+                        )}
                         {member.status === 'pending' && (
                           <DropdownMenuItem
                             onClick={() => handleCancelInvite(member.id)}
@@ -328,7 +389,10 @@ export default function TeamPage() {
                         {member.status === 'active' && (
                           <>
                             <DropdownMenuSeparator className="bg-[#2a2a2a]" />
-                            <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
+                            <DropdownMenuItem
+                              onClick={() => handleRemoveMember(member)}
+                              className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Remove
                             </DropdownMenuItem>
@@ -466,6 +530,59 @@ export default function TeamPage() {
                 Create Invite
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Role Dialog */}
+      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+        <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Change Role</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Change the role for {selectedMember?.name || selectedMember?.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Label className="text-gray-300 mb-3 block">Select New Role</Label>
+            <Select value={newRole} onValueChange={(v) => setNewRole(v as 'admin' | 'member')}>
+              <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                <SelectItem value="admin">
+                  <div className="flex flex-col">
+                    <span>Admin</span>
+                    <span className="text-xs text-gray-500">Can manage agents, triggers, and invite members</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="member">
+                  <div className="flex flex-col">
+                    <span>Member</span>
+                    <span className="text-xs text-gray-500">Can view conversations and reply manually</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)} className="border-[#2a2a2a]">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleChangeRole}
+              disabled={isUpdatingRole || newRole === selectedMember?.role}
+              className="bg-emerald-500 hover:bg-emerald-600"
+            >
+              {isUpdatingRole ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <UserCog className="mr-2 h-4 w-4" />
+              )}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
