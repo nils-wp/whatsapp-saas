@@ -5,7 +5,7 @@ import { Send, Pause, Play, Flag, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageBubble } from './message-bubble'
 import { createClient } from '@/lib/supabase/client'
@@ -109,6 +109,10 @@ export function ConversationDetail({ conversation }: ConversationDetailProps) {
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
+            <AvatarImage
+              src={conversation.profile_picture_url || undefined}
+              alt={conversation.contact_name || conversation.contact_phone}
+            />
             <AvatarFallback>
               {conversation.contact_name?.[0] ||
                 conversation.contact_phone.slice(-2)}

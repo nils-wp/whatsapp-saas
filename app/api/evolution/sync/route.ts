@@ -32,10 +32,16 @@ async function fetchProfilePicture(
 
     if (response.ok) {
       const data = await response.json()
-      return data.profilePictureUrl || data.picture || data.url || null
+      const url = data.profilePictureUrl || data.picture || data.url || data.profilePicUrl || null
+      if (url) {
+        console.log(`[Sync] Got profile picture for ${phone}:`, url.substring(0, 60))
+      }
+      return url
+    } else {
+      console.log(`[Sync] Profile picture fetch failed for ${phone}: ${response.status}`)
     }
   } catch (error) {
-    // Silent fail - profile pictures are optional
+    console.log(`[Sync] Profile picture fetch error for ${phone}:`, error)
   }
   return null
 }
@@ -73,14 +79,14 @@ async function fetchContactInfo(
       const contact = contacts[0]
 
       if (contact) {
-        return {
-          name: contact.pushName || contact.name || contact.notify || null,
-          profilePicture: contact.profilePictureUrl || contact.imgUrl || null
-        }
+        const name = contact.pushName || contact.name || contact.notify || null
+        const pic = contact.profilePictureUrl || contact.imgUrl || contact.profilePicUrl || null
+        console.log(`[Sync] Contact info for ${phone}: name="${name}", hasPic=${!!pic}`)
+        return { name, profilePicture: pic }
       }
     }
   } catch (error) {
-    // Silent fail
+    console.log(`[Sync] Contact info fetch error:`, error)
   }
   return { name: null, profilePicture: null }
 }
