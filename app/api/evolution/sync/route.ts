@@ -119,6 +119,16 @@ export async function POST(request: Request) {
     const chats = Array.isArray(chatsData) ? chatsData : (chatsData.chats || chatsData || [])
     console.log(`Found ${chats.length} chats to sync`)
 
+    // Pre-analyze chats
+    let preGroups = 0, preIndividual = 0, preOther = 0
+    for (const c of chats) {
+      const rid = c.remoteJid || c.id || c.jid || ''
+      if (rid.includes('@g.us')) preGroups++
+      else if (rid.includes('@s.whatsapp.net') || rid.includes('@c.us') || rid.includes('@lid')) preIndividual++
+      else preOther++
+    }
+    console.log(`Pre-analysis: ${preGroups} groups, ${preIndividual} individual, ${preOther} other`)
+
     // Get default agent for this tenant
     const { data: defaultAgent } = await supabase
       .from('agents')
@@ -156,7 +166,14 @@ export async function POST(request: Request) {
           skipped++
           continue
         }
+        // Handle individual chats: @s.whatsapp.net, @c.us, @lid
         phone = remoteJid.split('@')[0]
+
+        // For @lid format, the phone might be a different ID - try to use it anyway
+        if (remoteJid.includes('@lid')) {
+          // @lid is a new WhatsApp format - the number before @ is still usable
+          console.log('Processing @lid format:', remoteJid)
+        }
       } else {
         // Try other fields for phone number
         phone = chat.phone || chat.number || chat.contact?.phone || chat.participant || ''
@@ -177,7 +194,7 @@ export async function POST(request: Request) {
         continue
       }
 
-      console.log('Processing:', phone, contactName)
+      console.log('Processing:', phone, contactName, '| remoteJid:', remoteJid)
 
       // Fetch profile picture for this contact
       const profilePictureUrl = await fetchProfilePicture(
