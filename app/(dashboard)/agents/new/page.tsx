@@ -117,14 +117,14 @@ export default function NewAgentPage() {
             <div className="space-y-2">
               <Label htmlFor="whatsapp_account_id">WhatsApp Nummer</Label>
               <Select
-                value={selectedAccountId}
-                onValueChange={(value) => setValue('whatsapp_account_id', value)}
+                value={selectedAccountId || 'all'}
+                onValueChange={(value) => setValue('whatsapp_account_id', value === 'all' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Alle Nummern (Standard)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Alle Nummern</SelectItem>
+                  <SelectItem value="all">Alle Nummern</SelectItem>
                   {accounts?.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.phone_number || account.instance_name}
