@@ -32,12 +32,57 @@ async function fetchProfilePicture(
 
     if (response.ok) {
       const data = await response.json()
-      return data.profilePictureUrl || null
+      return data.profilePictureUrl || data.picture || data.url || null
     }
   } catch (error) {
-    console.log('Failed to fetch profile picture for:', phone)
+    // Silent fail - profile pictures are optional
   }
   return null
+}
+
+/**
+ * Fetch contact info (name) from Evolution API
+ */
+async function fetchContactInfo(
+  evolutionUrl: string,
+  evolutionKey: string,
+  instanceName: string,
+  phone: string
+): Promise<{ name: string | null; profilePicture: string | null }> {
+  try {
+    // Try to get contact info
+    const response = await fetch(
+      `${evolutionUrl}/chat/findContacts/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': evolutionKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          where: {
+            id: `${phone}@s.whatsapp.net`
+          }
+        }),
+      }
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      const contacts = Array.isArray(data) ? data : (data.contacts || [])
+      const contact = contacts[0]
+
+      if (contact) {
+        return {
+          name: contact.pushName || contact.name || contact.notify || null,
+          profilePicture: contact.profilePictureUrl || contact.imgUrl || null
+        }
+      }
+    }
+  } catch (error) {
+    // Silent fail
+  }
+  return { name: null, profilePicture: null }
 }
 
 /**
@@ -194,15 +239,33 @@ export async function POST(request: Request) {
         continue
       }
 
-      console.log('Processing:', phone, contactName, '| remoteJid:', remoteJid)
+      // Fetch contact info (name + picture) from Evolution API
+      let finalContactName = contactName
+      let profilePictureUrl: string | null = null
 
-      // Fetch profile picture for this contact
-      const profilePictureUrl = await fetchProfilePicture(
-        evolutionUrl,
-        evolutionKey,
-        account.instance_name,
-        phone
-      )
+      // If no name from chat object, try to fetch from contacts API
+      if (!finalContactName) {
+        const contactInfo = await fetchContactInfo(
+          evolutionUrl,
+          evolutionKey,
+          account.instance_name,
+          phone
+        )
+        finalContactName = contactInfo.name
+        profilePictureUrl = contactInfo.profilePicture
+      }
+
+      // If still no profile picture, try dedicated endpoint
+      if (!profilePictureUrl) {
+        profilePictureUrl = await fetchProfilePicture(
+          evolutionUrl,
+          evolutionKey,
+          account.instance_name,
+          phone
+        )
+      }
+
+      console.log('Processing:', phone, finalContactName, '| pic:', !!profilePictureUrl)
 
       // Check if conversation already exists
       const { data: existingConv } = await supabase
@@ -224,7 +287,7 @@ export async function POST(request: Request) {
             whatsapp_account_id: account.id,
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
-            contact_name: contactName,
+            contact_name: finalContactName,
             profile_picture_url: profilePictureUrl,
             status: 'active',
             current_script_step: 1,
@@ -239,14 +302,14 @@ export async function POST(request: Request) {
         }
 
         conversationId = newConv.id
-      } else if (existingConv && (profilePictureUrl || contactName)) {
+      } else if (existingConv && (profilePictureUrl || finalContactName)) {
         // Update existing conversation with profile picture or name if missing
         const updates: Record<string, string> = {}
         if (profilePictureUrl && !existingConv.profile_picture_url) {
           updates.profile_picture_url = profilePictureUrl
         }
-        if (contactName && !existingConv.contact_name) {
-          updates.contact_name = contactName
+        if (finalContactName && !existingConv.contact_name) {
+          updates.contact_name = finalContactName
         }
         if (Object.keys(updates).length > 0) {
           await supabase
