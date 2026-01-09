@@ -344,6 +344,28 @@ export async function POST(request: Request) {
           const messagesData = await messagesResponse.json()
           const messages = messagesData.messages || messagesData || []
 
+          // Try to extract pushName from incoming messages if we don't have a name yet
+          let extractedPushName: string | null = null
+          if (!finalContactName) {
+            for (const msg of messages) {
+              const isFromMe = msg.key?.fromMe || false
+              if (!isFromMe && msg.pushName) {
+                extractedPushName = msg.pushName
+                console.log('Found pushName in message:', extractedPushName)
+                break
+              }
+            }
+
+            // Update conversation with extracted name
+            if (extractedPushName && conversationId) {
+              await supabase
+                .from('conversations')
+                .update({ contact_name: extractedPushName })
+                .eq('id', conversationId)
+              finalContactName = extractedPushName
+            }
+          }
+
           for (const msg of messages) {
             const messageId = msg.key?.id
             const isFromMe = msg.key?.fromMe || false
