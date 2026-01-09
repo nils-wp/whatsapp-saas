@@ -77,6 +77,14 @@ export async function POST(request: Request) {
           .single()
 
         if (escalatedConv) {
+          // Update contact name if missing
+          if (pushName && !escalatedConv.contact_name) {
+            await supabase
+              .from('conversations')
+              .update({ contact_name: pushName })
+              .eq('id', escalatedConv.id)
+          }
+
           // Bei eskalierten Conversations nur speichern, nicht antworten
           await saveIncomingMessage(supabase, {
             tenantId: account.tenant_id,
@@ -130,12 +138,22 @@ export async function POST(request: Request) {
         console.log('Created new conversation:', conversation.id)
       }
 
-      // Reaktiviere pausierte Conversations
-      if (conversation.status === 'paused') {
-        await supabase
-          .from('conversations')
-          .update({ status: 'active' })
-          .eq('id', conversation.id)
+      // Reaktiviere pausierte Conversations und aktualisiere Namen wenn nötig
+      if (conversation.status === 'paused' || (pushName && !conversation.contact_name)) {
+        const updates: Record<string, unknown> = {}
+        if (conversation.status === 'paused') {
+          updates.status = 'active'
+        }
+        if (pushName && !conversation.contact_name) {
+          updates.contact_name = pushName
+          console.log('Updating contact name to:', pushName)
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase
+            .from('conversations')
+            .update(updates)
+            .eq('id', conversation.id)
+        }
       }
 
       // Speichere eingehende Nachricht
