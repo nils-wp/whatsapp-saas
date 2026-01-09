@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 type Conversation = Tables<'conversations'> & {
   whatsapp_accounts?: { instance_name: string | null; phone_number: string | null } | null
   agents?: { name: string; agent_name: string | null } | null
+  profile_picture_url?: string | null
 }
 
 interface ConversationDetailProps {
