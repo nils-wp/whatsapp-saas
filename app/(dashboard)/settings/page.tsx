@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   User,
+  Users,
   Shield,
   Bell,
   CreditCard,
@@ -11,6 +12,7 @@ import {
   ExternalLink,
   ChevronRight,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -125,6 +127,23 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Team Card */}
+        <Link href="/settings/team" className="block rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 hover:border-emerald-500/50 transition-colors">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Users className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white">Team</h3>
+              <p className="text-sm text-gray-500">Manage team members</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-500" />
+          </div>
+          <p className="text-sm text-gray-400">
+            Invite team members, manage roles and permissions.
+          </p>
+        </Link>
 
         {/* Security Card */}
         <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
