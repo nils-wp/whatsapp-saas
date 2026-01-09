@@ -78,7 +78,12 @@ export default function AccountsPage() {
         throw new Error(data.error || 'Sync failed')
       }
 
-      toast.success(`Synced ${data.synced} chats (${data.skipped} skipped)`)
+      if (data.skipped > 0 && data.skippedReasons?.length > 0) {
+        console.log('Skipped reasons:', data.skippedReasons)
+        toast.success(`Synced ${data.synced} chats (${data.skipped} skipped: groups/broadcasts)`)
+      } else {
+        toast.success(`Synced ${data.synced} chats`)
+      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sync chats')

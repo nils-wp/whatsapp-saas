@@ -130,6 +130,7 @@ export async function POST(request: Request) {
 
     let synced = 0
     let skipped = 0
+    const skippedReasons: string[] = []
 
     for (const chat of chats) {
       // Log full chat object for first few to debug
@@ -145,7 +146,13 @@ export async function POST(request: Request) {
       // If remoteJid contains @, extract phone from it
       if (remoteJid.includes('@')) {
         // Skip groups and broadcasts
-        if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+        if (remoteJid.includes('@g.us')) {
+          skippedReasons.push(`Group: ${remoteJid}`)
+          skipped++
+          continue
+        }
+        if (remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+          skippedReasons.push(`Broadcast/Status: ${remoteJid}`)
           skipped++
           continue
         }
@@ -165,9 +172,7 @@ export async function POST(request: Request) {
 
       // Skip if no valid phone
       if (!phone || phone.length < 8) {
-        if (synced + skipped < 10) {
-          console.log('Skipping (no valid phone):', { remoteJid, phone, keys: Object.keys(chat) })
-        }
+        skippedReasons.push(`Invalid phone: ${remoteJid} -> "${phone}"`)
         skipped++
         continue
       }
@@ -309,6 +314,7 @@ export async function POST(request: Request) {
       success: true,
       synced,
       skipped,
+      skippedReasons: skippedReasons.slice(0, 10), // Show first 10 reasons
       total: chats.length,
     })
 
