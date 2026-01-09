@@ -34,7 +34,8 @@ CREATE TABLE tenant_members (
   role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
   invited_email TEXT,
   invited_at TIMESTAMPTZ DEFAULT NOW(),
-  accepted_at TIMESTAMPTZ
+  accepted_at TIMESTAMPTZ,
+  invite_token UUID DEFAULT uuid_generate_v4()
 );
 
 -- ===========================================
@@ -173,6 +174,7 @@ CREATE TABLE analytics_daily (
 -- ===========================================
 CREATE INDEX idx_tenant_members_user ON tenant_members(user_id);
 CREATE INDEX idx_tenant_members_tenant ON tenant_members(tenant_id);
+CREATE UNIQUE INDEX idx_tenant_members_invite_token ON tenant_members(invite_token) WHERE invite_token IS NOT NULL;
 CREATE INDEX idx_whatsapp_accounts_tenant ON whatsapp_accounts(tenant_id);
 CREATE INDEX idx_agents_tenant ON agents(tenant_id);
 CREATE INDEX idx_triggers_tenant ON triggers(tenant_id);
@@ -231,6 +233,25 @@ CREATE POLICY "Admins can manage members" ON tenant_members
       AND tm.user_id = auth.uid()
       AND tm.role IN ('owner', 'admin')
     )
+  );
+
+CREATE POLICY "Anyone can view invite by token" ON tenant_members
+  FOR SELECT USING (
+    invite_token IS NOT NULL
+    AND accepted_at IS NULL
+  );
+
+CREATE POLICY "Users can accept invites by token" ON tenant_members
+  FOR UPDATE USING (
+    invite_token IS NOT NULL
+    AND accepted_at IS NULL
+    AND (
+      user_id = auth.uid()
+      OR invited_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    )
+  )
+  WITH CHECK (
+    user_id = auth.uid()
   );
 
 -- WhatsApp accounts policies
