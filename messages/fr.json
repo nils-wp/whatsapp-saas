@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "all": "Tous",
+    "none": "Aucun",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "agents": "Agents",
+    "triggers": "Déclencheurs",
+    "phoneNumbers": "Numéros de téléphone",
+    "integrations": "Intégrations",
+    "templates": "Modèles",
+    "settings": "Paramètres",
+    "conversations": "Conversations"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue",
+    "activeConversations": "Conversations actives",
+    "messagestoday": "Messages aujourd'hui",
+    "bookingsThisWeek": "Réservations cette semaine",
+    "responseRate": "Taux de réponse"
+  },
+  "agents": {
+    "title": "Agents IA",
+    "subtitle": "Créez et gérez vos agents IA",
+    "newAgent": "Nouvel Agent",
+    "createAgent": "Créer un Agent",
+    "editAgent": "Modifier l'Agent",
+    "deleteAgent": "Supprimer l'Agent",
+    "agentName": "Nom de l'Agent",
+    "description": "Description",
+    "whatsappNumber": "Numéro WhatsApp",
+    "allNumbers": "Tous les numéros",
+    "colleagueName": "Nom du collègue",
+    "companyInfo": "Info entreprise",
+    "calendlyLink": "Lien Calendly",
+    "bookingCta": "CTA de réservation",
+    "minDelay": "Délai min. (sec)",
+    "maxDelay": "Délai max. (sec)",
+    "maxMessages": "Max. messages par conversation",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "scriptSteps": "Étapes du script",
+    "faqEntries": "Entrées FAQ"
+  },
+  "triggers": {
+    "title": "Déclencheurs",
+    "subtitle": "Gérez les webhooks et déclencheurs CRM",
+    "newTrigger": "Nouveau Déclencheur",
+    "createTrigger": "Créer un Déclencheur",
+    "webhookUrl": "URL du Webhook",
+    "firstMessage": "Premier message",
+    "delay": "Délai"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "subtitle": "Gérez tous les chats",
+    "noConversations": "Aucune conversation",
+    "noMessages": "Aucun message",
+    "sendMessage": "Envoyer un message",
+    "typeMessage": "Tapez un message...",
+    "status": {
+      "active": "Actif",
+      "paused": "En pause",
+      "escalated": "Escaladé",
+      "completed": "Terminé"
+    },
+    "actions": {
+      "pause": "Pause",
+      "resume": "Reprendre",
+      "escalate": "Escalader",
+      "complete": "Terminer"
+    }
+  },
+  "accounts": {
+    "title": "Numéros de téléphone",
+    "subtitle": "Gérez vos numéros WhatsApp connectés",
+    "connectNumber": "Connecter un numéro",
+    "activeNumbers": "Numéros actifs",
+    "messagesToday": "Messages aujourd'hui",
+    "avgResponseTime": "Temps de réponse moy.",
+    "syncChats": "Synchroniser les chats",
+    "disconnect": "Déconnecter",
+    "status": {
+      "connected": "Connecté",
+      "disconnected": "Déconnecté",
+      "connecting": "Connexion..."
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "general": "Général",
+    "team": "Équipe",
+    "billing": "Facturation",
+    "integrations": "Intégrations",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "selectLanguage": "Sélectionner la langue"
+  },
+  "team": {
+    "title": "Équipe",
+    "subtitle": "Gérez votre équipe",
+    "inviteMember": "Inviter un membre",
+    "role": {
+      "owner": "Propriétaire",
+      "admin": "Administrateur",
+      "member": "Membre"
+    }
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "signup": "S'inscrire",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Réinitialiser le mot de passe"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "notFound": "Non trouvé",
+    "unauthorized": "Non autorisé",
+    "validationFailed": "Échec de la validation"
+  }
+}

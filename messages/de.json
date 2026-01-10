@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "search": "Suchen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "all": "Alle",
+    "none": "Keine",
+    "yes": "Ja",
+    "no": "Nein"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "Agents",
+    "triggers": "Triggers",
+    "phoneNumbers": "Telefonnummern",
+    "integrations": "Integrationen",
+    "templates": "Templates",
+    "settings": "Einstellungen",
+    "conversations": "Konversationen"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen zurück",
+    "activeConversations": "Aktive Konversationen",
+    "messagestoday": "Nachrichten heute",
+    "bookingsThisWeek": "Termine diese Woche",
+    "responseRate": "Antwortrate"
+  },
+  "agents": {
+    "title": "KI Agents",
+    "subtitle": "Erstelle und verwalte deine KI-Agenten",
+    "newAgent": "Neuer Agent",
+    "createAgent": "Agent erstellen",
+    "editAgent": "Agent bearbeiten",
+    "deleteAgent": "Agent löschen",
+    "agentName": "Agent-Name",
+    "description": "Beschreibung",
+    "whatsappNumber": "WhatsApp Nummer",
+    "allNumbers": "Alle Nummern",
+    "colleagueName": "Kollegen-Name",
+    "companyInfo": "Unternehmensinfo",
+    "calendlyLink": "Calendly Link",
+    "bookingCta": "Booking CTA",
+    "minDelay": "Min. Verzögerung (Sek.)",
+    "maxDelay": "Max. Verzögerung (Sek.)",
+    "maxMessages": "Max. Nachrichten pro Konversation",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "scriptSteps": "Script Steps",
+    "faqEntries": "FAQ Einträge"
+  },
+  "triggers": {
+    "title": "Triggers",
+    "subtitle": "Webhook und CRM Auslöser verwalten",
+    "newTrigger": "Neuer Trigger",
+    "createTrigger": "Trigger erstellen",
+    "webhookUrl": "Webhook URL",
+    "firstMessage": "Erste Nachricht",
+    "delay": "Verzögerung"
+  },
+  "conversations": {
+    "title": "Konversationen",
+    "subtitle": "Alle Chats verwalten",
+    "noConversations": "Keine Konversationen",
+    "noMessages": "Keine Nachrichten",
+    "sendMessage": "Nachricht senden",
+    "typeMessage": "Nachricht eingeben...",
+    "status": {
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "escalated": "Eskaliert",
+      "completed": "Abgeschlossen"
+    },
+    "actions": {
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "escalate": "Eskalieren",
+      "complete": "Abschließen"
+    }
+  },
+  "accounts": {
+    "title": "Telefonnummern",
+    "subtitle": "Verwalte deine verbundenen WhatsApp-Nummern",
+    "connectNumber": "Nummer verbinden",
+    "activeNumbers": "Aktive Nummern",
+    "messagesToday": "Nachrichten heute",
+    "avgResponseTime": "Durchschn. Antwortzeit",
+    "syncChats": "Chats synchronisieren",
+    "disconnect": "Trennen",
+    "status": {
+      "connected": "Verbunden",
+      "disconnected": "Getrennt",
+      "connecting": "Verbindet..."
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "general": "Allgemein",
+    "team": "Team",
+    "billing": "Abrechnung",
+    "integrations": "Integrationen",
+    "notifications": "Benachrichtigungen",
+    "language": "Sprache",
+    "selectLanguage": "Sprache auswählen"
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Verwalte dein Team",
+    "inviteMember": "Mitglied einladen",
+    "role": {
+      "owner": "Eigentümer",
+      "admin": "Administrator",
+      "member": "Mitglied"
+    }
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "signup": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "forgotPassword": "Passwort vergessen?",
+    "resetPassword": "Passwort zurücksetzen"
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Nicht autorisiert",
+    "validationFailed": "Validierung fehlgeschlagen"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "Agents",
+    "triggers": "Triggers",
+    "phoneNumbers": "Phone Numbers",
+    "integrations": "Integrations",
+    "templates": "Templates",
+    "settings": "Settings",
+    "conversations": "Conversations"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "activeConversations": "Active Conversations",
+    "messagestoday": "Messages Today",
+    "bookingsThisWeek": "Bookings This Week",
+    "responseRate": "Response Rate"
+  },
+  "agents": {
+    "title": "AI Agents",
+    "subtitle": "Create and manage your AI agents",
+    "newAgent": "New Agent",
+    "createAgent": "Create Agent",
+    "editAgent": "Edit Agent",
+    "deleteAgent": "Delete Agent",
+    "agentName": "Agent Name",
+    "description": "Description",
+    "whatsappNumber": "WhatsApp Number",
+    "allNumbers": "All Numbers",
+    "colleagueName": "Colleague Name",
+    "companyInfo": "Company Info",
+    "calendlyLink": "Calendly Link",
+    "bookingCta": "Booking CTA",
+    "minDelay": "Min. Delay (sec)",
+    "maxDelay": "Max. Delay (sec)",
+    "maxMessages": "Max. Messages per Conversation",
+    "active": "Active",
+    "inactive": "Inactive",
+    "scriptSteps": "Script Steps",
+    "faqEntries": "FAQ Entries"
+  },
+  "triggers": {
+    "title": "Triggers",
+    "subtitle": "Manage webhook and CRM triggers",
+    "newTrigger": "New Trigger",
+    "createTrigger": "Create Trigger",
+    "webhookUrl": "Webhook URL",
+    "firstMessage": "First Message",
+    "delay": "Delay"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "subtitle": "Manage all chats",
+    "noConversations": "No conversations",
+    "noMessages": "No messages",
+    "sendMessage": "Send message",
+    "typeMessage": "Type a message...",
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "escalated": "Escalated",
+      "completed": "Completed"
+    },
+    "actions": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "escalate": "Escalate",
+      "complete": "Complete"
+    }
+  },
+  "accounts": {
+    "title": "Phone Numbers",
+    "subtitle": "Manage your connected WhatsApp numbers",
+    "connectNumber": "Connect Number",
+    "activeNumbers": "Active Numbers",
+    "messagesToday": "Messages Today",
+    "avgResponseTime": "Avg. Response Time",
+    "syncChats": "Sync Chats",
+    "disconnect": "Disconnect",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting..."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "team": "Team",
+    "billing": "Billing",
+    "integrations": "Integrations",
+    "notifications": "Notifications",
+    "language": "Language",
+    "selectLanguage": "Select language"
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Manage your team",
+    "inviteMember": "Invite Member",
+    "role": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member"
+    }
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password"
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "validationFailed": "Validation failed"
+  }
+}
