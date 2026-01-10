@@ -18,6 +18,7 @@ import {
   ChevronsUpDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslations } from '@/providers/locale-provider'
 import { Button } from '@/components/ui/button'
 import { useTenant } from '@/providers/tenant-provider'
 import {
@@ -46,13 +47,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Agents', href: '/agents', icon: Bot },
-  { name: 'Triggers', href: '/triggers', icon: Zap },
-  { name: 'Phone Numbers', href: '/accounts', icon: Phone },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
-  { name: 'Templates', href: '/templates', icon: FileText },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { key: 'dashboard', href: '/', icon: LayoutDashboard },
+  { key: 'agents', href: '/agents', icon: Bot },
+  { key: 'triggers', href: '/triggers', icon: Zap },
+  { key: 'phoneNumbers', href: '/accounts', icon: Phone },
+  { key: 'integrations', href: '/integrations', icon: Plug },
+  { key: 'templates', href: '/templates', icon: FileText },
+  { key: 'settings', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -61,6 +62,9 @@ export function Sidebar() {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const { currentTenant, tenants, setCurrentTenant, createTenant, isLoading, user } = useTenant()
+  const t = useTranslations('nav')
+  const tCommon = useTranslations('common')
+  const tProjects = useTranslations('projects')
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return
@@ -123,7 +127,7 @@ export function Sidebar() {
                       <Building2 className="h-4 w-4 text-gray-400" />
                     </div>
                     <span className="truncate text-sm text-gray-200">
-                      {isLoading ? 'Loading...' : (currentTenant?.name || 'Select Project')}
+                      {isLoading ? tCommon('loading') : (currentTenant?.name || tProjects('selectProject'))}
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -131,9 +135,9 @@ export function Sidebar() {
               </PopoverTrigger>
               <PopoverContent className="w-[232px] p-0 bg-[#1a1a1a] border-[#2a2a2a]" align="start">
                 <Command className="bg-transparent">
-                  <CommandInput placeholder="Search projects..." className="border-[#2a2a2a]" />
+                  <CommandInput placeholder={tProjects('searchProjects')} className="border-[#2a2a2a]" />
                   <CommandList>
-                    <CommandEmpty>No projects found.</CommandEmpty>
+                    <CommandEmpty>{tProjects('noProjectsFound')}</CommandEmpty>
                     <CommandGroup>
                       {tenants.map((project) => (
                         <CommandItem
@@ -167,7 +171,7 @@ export function Sidebar() {
                         className="cursor-pointer"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        New Project
+                        {tProjects('newProject')}
                       </CommandItem>
                     </CommandGroup>
                   </CommandList>
@@ -184,7 +188,7 @@ export function Sidebar() {
 
               return (
                 <Link
-                  key={item.name}
+                  key={item.key}
                   href={item.href}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
@@ -194,7 +198,7 @@ export function Sidebar() {
                   )}
                 >
                   <item.icon className={cn('h-5 w-5', isActive && 'text-emerald-500')} />
-                  <span>{item.name}</span>
+                  <span>{t(item.key)}</span>
                 </Link>
               )
             })}
@@ -219,17 +223,17 @@ export function Sidebar() {
       <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>{tProjects('createNewProject')}</DialogTitle>
             <DialogDescription>
-              Create a new project to organize your WhatsApp automations.
+              {tProjects('createDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Project Name</Label>
+              <Label htmlFor="name">{tProjects('projectName')}</Label>
               <Input
                 id="name"
-                placeholder="e.g. My Company"
+                placeholder={tProjects('projectNamePlaceholder')}
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 onKeyDown={(e) => {
@@ -241,10 +245,10 @@ export function Sidebar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewProjectDialog(false)} className="border-[#2a2a2a]">
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button onClick={handleCreateProject} disabled={!newProjectName.trim()} className="bg-emerald-500 hover:bg-emerald-600">
-              Create
+              {tCommon('create')}
             </Button>
           </DialogFooter>
         </DialogContent>

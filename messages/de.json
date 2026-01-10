@@ -42,6 +42,8 @@
     "createAgent": "Agent erstellen",
     "editAgent": "Agent bearbeiten",
     "deleteAgent": "Agent löschen",
+    "deleteConfirmTitle": "Agent löschen?",
+    "deleteConfirmDesc": "Bist du sicher, dass du diesen Agent löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
     "agentName": "Agent-Name",
     "description": "Beschreibung",
     "whatsappNumber": "WhatsApp Nummer",
@@ -56,7 +58,16 @@
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "scriptSteps": "Script Steps",
-    "faqEntries": "FAQ Einträge"
+    "faqEntries": "FAQ Einträge",
+    "searchAgents": "Agents suchen...",
+    "noAgentsFound": "Keine Agents gefunden für",
+    "noAgents": "Keine Agents",
+    "noAgentsDesc": "Erstelle deinen ersten KI-Agent, um automatisierte Konversationen zu starten.",
+    "activated": "Agent aktiviert",
+    "deactivated": "Agent deaktiviert",
+    "deleted": "Agent erfolgreich gelöscht",
+    "updateFailed": "Agent konnte nicht aktualisiert werden",
+    "deleteFailed": "Agent konnte nicht gelöscht werden"
   },
   "triggers": {
     "title": "Triggers",
@@ -69,16 +80,32 @@
   },
   "conversations": {
     "title": "Konversationen",
-    "subtitle": "Alle Chats verwalten",
+    "subtitle": "Alle Konversationen mit deinen Kontakten",
     "noConversations": "Keine Konversationen",
+    "noConversationsDesc": "Sobald Konversationen starten, werden sie hier angezeigt.",
     "noMessages": "Keine Nachrichten",
     "sendMessage": "Nachricht senden",
     "typeMessage": "Nachricht eingeben...",
+    "filter": "Filter",
+    "allStatus": "Alle Status",
+    "allAgents": "Alle Agents",
+    "resetFilters": "Filter zurücksetzen",
+    "cleanup": "Aufräumen",
+    "orphaned": "verwaist",
+    "cleanupTitle": "Verwaiste Konversationen aufräumen?",
+    "cleanupDesc": "Dies wird {count} Konversationen permanent löschen, die nicht mehr mit einem WhatsApp-Account verknüpft sind.",
+    "deleteAll": "Alle löschen",
+    "deleted": "Konversation gelöscht",
+    "deleteFailed": "Konversation konnte nicht gelöscht werden",
+    "cleanupFailed": "Aufräumen fehlgeschlagen",
+    "deleteTitle": "Konversation löschen?",
+    "deleteDesc": "Bist du sicher, dass du diese Konversation löschen möchtest? Alle Nachrichten werden permanent gelöscht.",
     "status": {
       "active": "Aktiv",
       "paused": "Pausiert",
       "escalated": "Eskaliert",
-      "completed": "Abgeschlossen"
+      "completed": "Abgeschlossen",
+      "disqualified": "Disqualifiziert"
     },
     "actions": {
       "pause": "Pausieren",
@@ -137,5 +164,15 @@
     "notFound": "Nicht gefunden",
     "unauthorized": "Nicht autorisiert",
     "validationFailed": "Validierung fehlgeschlagen"
+  },
+  "projects": {
+    "selectProject": "Projekt wählen",
+    "searchProjects": "Projekte suchen...",
+    "noProjectsFound": "Keine Projekte gefunden.",
+    "newProject": "Neues Projekt",
+    "createNewProject": "Neues Projekt erstellen",
+    "createDescription": "Erstelle ein neues Projekt, um deine WhatsApp-Automatisierungen zu organisieren.",
+    "projectName": "Projektname",
+    "projectNamePlaceholder": "z.B. Mein Unternehmen"
   }
 }

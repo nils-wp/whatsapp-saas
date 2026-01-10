@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useConversations, useDeleteConversation, useCleanupOrphanedConversations } from '@/lib/hooks/use-conversations'
 import { useAgents } from '@/lib/hooks/use-agents'
 import { useAccounts } from '@/lib/hooks/use-accounts'
+import { useTranslations } from '@/providers/locale-provider'
 import { toast } from 'sonner'
 
 export default function ConversationsPage() {
@@ -19,6 +20,8 @@ export default function ConversationsPage() {
   const [agentFilter, setAgentFilter] = useState<string>('all')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [showCleanupDialog, setShowCleanupDialog] = useState(false)
+  const t = useTranslations('conversations')
+  const tCommon = useTranslations('common')
 
   const { data: conversations, isLoading } = useConversations({
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -36,9 +39,9 @@ export default function ConversationsPage() {
     if (!deleteId) return
     try {
       await deleteConversation.mutateAsync(deleteId)
-      toast.success('Conversation deleted')
+      toast.success(t('deleted'))
     } catch {
-      toast.error('Failed to delete conversation')
+      toast.error(t('deleteFailed'))
     } finally {
       setDeleteId(null)
     }
@@ -49,7 +52,7 @@ export default function ConversationsPage() {
       const result = await cleanupOrphaned.mutateAsync()
       toast.success(result.message || `Deleted ${result.deleted} orphaned conversations`)
     } catch {
-      toast.error('Failed to cleanup conversations')
+      toast.error(t('cleanupFailed'))
     } finally {
       setShowCleanupDialog(false)
     }
@@ -63,9 +66,9 @@ export default function ConversationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Conversations</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            All conversations with your contacts
+            {t('subtitle')}
           </p>
         </div>
         {orphanedCount > 0 && (
@@ -75,7 +78,7 @@ export default function ConversationsPage() {
             className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Cleanup ({orphanedCount} orphaned)
+            {t('cleanup')} ({orphanedCount} {t('orphaned')})
           </Button>
         )}
       </div>
@@ -84,7 +87,7 @@ export default function ConversationsPage() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-500">Filter:</span>
+          <span className="text-sm text-gray-500">{t('filter')}:</span>
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -92,12 +95,12 @@ export default function ConversationsPage() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
-            <SelectItem value="escalated">Escalated</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="disqualified">Disqualified</SelectItem>
+            <SelectItem value="all">{t('allStatus')}</SelectItem>
+            <SelectItem value="active">{t('status.active')}</SelectItem>
+            <SelectItem value="paused">{t('status.paused')}</SelectItem>
+            <SelectItem value="escalated">{t('status.escalated')}</SelectItem>
+            <SelectItem value="completed">{t('status.completed')}</SelectItem>
+            <SelectItem value="disqualified">{t('status.disqualified')}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -106,7 +109,7 @@ export default function ConversationsPage() {
             <SelectValue placeholder="Agent" />
           </SelectTrigger>
           <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <SelectItem value="all">All Agents</SelectItem>
+            <SelectItem value="all">{t('allAgents')}</SelectItem>
             {agents?.map((agent) => (
               <SelectItem key={agent.id} value={agent.id}>
                 {agent.name}
@@ -125,7 +128,7 @@ export default function ConversationsPage() {
             }}
             className="text-gray-400 hover:text-white"
           >
-            Reset filters
+            {t('resetFilters')}
           </Button>
         )}
       </div>
@@ -133,8 +136,8 @@ export default function ConversationsPage() {
       {!conversations || conversations.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
-          title="No Conversations"
-          description="Once conversations start, they will appear here."
+          title={t('noConversations')}
+          description={t('noConversationsDesc')}
         />
       ) : (
         <Card className="h-[600px] bg-[#1a1a1a] border-[#2a2a2a]">
@@ -149,9 +152,9 @@ export default function ConversationsPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Delete Conversation?"
-        description="Are you sure you want to delete this conversation? All messages will be permanently deleted."
-        confirmLabel="Delete"
+        title={t('deleteTitle')}
+        description={t('deleteDesc')}
+        confirmLabel={tCommon('delete')}
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteConversation.isPending}
@@ -161,9 +164,9 @@ export default function ConversationsPage() {
       <ConfirmDialog
         open={showCleanupDialog}
         onOpenChange={setShowCleanupDialog}
-        title="Cleanup Orphaned Conversations?"
-        description={`This will permanently delete ${orphanedCount} conversations that are no longer linked to any WhatsApp account.`}
-        confirmLabel="Delete All"
+        title={t('cleanupTitle')}
+        description={t('cleanupDesc', { count: orphanedCount })}
+        confirmLabel={t('deleteAll')}
         variant="destructive"
         onConfirm={handleCleanup}
         isLoading={cleanupOrphaned.isPending}

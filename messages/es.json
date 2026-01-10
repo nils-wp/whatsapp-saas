@@ -42,6 +42,8 @@
     "createAgent": "Crear Agente",
     "editAgent": "Editar Agente",
     "deleteAgent": "Eliminar Agente",
+    "deleteConfirmTitle": "¿Eliminar Agente?",
+    "deleteConfirmDesc": "¿Estás seguro de que quieres eliminar este agente? Esta acción no se puede deshacer.",
     "agentName": "Nombre del Agente",
     "description": "Descripción",
     "whatsappNumber": "Número de WhatsApp",
@@ -56,7 +58,16 @@
     "active": "Activo",
     "inactive": "Inactivo",
     "scriptSteps": "Pasos del script",
-    "faqEntries": "Entradas FAQ"
+    "faqEntries": "Entradas FAQ",
+    "searchAgents": "Buscar agentes...",
+    "noAgentsFound": "No se encontraron agentes para",
+    "noAgents": "Sin Agentes",
+    "noAgentsDesc": "Crea tu primer agente IA para iniciar conversaciones automatizadas.",
+    "activated": "Agente activado",
+    "deactivated": "Agente desactivado",
+    "deleted": "Agente eliminado con éxito",
+    "updateFailed": "Error al actualizar el agente",
+    "deleteFailed": "Error al eliminar el agente"
   },
   "triggers": {
     "title": "Disparadores",
@@ -69,16 +80,32 @@
   },
   "conversations": {
     "title": "Conversaciones",
-    "subtitle": "Gestiona todos los chats",
-    "noConversations": "Sin conversaciones",
+    "subtitle": "Todas las conversaciones con tus contactos",
+    "noConversations": "Sin Conversaciones",
+    "noConversationsDesc": "Cuando inicien conversaciones, aparecerán aquí.",
     "noMessages": "Sin mensajes",
     "sendMessage": "Enviar mensaje",
     "typeMessage": "Escribe un mensaje...",
+    "filter": "Filtro",
+    "allStatus": "Todos los estados",
+    "allAgents": "Todos los agentes",
+    "resetFilters": "Restablecer filtros",
+    "cleanup": "Limpiar",
+    "orphaned": "huérfanas",
+    "cleanupTitle": "¿Limpiar conversaciones huérfanas?",
+    "cleanupDesc": "Esto eliminará permanentemente {count} conversaciones que ya no están vinculadas a ninguna cuenta de WhatsApp.",
+    "deleteAll": "Eliminar todo",
+    "deleted": "Conversación eliminada",
+    "deleteFailed": "Error al eliminar la conversación",
+    "cleanupFailed": "Error al limpiar conversaciones",
+    "deleteTitle": "¿Eliminar Conversación?",
+    "deleteDesc": "¿Estás seguro de que quieres eliminar esta conversación? Todos los mensajes se eliminarán permanentemente.",
     "status": {
       "active": "Activo",
       "paused": "Pausado",
       "escalated": "Escalado",
-      "completed": "Completado"
+      "completed": "Completado",
+      "disqualified": "Descalificado"
     },
     "actions": {
       "pause": "Pausar",
@@ -137,5 +164,15 @@
     "notFound": "No encontrado",
     "unauthorized": "No autorizado",
     "validationFailed": "Validación fallida"
+  },
+  "projects": {
+    "selectProject": "Seleccionar Proyecto",
+    "searchProjects": "Buscar proyectos...",
+    "noProjectsFound": "No se encontraron proyectos.",
+    "newProject": "Nuevo Proyecto",
+    "createNewProject": "Crear Nuevo Proyecto",
+    "createDescription": "Crea un nuevo proyecto para organizar tus automatizaciones de WhatsApp.",
+    "projectName": "Nombre del Proyecto",
+    "projectNamePlaceholder": "ej. Mi Empresa"
   }
 }

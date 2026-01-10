@@ -8,6 +8,7 @@ import { ActivityChart } from '@/components/dashboard/activity-chart'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useTenant } from '@/providers/tenant-provider'
+import { useTranslations } from '@/providers/locale-provider'
 import { MessageSquare, Clock } from 'lucide-react'
 import type { Tables } from '@/types/database'
 
@@ -16,6 +17,8 @@ type AnalyticsDaily = Tables<'analytics_daily'>
 
 export default function DashboardPage() {
   const { currentTenant, isLoading: tenantLoading } = useTenant()
+  const t = useTranslations('dashboard')
+  const tNav = useTranslations('nav')
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     appointmentsBooked: 0,
@@ -170,9 +173,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            Welcome back! Here&apos;s your overview.
+            {t('welcome')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -181,7 +184,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:bg-[#252525] hover:text-white transition-colors"
           >
             <MessageSquare className="h-4 w-4" />
-            Conversations
+            {tNav('conversations')}
           </Link>
           <Link
             href="/queue"
