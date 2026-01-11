@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslations } from '@/providers/locale-provider'
 
 interface StatsCardsProps {
   stats: {
@@ -26,9 +27,11 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+  const t = useTranslations('dashboard')
+
   const cards = [
     {
-      title: 'Appointments Booked',
+      titleKey: 'appointmentsBooked',
       value: stats.appointmentsBooked,
       icon: Calendar,
       change: stats.changes?.appointmentsBooked,
@@ -36,7 +39,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       iconColor: 'text-emerald-500',
     },
     {
-      title: 'Active Conversations',
+      titleKey: 'activeConversations',
       value: stats.activeConversations,
       icon: MessageSquare,
       change: stats.changes?.activeConversations,
@@ -44,7 +47,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       iconColor: 'text-blue-500',
     },
     {
-      title: 'Conversion Rate',
+      titleKey: 'conversionRate',
       value: `${stats.conversionRate}%`,
       icon: TrendingUp,
       change: stats.changes?.conversionRate,
@@ -53,7 +56,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       isPercentage: true,
     },
     {
-      title: 'Connected Numbers',
+      titleKey: 'connectedNumbers',
       value: stats.connectedNumbers,
       icon: Phone,
       change: stats.changes?.connectedNumbers,
@@ -66,13 +69,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <div
-          key={card.title}
+          key={card.titleKey}
           className="relative overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6"
         >
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-400">
-                {card.title}
+                {t(card.titleKey)}
               </p>
               <p className="text-3xl font-bold tracking-tight text-white">
                 {typeof card.value === 'number'
@@ -94,7 +97,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
                     )}
                     {Math.abs(card.change)}%
                   </span>
-                  <span className="text-xs text-gray-500">vs last week</span>
+                  <span className="text-xs text-gray-500">{t('vsLastWeek')}</span>
                 </div>
               )}
             </div>

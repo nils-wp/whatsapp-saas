@@ -16,15 +16,16 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useTenant } from '@/providers/tenant-provider'
+import { useTranslations } from '@/providers/locale-provider'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Agents', href: '/agents', icon: Bot },
-  { name: 'Triggers', href: '/triggers', icon: Zap },
-  { name: 'Phone Numbers', href: '/accounts', icon: Phone },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
-  { name: 'Templates', href: '/templates', icon: FileText },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { key: 'dashboard', href: '/', icon: LayoutDashboard },
+  { key: 'agents', href: '/agents', icon: Bot },
+  { key: 'triggers', href: '/triggers', icon: Zap },
+  { key: 'phoneNumbers', href: '/accounts', icon: Phone },
+  { key: 'integrations', href: '/integrations', icon: Plug },
+  { key: 'templates', href: '/templates', icon: FileText },
+  { key: 'settings', href: '/settings', icon: Settings },
 ]
 
 interface MobileNavProps {
@@ -35,6 +36,7 @@ interface MobileNavProps {
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname()
   const { user } = useTenant()
+  const t = useTranslations('nav')
 
   const userInitials = user?.user_metadata?.full_name
     ?.split(' ')
@@ -92,7 +94,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
             return (
               <Link
-                key={item.name}
+                key={item.key}
                 href={item.href}
                 onClick={onClose}
                 className={cn(
@@ -103,7 +105,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                 )}
               >
                 <item.icon className={cn('h-5 w-5', isActive && 'text-emerald-500')} />
-                <span>{item.name}</span>
+                <span>{t(item.key)}</span>
               </Link>
             )
           })}

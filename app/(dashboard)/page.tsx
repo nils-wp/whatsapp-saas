@@ -191,7 +191,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:bg-[#252525] hover:text-white transition-colors"
           >
             <Clock className="h-4 w-4" />
-            Queue
+            {t('queue')}
           </Link>
         </div>
       </div>

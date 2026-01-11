@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
-import { de } from 'date-fns/locale'
+import { formatDistanceToNow, type Locale } from 'date-fns'
+import { de, es, fr, enUS } from 'date-fns/locale'
 import { MessageSquare, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslations, useLocale } from '@/providers/locale-provider'
 import type { Tables } from '@/types/database'
 
 type Conversation = Tables<'conversations'>
@@ -13,27 +14,39 @@ interface RecentConversationsProps {
   conversations: Conversation[]
 }
 
-const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  active: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', label: 'Active' },
-  paused: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', label: 'Paused' },
-  escalated: { bg: 'bg-red-500/10', text: 'text-red-500', label: 'Escalated' },
-  completed: { bg: 'bg-blue-500/10', text: 'text-blue-500', label: 'Completed' },
-  disqualified: { bg: 'bg-gray-500/10', text: 'text-gray-500', label: 'Disqualified' },
+const statusConfig: Record<string, { bg: string; text: string; key: string }> = {
+  active: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', key: 'active' },
+  paused: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', key: 'paused' },
+  escalated: { bg: 'bg-red-500/10', text: 'text-red-500', key: 'escalated' },
+  completed: { bg: 'bg-blue-500/10', text: 'text-blue-500', key: 'completed' },
+  disqualified: { bg: 'bg-gray-500/10', text: 'text-gray-500', key: 'disqualified' },
+}
+
+const localeMap: Record<string, Locale> = {
+  de,
+  es,
+  fr,
+  en: enUS,
 }
 
 export function RecentConversations({ conversations }: RecentConversationsProps) {
+  const t = useTranslations('dashboard')
+  const tConv = useTranslations('conversations')
+  const { locale } = useLocale()
+  const dateLocale = localeMap[locale] || enUS
+
   if (conversations.length === 0) {
     return (
       <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-gray-400" />
-            Recent Conversations
+            {t('recentConversations')}
           </h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <MessageSquare className="h-12 w-12 text-gray-600 mb-4" />
-          <p className="text-gray-500">No conversations yet</p>
+          <p className="text-gray-500">{t('noRecentConversations')}</p>
         </div>
       </div>
     )
@@ -44,13 +57,13 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-gray-400" />
-          Recent Conversations
+          {t('recentConversations')}
         </h3>
         <Link
           href="/conversations"
           className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
         >
-          View all
+          {t('viewAll')}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -74,9 +87,9 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
                   {conversation.last_message_at
                     ? formatDistanceToNow(new Date(conversation.last_message_at), {
                         addSuffix: true,
-                        locale: de,
+                        locale: dateLocale,
                       })
-                    : 'No messages'}
+                    : tConv('noMessages')}
                 </p>
               </div>
               <span
@@ -86,7 +99,7 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
                   status.text
                 )}
               >
-                {status.label}
+                {tConv(`status.${status.key}`)}
               </span>
             </Link>
           )

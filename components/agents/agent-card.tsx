@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useTranslations } from '@/providers/locale-provider'
 import type { Tables } from '@/types/database'
 import type { ScriptStep, FAQEntry } from '@/types'
 
@@ -32,6 +33,8 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, onToggleActive, onDelete, createdByName, updatedByName }: AgentCardProps) {
+  const t = useTranslations('agents')
+  const tCommon = useTranslations('common')
   const scriptSteps = (agent.script_steps as ScriptStep[]) || []
   const faqEntries = (agent.faq_entries as FAQEntry[]) || []
   const displayName = updatedByName || createdByName
@@ -52,7 +55,7 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
               {agent.name}
             </Link>
             <p className="text-sm text-gray-500">
-              {agent.agent_name || 'AI Assistant'}
+              {agent.agent_name || t('aiAssistant')}
             </p>
           </div>
         </div>
@@ -65,7 +68,7 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
                 : 'bg-gray-500/10 text-gray-500'
             )}
           >
-            {agent.is_active ? 'Active' : 'Inactive'}
+            {agent.is_active ? t('active') : t('inactive')}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -77,13 +80,13 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
               <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
                 <Link href={`/agents/${agent.id}`}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Edit
+                  {tCommon('edit')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
                 <Link href={`/agents/${agent.id}/test`}>
                   <PlayCircle className="mr-2 h-4 w-4" />
-                  Test
+                  {t('test')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#2a2a2a]" />
@@ -94,12 +97,12 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
                 {agent.is_active ? (
                   <>
                     <PauseCircle className="mr-2 h-4 w-4" />
-                    Deactivate
+                    {t('deactivate')}
                   </>
                 ) : (
                   <>
                     <PlayCircle className="mr-2 h-4 w-4" />
-                    Activate
+                    {t('activate')}
                   </>
                 )}
               </DropdownMenuItem>
@@ -109,7 +112,7 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
                 className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {tCommon('delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -129,7 +132,7 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
         <span className="text-sm text-gray-400">
           {agent.whatsapp_accounts
             ? (agent.whatsapp_accounts.phone_number || agent.whatsapp_accounts.instance_name)
-            : 'Alle Nummern'}
+            : t('allNumbers')}
         </span>
       </div>
 
@@ -138,17 +141,17 @@ export function AgentCard({ agent, onToggleActive, onDelete, createdByName, upda
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5 text-gray-400">
             <MessageSquare className="h-4 w-4" />
-            <span>{scriptSteps.length} Script Steps</span>
+            <span>{scriptSteps.length} {t('scriptSteps')}</span>
           </div>
           <div className="flex items-center gap-1.5 text-gray-400">
             <HelpCircle className="h-4 w-4" />
-            <span>{faqEntries.length} FAQ Entries</span>
+            <span>{faqEntries.length} {t('faqEntries')}</span>
           </div>
         </div>
         {displayName && (
           <div className="flex items-center gap-1.5 text-gray-500">
             <User className="h-3.5 w-3.5" />
-            <span className="text-xs">by {displayName}</span>
+            <span className="text-xs">{t('by')} {displayName}</span>
           </div>
         )}
       </div>

@@ -51,6 +51,7 @@ import {
 import { toast } from 'sonner'
 import { useTenant } from '@/providers/tenant-provider'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from '@/providers/locale-provider'
 
 type TeamMember = {
   id: string
@@ -62,14 +63,16 @@ type TeamMember = {
   invitedAt?: string
 }
 
-const ROLE_LABELS = {
-  owner: { label: 'Owner', variant: 'default' as const },
-  admin: { label: 'Admin', variant: 'secondary' as const },
-  member: { label: 'Member', variant: 'outline' as const },
-}
-
 export default function TeamPage() {
   const { currentTenant, user } = useTenant()
+  const t = useTranslations('team')
+  const tCommon = useTranslations('common')
+
+  const ROLE_LABELS = {
+    owner: { label: t('role.owner'), variant: 'default' as const },
+    admin: { label: t('role.admin'), variant: 'secondary' as const },
+    member: { label: t('role.member'), variant: 'outline' as const },
+  }
   const [members, setMembers] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
@@ -136,7 +139,7 @@ export default function TeamPage() {
       }
 
       setInviteUrl(data.inviteUrl)
-      toast.success(`Invite created for ${inviteEmail}`)
+      toast.success(`${t('inviteCreated')} ${inviteEmail}`)
 
       // Add to members list
       setMembers((prev) => [
@@ -161,7 +164,7 @@ export default function TeamPage() {
     if (!inviteUrl) return
     await navigator.clipboard.writeText(inviteUrl)
     setCopied(true)
-    toast.success('Invite link copied!')
+    toast.success(t('inviteCopied'))
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -184,7 +187,7 @@ export default function TeamPage() {
       }
 
       setMembers((prev) => prev.filter((m) => m.id !== inviteId))
-      toast.success('Invite cancelled')
+      toast.success(t('inviteCancelled'))
     } catch {
       toast.error('Failed to cancel invite')
     }
@@ -230,7 +233,7 @@ export default function TeamPage() {
           m.id === selectedMember.id ? { ...m, role: newRole } : m
         )
       )
-      toast.success(`Role changed to ${newRole}`)
+      toast.success(`${t('roleChanged')} ${t(`role.${newRole}`)}`)
       setShowRoleDialog(false)
     } catch {
       toast.error('Failed to change role')
@@ -242,7 +245,7 @@ export default function TeamPage() {
   const handleRemoveMember = async (member: TeamMember) => {
     if (!currentTenant) return
 
-    if (!confirm(`Remove ${member.name || member.email} from the team?`)) return
+    if (!confirm(t('confirmRemove').replace('{name}', member.name || member.email))) return
 
     setIsRemoving(true)
     try {
@@ -263,7 +266,7 @@ export default function TeamPage() {
       }
 
       setMembers((prev) => prev.filter((m) => m.id !== member.id))
-      toast.success('Member removed')
+      toast.success(t('memberRemoved'))
     } catch {
       toast.error('Failed to remove member')
     } finally {
@@ -297,15 +300,15 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Team</h1>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            Manage your team and permissions.
+            {t('subtitle')}
           </p>
         </div>
         {canInvite && (
           <Button onClick={() => setShowInviteDialog(true)} className="bg-emerald-500 hover:bg-emerald-600">
             <UserPlus className="mr-2 h-4 w-4" />
-            Invite
+            {t('invite')}
           </Button>
         )}
       </div>
@@ -317,9 +320,9 @@ export default function TeamPage() {
               <Users className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <CardTitle className="text-white">Team Members</CardTitle>
+              <CardTitle className="text-white">{t('teamMembers')}</CardTitle>
               <CardDescription className="text-gray-400">
-                {members.length} member{members.length !== 1 && 's'}
+                {members.length} {t('members')}
               </CardDescription>
             </div>
           </div>
@@ -345,7 +348,7 @@ export default function TeamPage() {
                       {member.status === 'pending' && (
                         <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500/50">
                           <Clock className="mr-1 h-3 w-3" />
-                          Pending
+                          {t('pending')}
                         </Badge>
                       )}
                     </div>
@@ -374,7 +377,7 @@ export default function TeamPage() {
                             className="text-gray-300 focus:text-white focus:bg-[#252525]"
                           >
                             <UserCog className="mr-2 h-4 w-4" />
-                            Change Role
+                            {t('changeRole')}
                           </DropdownMenuItem>
                         )}
                         {member.status === 'pending' && (
@@ -383,7 +386,7 @@ export default function TeamPage() {
                             className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Cancel Invite
+                            {t('cancelInvite')}
                           </DropdownMenuItem>
                         )}
                         {member.status === 'active' && (
@@ -394,7 +397,7 @@ export default function TeamPage() {
                               className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Remove
+                              {t('remove')}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -416,9 +419,9 @@ export default function TeamPage() {
               <Shield className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <CardTitle className="text-white">Roles & Permissions</CardTitle>
+              <CardTitle className="text-white">{t('rolesAndPermissions')}</CardTitle>
               <CardDescription className="text-gray-400">
-                Overview of different permission levels
+                {t('rolesOverview')}
               </CardDescription>
             </div>
           </div>
@@ -427,29 +430,26 @@ export default function TeamPage() {
           <div className="space-y-4">
             <div className="rounded-lg border border-[#2a2a2a] p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Badge>Owner</Badge>
+                <Badge>{t('role.owner')}</Badge>
               </div>
               <p className="text-sm text-gray-400">
-                Full access to all features including billing and team management.
-                Can delete the project.
+                {t('ownerDesc')}
               </p>
             </div>
             <div className="rounded-lg border border-[#2a2a2a] p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary">Admin</Badge>
+                <Badge variant="secondary">{t('role.admin')}</Badge>
               </div>
               <p className="text-sm text-gray-400">
-                Can manage agents, triggers, and conversations.
-                Can invite team members (except admins).
+                {t('adminDesc')}
               </p>
             </div>
             <div className="rounded-lg border border-[#2a2a2a] p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline">Member</Badge>
+                <Badge variant="outline">{t('role.member')}</Badge>
               </div>
               <p className="text-sm text-gray-400">
-                Can view conversations and reply manually.
-                No access to settings.
+                {t('memberDesc')}
               </p>
             </div>
           </div>
@@ -460,18 +460,18 @@ export default function TeamPage() {
       <Dialog open={showInviteDialog} onOpenChange={closeDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle className="text-white">Invite Team Member</DialogTitle>
+            <DialogTitle className="text-white">{t('inviteTeamMember')}</DialogTitle>
             <DialogDescription className="text-gray-400">
               {inviteUrl
-                ? 'Share this invite link with your team member.'
-                : 'Send an invitation to a new team member.'}
+                ? t('shareInviteLink')
+                : t('sendInvitation')}
             </DialogDescription>
           </DialogHeader>
 
           {!inviteUrl ? (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300">Email Address</Label>
+                <Label htmlFor="email" className="text-gray-300">{t('emailAddress')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -482,14 +482,14 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-gray-300">Role</Label>
+                <Label htmlFor="role" className="text-gray-300">{t('role.admin').split(' ')[0]}</Label>
                 <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'member')}>
                   <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">{t('role.admin')}</SelectItem>
+                    <SelectItem value="member">{t('role.member')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -507,14 +507,14 @@ export default function TeamPage() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                This link can only be used once.
+                {t('linkUsedOnce')}
               </p>
             </div>
           )}
 
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog} className="border-[#2a2a2a]">
-              {inviteUrl ? 'Done' : 'Cancel'}
+              {inviteUrl ? t('done') : tCommon('cancel')}
             </Button>
             {!inviteUrl && (
               <Button
@@ -527,7 +527,7 @@ export default function TeamPage() {
                 ) : (
                   <Mail className="mr-2 h-4 w-4" />
                 )}
-                Create Invite
+                {t('createInvite')}
               </Button>
             )}
           </DialogFooter>
@@ -538,14 +538,14 @@ export default function TeamPage() {
       <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle className="text-white">Change Role</DialogTitle>
+            <DialogTitle className="text-white">{t('changeRole')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Change the role for {selectedMember?.name || selectedMember?.email}
+              {t('changeRoleFor')} {selectedMember?.name || selectedMember?.email}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
-            <Label className="text-gray-300 mb-3 block">Select New Role</Label>
+            <Label className="text-gray-300 mb-3 block">{t('selectNewRole')}</Label>
             <Select value={newRole} onValueChange={(v) => setNewRole(v as 'admin' | 'member')}>
               <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a]">
                 <SelectValue />
@@ -553,14 +553,14 @@ export default function TeamPage() {
               <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
                 <SelectItem value="admin">
                   <div className="flex flex-col">
-                    <span>Admin</span>
-                    <span className="text-xs text-gray-500">Can manage agents, triggers, and invite members</span>
+                    <span>{t('role.admin')}</span>
+                    <span className="text-xs text-gray-500">{t('adminRoleDesc')}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="member">
                   <div className="flex flex-col">
-                    <span>Member</span>
-                    <span className="text-xs text-gray-500">Can view conversations and reply manually</span>
+                    <span>{t('role.member')}</span>
+                    <span className="text-xs text-gray-500">{t('memberRoleDesc')}</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -569,7 +569,7 @@ export default function TeamPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRoleDialog(false)} className="border-[#2a2a2a]">
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               onClick={handleChangeRole}
@@ -581,7 +581,7 @@ export default function TeamPage() {
               ) : (
                 <UserCog className="mr-2 h-4 w-4" />
               )}
-              Save Changes
+              {tCommon('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

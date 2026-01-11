@@ -9,6 +9,7 @@ import { PageLoader } from '@/components/shared/loading-spinner'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useTriggers, useUpdateTrigger, useDeleteTrigger } from '@/lib/hooks/use-triggers'
 import { useUserNames, getUserDisplayName } from '@/lib/hooks/use-user-names'
+import { useTranslations } from '@/providers/locale-provider'
 import { toast } from 'sonner'
 
 export default function TriggersPage() {
@@ -17,6 +18,8 @@ export default function TriggersPage() {
   const deleteTrigger = useDeleteTrigger()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
+  const t = useTranslations('triggers')
+  const tCommon = useTranslations('common')
 
   // Collect all user IDs for name lookup
   const userIds = useMemo(() => {
@@ -38,9 +41,9 @@ export default function TriggersPage() {
   async function handleToggleActive(id: string, isActive: boolean) {
     try {
       await updateTrigger.mutateAsync({ id, is_active: isActive })
-      toast.success(isActive ? 'Trigger activated' : 'Trigger deactivated')
+      toast.success(isActive ? t('activated') : t('deactivated'))
     } catch {
-      toast.error('Failed to update trigger')
+      toast.error(t('updateFailed'))
     }
   }
 
@@ -49,9 +52,9 @@ export default function TriggersPage() {
 
     try {
       await deleteTrigger.mutateAsync(deleteId)
-      toast.success('Trigger deleted successfully')
+      toast.success(t('deleted'))
     } catch {
-      toast.error('Failed to delete trigger')
+      toast.error(t('deleteFailed'))
     } finally {
       setDeleteId(null)
     }
@@ -68,9 +71,9 @@ export default function TriggersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Triggers</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            Automate the start of conversations
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -81,7 +84,7 @@ export default function TriggersPage() {
                 onChange={(e) => setFilterType(e.target.value || null)}
                 className="appearance-none pl-10 pr-8 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">All Types</option>
+                <option value="">{t('allTypes')}</option>
                 {triggerTypes.map(type => (
                   <option key={type} value={type}>
                     {type === 'webhook' ? 'Webhook' : type === 'activecampaign' ? 'ActiveCampaign' : type === 'close' ? 'Close CRM' : type}
@@ -96,7 +99,7 @@ export default function TriggersPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            New Trigger
+            {t('newTrigger')}
           </Link>
         </div>
       </div>
@@ -104,10 +107,10 @@ export default function TriggersPage() {
       {!filteredTriggers || filteredTriggers.length === 0 ? (
         <EmptyState
           icon={Zap}
-          title="No Triggers"
-          description="Create your first trigger to automatically start conversations."
+          title={t('noTriggers')}
+          description={t('noTriggersDesc')}
           action={{
-            label: 'Create Trigger',
+            label: t('createTrigger'),
             onClick: () => window.location.href = '/triggers/new',
           }}
         />
@@ -129,9 +132,9 @@ export default function TriggersPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Delete Trigger?"
-        description="Are you sure? The webhook will no longer work."
-        confirmLabel="Delete"
+        title={t('deleteTitle')}
+        description={t('deleteDesc')}
+        confirmLabel={tCommon('delete')}
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteTrigger.isPending}

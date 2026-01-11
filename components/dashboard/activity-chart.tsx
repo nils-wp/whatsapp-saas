@@ -1,6 +1,7 @@
 'use client'
 
 import { BarChart3 } from 'lucide-react'
+import { useTranslations, useLocale } from '@/providers/locale-provider'
 
 interface ActivityData {
   date: string
@@ -12,15 +13,25 @@ interface ActivityChartProps {
   data: ActivityData[]
 }
 
+const localeMap: Record<string, string> = {
+  de: 'de-DE',
+  fr: 'fr-FR',
+  es: 'es-ES',
+  en: 'en-US',
+}
+
 export function ActivityChart({ data }: ActivityChartProps) {
+  const t = useTranslations('dashboard')
+  const { locale } = useLocale()
   const maxValue = Math.max(...data.flatMap((d) => [d.sent, d.received]), 1)
+  const dateLocale = localeMap[locale] || 'en-US'
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-gray-400" />
-          Activity (Last 7 Days)
+          {t('messageActivity')}
         </h3>
       </div>
       <div className="flex items-end justify-between gap-2 h-48">
@@ -43,7 +54,7 @@ export function ActivityChart({ data }: ActivityChartProps) {
               />
             </div>
             <span className="text-xs text-gray-500">
-              {new Date(day.date).toLocaleDateString('en-US', {
+              {new Date(day.date).toLocaleDateString(dateLocale, {
                 weekday: 'short',
               })}
             </span>
@@ -53,11 +64,11 @@ export function ActivityChart({ data }: ActivityChartProps) {
       <div className="flex items-center justify-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-emerald-500 rounded" />
-          <span className="text-sm text-gray-400">Sent</span>
+          <span className="text-sm text-gray-400">{t('sent')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-emerald-500/40 rounded" />
-          <span className="text-sm text-gray-400">Received</span>
+          <span className="text-sm text-gray-400">{t('received')}</span>
         </div>
       </div>
     </div>
