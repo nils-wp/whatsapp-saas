@@ -26,15 +26,18 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { useTenant } from '@/providers/tenant-provider'
 import { useTriggers } from '@/lib/hooks/use-triggers'
+import { useTranslations } from '@/providers/locale-provider'
 
 export default function IntegrationsPage() {
+  const t = useTranslations('integrations')
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Integrations</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            Connect external tools and automate your workflows
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -55,6 +58,7 @@ function IncomingWebhooksSection() {
   const { currentTenant } = useTenant()
   const { data: triggers } = useTriggers()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const t = useTranslations('integrations')
 
   const webhookTriggers = triggers?.filter(t => t.type === 'webhook') || []
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://chatsetter.io'
@@ -63,7 +67,7 @@ function IncomingWebhooksSection() {
     navigator.clipboard.writeText(url)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
-    toast.success('Copied to clipboard')
+    toast.success(t('copiedToClipboard'))
   }
 
   return (
@@ -74,8 +78,8 @@ function IncomingWebhooksSection() {
             <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Incoming Webhooks</h3>
-            <p className="text-sm text-gray-500">Receive data from external tools to start conversations</p>
+            <h3 className="text-lg font-semibold text-white">{t('incomingWebhooks')}</h3>
+            <p className="text-sm text-gray-500">{t('incomingDesc')}</p>
           </div>
         </div>
         <a
@@ -83,15 +87,15 @@ function IncomingWebhooksSection() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors text-sm"
         >
           <Plus className="h-4 w-4" />
-          Add Webhook
+          {t('addWebhook')}
         </a>
       </div>
 
       {webhookTriggers.length === 0 ? (
         <div className="text-center py-8">
           <Webhook className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500">No webhook triggers configured</p>
-          <p className="text-gray-600 text-sm mt-1">Create a webhook trigger to receive external data</p>
+          <p className="text-gray-500">{t('noWebhooks')}</p>
+          <p className="text-gray-600 text-sm mt-1">{t('createWebhookHint')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -111,7 +115,7 @@ function IncomingWebhooksSection() {
                         ? 'bg-emerald-500/10 text-emerald-500'
                         : 'bg-gray-500/10 text-gray-500'
                     )}>
-                      {trigger.is_active ? 'Active' : 'Inactive'}
+                      {trigger.is_active ? t('active') : t('inactive')}
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 font-mono truncate mt-1">{webhookUrl}</p>
@@ -152,10 +156,19 @@ function OutgoingWebhooksSection() {
     'conversation.escalated': true,
     'conversation.completed': false,
   })
+  const t = useTranslations('integrations')
 
   const toggleEvent = (event: string) => {
     setEvents(prev => ({ ...prev, [event]: !prev[event as keyof typeof events] }))
   }
+
+  const eventsList = [
+    { key: 'message.received', nameKey: 'events.messageReceived', descKey: 'events.messageReceivedDesc' },
+    { key: 'message.sent', nameKey: 'events.messageSent', descKey: 'events.messageSentDesc' },
+    { key: 'booking.created', nameKey: 'events.bookingCreated', descKey: 'events.bookingCreatedDesc' },
+    { key: 'conversation.escalated', nameKey: 'events.escalation', descKey: 'events.escalationDesc' },
+    { key: 'conversation.completed', nameKey: 'events.completed', descKey: 'events.completedDesc' },
+  ]
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
@@ -164,14 +177,14 @@ function OutgoingWebhooksSection() {
           <ArrowUpFromLine className="h-5 w-5 text-blue-500" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Outgoing Webhooks</h3>
-          <p className="text-sm text-gray-500">Send events to external tools on conversation updates</p>
+          <h3 className="text-lg font-semibold text-white">{t('outgoingWebhooks')}</h3>
+          <p className="text-sm text-gray-500">{t('outgoingDesc')}</p>
         </div>
       </div>
 
       <div className="space-y-6">
         <div>
-          <Label className="text-gray-300">Webhook URL</Label>
+          <Label className="text-gray-300">{t('webhookUrl')}</Label>
           <input
             type="url"
             placeholder="https://your-endpoint.com/webhook"
@@ -182,22 +195,16 @@ function OutgoingWebhooksSection() {
         </div>
 
         <div>
-          <Label className="text-gray-300 mb-3 block">Events to Send</Label>
+          <Label className="text-gray-300 mb-3 block">{t('eventsToSend')}</Label>
           <div className="space-y-2">
-            {[
-              { key: 'message.received', name: 'New Message', desc: 'On every incoming message' },
-              { key: 'message.sent', name: 'Message Sent', desc: 'On every outgoing message' },
-              { key: 'booking.created', name: 'Appointment Booked', desc: 'When a lead books an appointment' },
-              { key: 'conversation.escalated', name: 'Escalation', desc: 'When a conversation is escalated' },
-              { key: 'conversation.completed', name: 'Conversation Completed', desc: 'When a conversation is finished' },
-            ].map((event) => (
+            {eventsList.map((event) => (
               <div
                 key={event.key}
                 className="flex items-center justify-between p-3 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a]"
               >
                 <div>
-                  <p className="text-sm font-medium text-white">{event.name}</p>
-                  <p className="text-xs text-gray-500">{event.desc}</p>
+                  <p className="text-sm font-medium text-white">{t(event.nameKey)}</p>
+                  <p className="text-xs text-gray-500">{t(event.descKey)}</p>
                 </div>
                 <Switch
                   checked={events[event.key as keyof typeof events]}
@@ -209,11 +216,11 @@ function OutgoingWebhooksSection() {
         </div>
 
         <button
-          onClick={() => toast.success('Webhook settings saved')}
+          onClick={() => toast.success(t('settingsSaved'))}
           disabled={!webhookUrl}
           className="px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save Settings
+          {t('saveSettings')}
         </button>
       </div>
     </div>
@@ -223,6 +230,8 @@ function OutgoingWebhooksSection() {
 function CRMSection() {
   const [showActiveCampaignDialog, setShowActiveCampaignDialog] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
+  const t = useTranslations('integrations')
+  const tCommon = useTranslations('common')
 
   return (
     <>
@@ -232,8 +241,8 @@ function CRMSection() {
             <Webhook className="h-5 w-5 text-purple-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">CRM Integrations</h3>
-            <p className="text-sm text-gray-500">Connect your CRM to sync contacts and conversations</p>
+            <h3 className="text-lg font-semibold text-white">{t('crm.title')}</h3>
+            <p className="text-sm text-gray-500">{t('crm.subtitle')}</p>
           </div>
         </div>
 
@@ -248,33 +257,33 @@ function CRMSection() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-white">ActiveCampaign</h4>
-                  <p className="text-xs text-gray-500">Sync contacts & automations</p>
+                  <h4 className="font-semibold text-white">{t('activeCampaign.title')}</h4>
+                  <p className="text-xs text-gray-500">{t('activeCampaign.subtitle')}</p>
                 </div>
               </div>
               <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-400">
-                Not connected
+                {t('crm.notConnected')}
               </span>
             </div>
             <ul className="space-y-2 text-sm text-gray-400 mb-4">
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Auto-create contacts
+                {t('activeCampaign.autoCreateContacts')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Status as tags
+                {t('activeCampaign.statusAsTags')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Messages in notes
+                {t('activeCampaign.messagesInNotes')}
               </li>
             </ul>
             <button
               onClick={() => setShowActiveCampaignDialog(true)}
               className="w-full py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white font-medium hover:bg-[#252525] transition-colors"
             >
-              Connect
+              {t('crm.connect')}
             </button>
           </div>
 
@@ -289,33 +298,33 @@ function CRMSection() {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-white">Close CRM</h4>
-                  <p className="text-xs text-gray-500">Sync leads & SMS</p>
+                  <h4 className="font-semibold text-white">{t('closeCrm.title')}</h4>
+                  <p className="text-xs text-gray-500">{t('closeCrm.subtitle')}</p>
                 </div>
               </div>
               <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-400">
-                Not connected
+                {t('crm.notConnected')}
               </span>
             </div>
             <ul className="space-y-2 text-sm text-gray-400 mb-4">
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Auto-create leads
+                {t('closeCrm.autoCreateLeads')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Messages as SMS
+                {t('closeCrm.messagesAsSms')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Sync lead status
+                {t('closeCrm.syncLeadStatus')}
               </li>
             </ul>
             <button
               onClick={() => setShowCloseDialog(true)}
               className="w-full py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white font-medium hover:bg-[#252525] transition-colors"
             >
-              Connect
+              {t('crm.connect')}
             </button>
           </div>
         </div>
@@ -325,25 +334,25 @@ function CRMSection() {
       <Dialog open={showActiveCampaignDialog} onOpenChange={setShowActiveCampaignDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle className="text-white">Connect ActiveCampaign</DialogTitle>
+            <DialogTitle className="text-white">{t('activeCampaign.dialogTitle')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Enter your ActiveCampaign API credentials to enable the integration.
+              {t('activeCampaign.dialogDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-gray-300">Account URL</Label>
+              <Label className="text-gray-300">{t('activeCampaign.accountUrl')}</Label>
               <Input
                 placeholder="https://yourname.api-us1.com"
                 className="bg-[#0f0f0f] border-[#2a2a2a] text-white"
               />
-              <p className="text-xs text-gray-500">Found in Settings - Developer</p>
+              <p className="text-xs text-gray-500">{t('activeCampaign.accountUrlHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-gray-300">API Key</Label>
+              <Label className="text-gray-300">{t('activeCampaign.apiKey')}</Label>
               <Input
                 type="password"
-                placeholder="Your ActiveCampaign API Key"
+                placeholder={t('activeCampaign.apiKeyPlaceholder')}
                 className="bg-[#0f0f0f] border-[#2a2a2a] text-white"
               />
             </div>
@@ -353,16 +362,16 @@ function CRMSection() {
               onClick={() => setShowActiveCampaignDialog(false)}
               className="px-4 py-2 rounded-lg bg-[#252525] text-gray-300 hover:text-white transition-colors"
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               onClick={() => {
-                toast.success('ActiveCampaign connected')
+                toast.success('ActiveCampaign ' + t('crm.connected'))
                 setShowActiveCampaignDialog(false)
               }}
               className="px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
             >
-              Connect
+              {t('crm.connect')}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -372,20 +381,20 @@ function CRMSection() {
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
           <DialogHeader>
-            <DialogTitle className="text-white">Connect Close CRM</DialogTitle>
+            <DialogTitle className="text-white">{t('closeCrm.dialogTitle')}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Enter your Close API key to enable the integration.
+              {t('closeCrm.dialogDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-gray-300">API Key</Label>
+              <Label className="text-gray-300">{t('activeCampaign.apiKey')}</Label>
               <Input
                 type="password"
                 placeholder="api_xxxxxxxxxxxxxxxx"
                 className="bg-[#0f0f0f] border-[#2a2a2a] text-white"
               />
-              <p className="text-xs text-gray-500">Found in Settings - API Keys</p>
+              <p className="text-xs text-gray-500">{t('closeCrm.apiKeyHint')}</p>
             </div>
           </div>
           <DialogFooter>
@@ -393,16 +402,16 @@ function CRMSection() {
               onClick={() => setShowCloseDialog(false)}
               className="px-4 py-2 rounded-lg bg-[#252525] text-gray-300 hover:text-white transition-colors"
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               onClick={() => {
-                toast.success('Close CRM connected')
+                toast.success('Close CRM ' + t('crm.connected'))
                 setShowCloseDialog(false)
               }}
               className="px-4 py-2 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
             >
-              Connect
+              {t('crm.connect')}
             </button>
           </DialogFooter>
         </DialogContent>

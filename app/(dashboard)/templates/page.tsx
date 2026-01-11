@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { useTemplates, useTemplateCategories } from '@/lib/hooks/use-templates'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { EmptyState } from '@/components/shared/empty-state'
+import { useTranslations } from '@/providers/locale-provider'
 import type { Tables } from '@/types/database'
 
 type Template = Tables<'templates'>
@@ -44,6 +45,7 @@ function getIcon(iconName: string): LucideIcon {
 export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const t = useTranslations('templates')
 
   const { data: templates, isLoading } = useTemplates()
   const { data: categories } = useTemplateCategories()
@@ -63,7 +65,7 @@ export default function TemplatesPage() {
   const regularTemplates = filteredTemplates.filter(t => !t.is_featured)
 
   const handleUseTemplate = (templateId: string, templateName: string) => {
-    toast.success(`Creating agent from "${templateName}" template...`)
+    toast.success(t('creating').replace('{name}', templateName))
     window.location.href = `/agents/new?template=${templateId}`
   }
 
@@ -71,9 +73,9 @@ export default function TemplatesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Templates</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
           <p className="text-gray-400">
-            Start with proven conversation scripts for your industry
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -84,7 +86,7 @@ export default function TemplatesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input
             type="text"
-            placeholder="Search templates..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
@@ -102,7 +104,7 @@ export default function TemplatesPage() {
                   : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#252525]'
               )}
             >
-              {category}
+              {category === 'All' ? t('all') : category}
             </button>
           ))}
         </div>
@@ -120,15 +122,15 @@ export default function TemplatesPage() {
       {!templates || templates.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title="No Templates Available"
-          description="Templates will appear here once they're added to the system."
+          title={t('noTemplates')}
+          description={t('noTemplatesDesc')}
         />
       ) : regularTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <FileText className="h-12 w-12 text-gray-600 mb-4" />
-          <p className="text-gray-400">No templates found</p>
+          <p className="text-gray-400">{t('noResults')}</p>
           {searchQuery && (
-            <p className="text-gray-600 text-sm mt-1">Try a different search term</p>
+            <p className="text-gray-600 text-sm mt-1">{t('tryDifferent')}</p>
           )}
         </div>
       ) : (
@@ -154,12 +156,13 @@ function FeaturedTemplateCard({
   onUse: () => void
 }) {
   const Icon = getIcon(template.icon)
+  const t = useTranslations('templates')
 
   return (
     <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-[#1a1a1a] to-emerald-500/5 p-6">
       <div className="flex items-start gap-2 mb-2">
         <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-        <span className="text-sm font-medium text-yellow-500">Featured Template</span>
+        <span className="text-sm font-medium text-yellow-500">{t('featured')}</span>
       </div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-start gap-4">
@@ -173,12 +176,12 @@ function FeaturedTemplateCard({
               <div className="flex items-center gap-1.5 text-sm">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
                 <span className="text-white font-medium">{template.conversion_rate}%</span>
-                <span className="text-gray-500">conversion</span>
+                <span className="text-gray-500">{t('conversion')}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
                 <Users className="h-4 w-4 text-blue-500" />
                 <span className="text-white font-medium">{template.active_users.toLocaleString()}</span>
-                <span className="text-gray-500">active users</span>
+                <span className="text-gray-500">{t('activeUsers')}</span>
               </div>
             </div>
           </div>
@@ -187,7 +190,7 @@ function FeaturedTemplateCard({
           onClick={onUse}
           className="px-6 py-3 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors whitespace-nowrap"
         >
-          Use This Template
+          {t('useThisTemplate')}
         </button>
       </div>
     </div>
@@ -202,6 +205,7 @@ function TemplateCard({
   onUse: () => void
 }) {
   const Icon = getIcon(template.icon)
+  const t = useTranslations('templates')
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
@@ -231,7 +235,7 @@ function TemplateCard({
         onClick={onUse}
         className="w-full py-2.5 rounded-lg bg-[#252525] text-white font-medium hover:bg-[#303030] transition-colors"
       >
-        Use Template
+        {t('useTemplate')}
       </button>
     </div>
   )
