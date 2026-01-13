@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { chatCompletion } from '@/lib/ai/azure-openai'
+import { resolveSpintax } from '@/lib/utils/spintax'
 
 function getSupabase() {
   return createClient(

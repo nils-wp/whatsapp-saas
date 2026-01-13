@@ -4,6 +4,7 @@
  */
 
 import { chatCompletion } from './azure-openai'
+import { resolveSpintax } from '@/lib/utils/spintax'
 import type { Tables } from '@/types/database'
 
 type Agent = Tables<'agents'>
@@ -272,8 +273,17 @@ export async function generateFirstMessage(
   if (firstStep?.message_template) {
     // Ersetze Variablen in der Vorlage
     let message = firstStep.message_template
+
+    // Erst Spintax auflösen {option1|option2|option3}
+    message = resolveSpintax(message)
+
+    // Dann Variablen ersetzen {{variable}}
     message = message.replace(/\{\{name\}\}/g, contactName || 'du')
+    message = message.replace(/\{\{contact_name\}\}/g, contactName || 'du')
     message = message.replace(/\{\{agent_name\}\}/g, agent.agent_name || agent.name)
+    message = message.replace(/\{\{colleague_name\}\}/g, (agent as any).colleague_name || 'ein Kollege')
+    message = message.replace(/\{\{booking_cta\}\}/g, (agent as any).booking_cta || '')
+    message = message.replace(/\{\{calendly_link\}\}/g, (agent as any).calendly_link || '')
 
     // Custom trigger data
     if (triggerData) {

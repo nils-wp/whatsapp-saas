@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { resolveSpintax } from '@/lib/utils/spintax'
 import type { Tables } from '@/types/database'
 import type { ScriptStep } from '@/types'
 
@@ -50,11 +51,17 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
   }, [messages, isTyping, scrollToBottom])
 
   function replaceVariables(template: string): string {
-    return template
+    // Erst Spintax auflösen {option1|option2|option3}
+    let result = resolveSpintax(template)
+
+    // Dann Variablen ersetzen {{variable}}
+    return result
       .replace(/\{\{contact_name\}\}/g, 'Test User')
-      .replace(/\{\{booking_cta\}\}/g, agent.booking_cta)
+      .replace(/\{\{name\}\}/g, 'Test User')
+      .replace(/\{\{booking_cta\}\}/g, agent.booking_cta || '')
       .replace(/\{\{calendly_link\}\}/g, agent.calendly_link || '[Calendly Link]')
       .replace(/\{\{colleague_name\}\}/g, agent.colleague_name || 'ein Kollege')
+      .replace(/\{\{agent_name\}\}/g, agent.agent_name || agent.name)
   }
 
   function sendAgentMessage(step: number) {
