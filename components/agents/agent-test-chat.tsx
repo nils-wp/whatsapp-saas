@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Bot, User, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,9 +29,14 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
   const [input, setInput] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
   const [isTyping, setIsTyping] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scriptSteps = (agent.script_steps as ScriptStep[]) || []
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
     // Send initial greeting
@@ -41,10 +46,8 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
   }, [])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
+    scrollToBottom()
+  }, [messages, isTyping, scrollToBottom])
 
   function replaceVariables(template: string): string {
     return template
@@ -77,8 +80,8 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
     }, delay)
   }
 
-  function handleSend() {
-    if (!input.trim()) return
+  async function handleSend() {
+    if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -87,34 +90,60 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const currentMessages = [...messages, userMessage]
+    setMessages(currentMessages)
+    const userInput = input
     setInput('')
+    setIsTyping(true)
+    setIsLoading(true)
 
-    // Check for escalation topics
-    const isEscalation = agent.escalation_topics.some((topic) =>
-      input.toLowerCase().includes(topic.toLowerCase())
-    )
+    try {
+      // Call AI API for real response
+      const response = await fetch('/api/agents/test-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: agent.id,
+          userMessage: userInput,
+          messages: currentMessages,
+          currentStep,
+        }),
+      })
 
-    if (isEscalation) {
-      setIsTyping(true)
-      setTimeout(() => {
-        const escalationMessage: Message = {
-          id: crypto.randomUUID(),
-          content: replaceVariables(agent.escalation_message),
-          sender: 'agent',
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, escalationMessage])
-        setIsTyping(false)
-      }, 1000)
-      return
-    }
+      if (!response.ok) {
+        throw new Error('Failed to get response')
+      }
 
-    // Move to next step
-    if (currentStep < scriptSteps.length) {
-      const nextStep = currentStep + 1
-      setCurrentStep(nextStep)
-      sendAgentMessage(nextStep)
+      const data = await response.json()
+
+      const agentMessage: Message = {
+        id: crypto.randomUUID(),
+        content: replaceVariables(data.response),
+        sender: 'agent',
+        timestamp: new Date(),
+        scriptStep: data.shouldEscalate ? undefined : currentStep,
+      }
+
+      setMessages((prev) => [...prev, agentMessage])
+
+      if (data.shouldEscalate) {
+        // Don't advance step on escalation
+      } else if (data.nextStep && data.nextStep !== currentStep) {
+        setCurrentStep(data.nextStep)
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error)
+      // Fallback to simple response
+      const fallbackMessage: Message = {
+        id: crypto.randomUUID(),
+        content: 'Entschuldigung, es gab ein technisches Problem. Bitte versuche es erneut.',
+        sender: 'agent',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, fallbackMessage])
+    } finally {
+      setIsTyping(false)
+      setIsLoading(false)
     }
   }
 
@@ -141,7 +170,7 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        <ScrollArea ref={scrollRef} className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.map((message) => (
               <div
@@ -199,6 +228,7 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
@@ -214,9 +244,9 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Nachricht eingeben..."
-              disabled={isTyping}
+              disabled={isTyping || isLoading}
             />
-            <Button type="submit" disabled={isTyping || !input.trim()}>
+            <Button type="submit" disabled={isTyping || isLoading || !input.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </form>
