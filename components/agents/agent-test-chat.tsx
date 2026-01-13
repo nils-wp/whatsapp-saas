@@ -133,14 +133,23 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
       }
     } catch (error) {
       console.error('Error getting AI response:', error)
-      // Fallback to simple response
+      // Fallback to simple template-based response
+      const nextStep = currentStep < scriptSteps.length ? currentStep + 1 : currentStep
+      const scriptStep = scriptSteps.find((s) => s.step === nextStep)
+
       const fallbackMessage: Message = {
         id: crypto.randomUUID(),
-        content: 'Entschuldigung, es gab ein technisches Problem. Bitte versuche es erneut.',
+        content: scriptStep
+          ? replaceVariables(scriptStep.template)
+          : 'Entschuldigung, es gab ein technisches Problem. Bitte versuche es erneut.',
         sender: 'agent',
         timestamp: new Date(),
+        scriptStep: scriptStep ? nextStep : undefined,
       }
       setMessages((prev) => [...prev, fallbackMessage])
+      if (scriptStep) {
+        setCurrentStep(nextStep)
+      }
     } finally {
       setIsTyping(false)
       setIsLoading(false)

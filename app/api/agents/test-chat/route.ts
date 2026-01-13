@@ -175,8 +175,9 @@ WICHTIG: Antworte NUR mit der Nachricht, die du senden würdest. Keine Erklärun
 
   } catch (error) {
     console.error('Test chat error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to generate response' },
+      { error: 'Failed to generate response', details: errorMessage },
       { status: 500 }
     )
   }
