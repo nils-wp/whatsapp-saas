@@ -1,5 +1,31 @@
 # WhatsApp SaaS - Claude Code Project Guide
 
+## Auto-Load Instructions
+
+**WICHTIG: Bei jeder Aufgabe automatisch die relevanten Skills aus `.claude/commands/` lesen:**
+
+| Aufgabe enthält | Skills laden |
+|-----------------|--------------|
+| WhatsApp, Message, Evolution, Nachricht | `.claude/commands/evolution.md`, `.claude/commands/agent-messaging.md` |
+| AI, Agent, Prompt, OpenAI, LLM | `.claude/commands/azure-openai.md`, `.claude/commands/agent-ai.md` |
+| CRM, Close, ActiveCampaign, Sync, Lead | `.claude/commands/crm.md`, `.claude/commands/agent-crm.md` |
+| Pipedrive | `.claude/commands/pipedrive.md`, `.claude/commands/agent-crm.md` |
+| Monday, Monday.com | `.claude/commands/monday.md`, `.claude/commands/agent-crm.md` |
+| HubSpot | `.claude/commands/hubspot.md`, `.claude/commands/agent-crm.md` |
+| Salesforce | `.claude/commands/salesforce.md`, `.claude/commands/agent-crm.md` |
+| Database, Supabase, Query, Migration, RLS | `.claude/commands/supabase.md`, `.claude/commands/agent-database.md` |
+| Frontend, Component, UI, Page, React | `.claude/commands/nextjs.md`, `.claude/commands/agent-frontend.md` |
+| Deploy, Coolify, Docker, CI/CD | `.claude/commands/coolify.md`, `.claude/commands/github.md`, `.claude/commands/agent-deployment.md` |
+| Git, PR, Commit, GitHub, Actions | `.claude/commands/github.md` |
+
+**Workflow bei Aufgaben:**
+1. Aufgabe analysieren und relevante Skills identifizieren
+2. Skills aus `.claude/commands/` lesen (parallel)
+3. Mit dem Skill-Wissen die Aufgabe ausführen
+4. Bestehende Patterns im Code befolgen
+
+---
+
 ## Project Overview
 
 Multi-tenant WhatsApp automation SaaS platform for automated customer conversations with AI agents, CRM integrations, and webhook-based triggers. GDPR-compliant (Azure OpenAI EU).
