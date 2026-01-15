@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm update:*)",
+      "Bash(npx supabase:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:doc.evolution-api.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:learn.microsoft.com)",
+      "WebFetch(domain:nextjs.org)",
+      "WebFetch(domain:coolify.io)",
+      "WebFetch(domain:developers.pipedrive.com)",
+      "WebFetch(domain:developer.monday.com)",
+      "WebFetch(domain:developers.hubspot.com)",
+      "WebFetch(domain:developers.close.com)",
+      "WebFetch(domain:developers.activecampaign.com)",
+      "WebSearch"
+    ]
+  },
+  "model": "claude-sonnet-4-20250514",
+  "customInstructions": "This is the WhatsApp SaaS project. Use the specialized skills in .claude/commands/ for context:\n\n- /project - Project overview\n- /evolution - Evolution API (WhatsApp)\n- /azure-openai - Azure OpenAI (AI)\n- /supabase - Database & Auth\n- /crm - CRM integrations overview\n- /pipedrive, /monday, /hubspot - Specific CRM APIs\n- /nextjs - Frontend/Backend framework\n- /coolify - Deployment\n- /github - Version control & CI/CD\n\nSpecialized agents:\n- /agent-messaging - WhatsApp messaging tasks\n- /agent-ai - AI/LLM configuration\n- /agent-crm - CRM integration tasks\n- /agent-database - Database operations\n- /agent-frontend - UI development\n- /agent-deployment - DevOps tasks\n\nUse German for user-facing text. Follow existing patterns in the codebase."
+}
