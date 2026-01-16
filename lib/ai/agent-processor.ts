@@ -1,9 +1,11 @@
 /**
  * AI Agent Processor
  * Verarbeitet eingehende Nachrichten und generiert Antworten
+ * Mit Function Calling Support (n8n-style)
  */
 
-import { chatCompletion } from './azure-openai'
+import { chatCompletion, chatCompletionWithTools, type ChatMessage } from './azure-openai'
+import { executeTool, getToolsForAgent, type ToolExecutionContext } from './agent-tools'
 import { resolveSpintax } from '@/lib/utils/spintax'
 import type { Tables } from '@/types/database'
 
@@ -36,13 +38,20 @@ interface ScriptStep {
   }
 }
 
-interface ProcessingResult {
+export interface ProcessingResult {
   response: string
   shouldEscalate: boolean
   escalationReason?: string
   nextScriptStep?: number
   metadata?: Record<string, unknown>
 }
+
+interface ProcessingOptions {
+  tenantId: string
+  useTools?: boolean
+}
+
+const MAX_TOOL_ITERATIONS = 5
 
 /**
  * Hauptfunktion: Verarbeitet eine eingehende Nachricht
@@ -51,8 +60,12 @@ export async function processIncomingMessage(
   incomingMessage: string,
   conversation: Conversation,
   agent: Agent,
-  messageHistory: Message[]
+  messageHistory: Message[],
+  options?: ProcessingOptions
 ): Promise<ProcessingResult> {
+  const tenantId = options?.tenantId || conversation.tenant_id
+  const useTools = options?.useTools !== false
+
   // 1. Prüfe auf Eskalations-Keywords
   const escalationTopics = agent.escalation_topics || agent.escalation_keywords || []
   const escalationCheck = checkEscalationKeywords(incomingMessage, escalationTopics)
@@ -69,7 +82,7 @@ export async function processIncomingMessage(
   const currentStep = scriptSteps.find(s => s.step === conversation.current_script_step)
 
   // 3. Baue den System-Prompt
-  const systemPrompt = buildSystemPrompt(agent, currentStep)
+  const systemPrompt = buildSystemPrompt(agent, currentStep, useTools)
 
   // 4. Baue die Chat-History
   const chatMessages = buildChatHistory(messageHistory, systemPrompt)
@@ -77,14 +90,34 @@ export async function processIncomingMessage(
   // 5. Füge die neue Nachricht hinzu
   chatMessages.push({ role: 'user', content: incomingMessage })
 
-  // 6. Generiere AI Antwort
-  const aiResponse = await chatCompletion(chatMessages, {
-    temperature: 0.7,
-    maxTokens: 500,
-  })
+  // 6. Generiere AI Antwort (mit oder ohne Tools)
+  let aiResponse: string
+  let totalTokensUsed = 0
+  let toolsUsed: string[] = []
+
+  if (useTools) {
+    const tools = await getToolsForAgent(tenantId, agent.id)
+    const toolContext: ToolExecutionContext = {
+      tenantId,
+      agentId: agent.id,
+      phone: conversation.contact_phone,
+    }
+
+    const result = await processWithTools(chatMessages, tools, toolContext)
+    aiResponse = result.response
+    totalTokensUsed = result.totalTokens
+    toolsUsed = result.toolsUsed
+  } else {
+    const result = await chatCompletion(chatMessages, {
+      temperature: 0.7,
+      maxTokens: 500,
+    })
+    aiResponse = result.content
+    totalTokensUsed = result.usage.totalTokens
+  }
 
   // 7. Prüfe Guardrails
-  const guardedResponse = applyGuardrails(aiResponse.content, agent)
+  const guardedResponse = applyGuardrails(aiResponse, agent)
 
   // 8. Bestimme nächsten Script-Step
   const nextStep = determineNextStep(incomingMessage, currentStep, scriptSteps)
@@ -94,19 +127,92 @@ export async function processIncomingMessage(
     shouldEscalate: false,
     nextScriptStep: nextStep,
     metadata: {
-      tokensUsed: aiResponse.usage.totalTokens,
+      tokensUsed: totalTokensUsed,
       scriptStep: conversation.current_script_step,
+      toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
     },
+  }
+}
+
+/**
+ * Verarbeitet mit Tool-Calling Loop
+ */
+async function processWithTools(
+  messages: ChatMessage[],
+  tools: Awaited<ReturnType<typeof getToolsForAgent>>,
+  context: ToolExecutionContext
+): Promise<{ response: string; totalTokens: number; toolsUsed: string[] }> {
+  let currentMessages = [...messages]
+  let totalTokens = 0
+  const toolsUsed: string[] = []
+  let iterations = 0
+
+  while (iterations < MAX_TOOL_ITERATIONS) {
+    iterations++
+
+    const response = await chatCompletionWithTools(currentMessages, tools, {
+      temperature: 0.7,
+      maxTokens: 500,
+    })
+
+    totalTokens += response.usage.totalTokens
+
+    // Check if the model wants to call tools
+    if (response.toolCalls && response.toolCalls.length > 0) {
+      // Add assistant message with tool calls
+      currentMessages.push({
+        role: 'assistant',
+        content: response.content,
+        tool_calls: response.toolCalls,
+      })
+
+      // Execute each tool and add results
+      for (const toolCall of response.toolCalls) {
+        const toolName = toolCall.function.name
+        toolsUsed.push(toolName)
+
+        let args: Record<string, unknown> = {}
+        try {
+          args = JSON.parse(toolCall.function.arguments)
+        } catch {
+          console.error('Failed to parse tool arguments:', toolCall.function.arguments)
+        }
+
+        const result = await executeTool(toolName, args, context)
+
+        // Add tool result message
+        currentMessages.push({
+          role: 'tool',
+          content: result,
+          tool_call_id: toolCall.id,
+        })
+      }
+
+      // Continue loop to get final response
+      continue
+    }
+
+    // No more tool calls - return the final response
+    if (response.content) {
+      return { response: response.content, totalTokens, toolsUsed }
+    }
+
+    // Fallback if no content
+    break
+  }
+
+  // If we hit max iterations or got no response
+  return {
+    response: 'Entschuldigung, ich konnte deine Anfrage nicht vollständig bearbeiten. Bitte versuche es noch einmal.',
+    totalTokens,
+    toolsUsed,
   }
 }
 
 /**
  * Baut den System-Prompt basierend auf Agent-Konfiguration
  */
-function buildSystemPrompt(agent: Agent, currentStep?: ScriptStep): string {
-  const faqEntries = agent.faq_entries || agent.faq || []
-  const faqSection = buildFAQSection(faqEntries)
-
+function buildSystemPrompt(agent: Agent, currentStep?: ScriptStep, useTools: boolean = false): string {
   const personality = agent.personality || 'Freundlich und professionell'
   const goal = agent.goal || agent.company_info || 'Hilf dem Kunden und beantworte seine Fragen'
 
@@ -134,11 +240,26 @@ Ziel: ${currentStep.goal}
 ${currentStep.message_template ? `Vorlage: ${currentStep.message_template}` : ''}`
   }
 
-  if (faqSection) {
-    prompt += `
+  // Only include inline FAQ if not using tools (tools will fetch FAQ dynamically)
+  if (!useTools) {
+    const faqEntries = agent.faq_entries || agent.faq || []
+    const faqSection = buildFAQSection(faqEntries)
+    if (faqSection) {
+      prompt += `
 
 HÄUFIGE FRAGEN (FAQ):
 ${faqSection}`
+    }
+  } else {
+    prompt += `
+
+TOOLS:
+Du hast Zugriff auf Tools, um Informationen abzurufen:
+- get_sms_logs: Hole vorherige Nachrichten mit diesem Kontakt aus dem CRM
+- get_faq_document: Lese die FAQ-Wissensdatenbank
+- update_faq: Füge neue Fragen/Antworten zur FAQ hinzu wenn du etwas Neues lernst
+
+Nutze diese Tools wenn nötig, um bessere Antworten zu geben.`
   }
 
   prompt += `
@@ -165,8 +286,8 @@ function buildFAQSection(faq: Array<{ question: string; answer: string }>): stri
 function buildChatHistory(
   messages: Message[],
   systemPrompt: string
-): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
-  const history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+): ChatMessage[] {
+  const history: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
   ]
 
@@ -187,7 +308,7 @@ function buildChatHistory(
 /**
  * Prüft auf Eskalations-Keywords
  */
-function checkEscalationKeywords(
+export function checkEscalationKeywords(
   message: string,
   keywords: string[]
 ): { shouldEscalate: boolean; reason?: string } {
@@ -212,14 +333,17 @@ function checkEscalationKeywords(
 /**
  * Generiert eine Eskalations-Antwort
  */
-function getEscalationResponse(agent: Agent): string {
+export function getEscalationResponse(agent: Agent): string {
+  if (agent.escalation_message) {
+    return agent.escalation_message
+  }
   return `Ich verstehe, dass du mit einem Mitarbeiter sprechen möchtest. Ich leite das Gespräch weiter und jemand wird sich so schnell wie möglich bei dir melden. Vielen Dank für deine Geduld!`
 }
 
 /**
  * Wendet Guardrails auf die AI-Antwort an
  */
-function applyGuardrails(response: string, agent: Agent): string {
+function applyGuardrails(response: string, _agent: Agent): string {
   let filtered = response
 
   // Entferne potentiell problematische Inhalte
@@ -322,6 +446,45 @@ Antworte NUR mit der Nachricht, nichts anderes.`
   const response = await chatCompletion([
     { role: 'system', content: prompt },
   ], { temperature: 0.8, maxTokens: 200 })
+
+  return response.content
+}
+
+/**
+ * Generiert einen Antwortvorschlag für Eskalations-Queue
+ */
+export async function generateSuggestedResponse(
+  originalMessage: string,
+  agent: Agent,
+  messageHistory: Message[]
+): Promise<string> {
+  const faqEntries = agent.faq_entries || agent.faq || []
+  const faqSection = buildFAQSection(faqEntries)
+
+  const conversationContext = messageHistory
+    .slice(-5)
+    .map(m => `${m.direction === 'inbound' ? 'Kunde' : 'Agent'}: ${m.content}`)
+    .join('\n')
+
+  const prompt = `Du bist ein Assistent, der einem menschlichen Mitarbeiter hilft, auf eine eskalierte Kundenanfrage zu antworten.
+
+KONTEXT:
+${conversationContext}
+
+NEUE NACHRICHT VOM KUNDEN:
+${originalMessage}
+
+${faqSection ? `FAQ-WISSEN:\n${faqSection}\n\n` : ''}
+
+Schreibe einen professionellen, hilfreichen Antwortvorschlag, den der Mitarbeiter als Basis nutzen kann.
+Die Antwort sollte empathisch sein und das Anliegen des Kunden ernst nehmen.
+Halte sie kurz (WhatsApp-Style) aber vollständig.
+
+NUR die Antwortnachricht ausgeben, keine Erklärungen.`
+
+  const response = await chatCompletion([
+    { role: 'system', content: prompt },
+  ], { temperature: 0.7, maxTokens: 300 })
 
   return response.content
 }

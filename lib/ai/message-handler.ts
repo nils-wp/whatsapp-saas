@@ -1,10 +1,11 @@
 /**
  * Message Handler - Orchestriert die gesamte Nachrichtenverarbeitung
+ * Mit Queue-System für Outside Hours und Escalations (n8n-style)
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { processIncomingMessage, generateFirstMessage } from './agent-processor'
-import { checkWorkingHours } from './working-hours'
+import { processIncomingMessage, generateFirstMessage, generateSuggestedResponse } from './agent-processor'
+import { checkWorkingHours, getNextBusinessDay8AM } from './working-hours'
 import { sendTextMessage } from '@/lib/evolution/client'
 import { logMessageToCRM, updateCRMStatus } from '@/lib/integrations/crm-sync'
 
@@ -24,8 +25,10 @@ interface HandleMessageOptions {
 interface HandleMessageResult {
   success: boolean
   response?: string
-  action?: 'replied' | 'escalated' | 'outside_hours' | 'error'
+  action?: 'replied' | 'escalated' | 'queued_outside_hours' | 'error'
   error?: string
+  queueId?: string
+  scheduledFor?: string
 }
 
 /**
@@ -63,41 +66,62 @@ export async function handleIncomingMessage(
       return { success: false, error: 'No WhatsApp instance', action: 'error' }
     }
 
+    // Log incoming message to CRM (always do this first)
+    logMessageToCRM({
+      tenantId,
+      phone: conversation.contact_phone,
+      contactName: conversation.contact_name || undefined,
+      message: incomingMessage,
+      direction: 'inbound',
+    }).catch(err => console.error('CRM log error:', err))
+
     // 2. Prüfe Geschäftszeiten
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const officeHours = (agent as any).office_hours
-    const outsideHoursMessage = (agent as { outside_hours_message?: string; escalation_message?: string }).outside_hours_message || (agent as { escalation_message?: string }).escalation_message
     const workingHours = checkWorkingHours(officeHours ?? null)
 
-    if (!workingHours.isOpen && outsideHoursMessage) {
-      // Außerhalb der Geschäftszeiten
-      const response = outsideHoursMessage || workingHours.message ||
-        'Danke für deine Nachricht! Wir melden uns bald bei dir.'
+    if (!workingHours.isOpen) {
+      // Queue message for next business day
+      const scheduledFor = getNextBusinessDay8AM(workingHours.timezone)
 
-      // Log incoming message to CRM first
-      logMessageToCRM({
-        tenantId,
-        phone: conversation.contact_phone,
-        contactName: conversation.contact_name || undefined,
-        message: incomingMessage,
-        direction: 'inbound',
-      }).catch(err => console.error('CRM log error:', err))
+      const { data: queueEntry, error: queueError } = await supabase
+        .from('message_queue')
+        .insert({
+          tenant_id: tenantId,
+          conversation_id: conversationId,
+          queue_type: 'outside_hours',
+          original_message: incomingMessage,
+          reason: `Empfangen außerhalb der Geschäftszeiten (${workingHours.currentTime || 'Unbekannt'})`,
+          scheduled_for: scheduledFor.toISOString(),
+          status: 'pending',
+        })
+        .select()
+        .single()
 
-      await saveAndSendMessage({
-        conversationId,
-        tenantId,
-        instanceName,
-        phone: conversation.contact_phone,
-        content: response,
-        senderType: 'agent',
-        contactName: conversation.contact_name || undefined,
-        agentName: agent.agent_name || agent.name,
-      })
+      if (queueError) {
+        console.error('Failed to queue message:', queueError)
+      }
+
+      // Send acknowledgment if configured
+      const outsideHoursMessage = (agent as { outside_hours_message?: string }).outside_hours_message
+      if (outsideHoursMessage) {
+        await saveAndSendMessage({
+          conversationId,
+          tenantId,
+          instanceName,
+          phone: conversation.contact_phone,
+          content: outsideHoursMessage,
+          senderType: 'agent',
+          contactName: conversation.contact_name || undefined,
+          agentName: agent.agent_name || agent.name,
+        })
+      }
 
       return {
         success: true,
-        response,
-        action: 'outside_hours',
+        action: 'queued_outside_hours',
+        queueId: queueEntry?.id,
+        scheduledFor: scheduledFor.toISOString(),
       }
     }
 
@@ -109,16 +133,45 @@ export async function handleIncomingMessage(
       .order('created_at', { ascending: true })
       .limit(20)
 
-    // 4. Verarbeite mit AI Agent
+    // 4. Verarbeite mit AI Agent (mit Tools)
     const result = await processIncomingMessage(
       incomingMessage,
       conversation,
       agent,
-      messageHistory || []
+      messageHistory || [],
+      { tenantId, useTools: true }
     )
 
     // 5. Handle Eskalation
     if (result.shouldEscalate) {
+      // Generate suggested response for human reviewer
+      const suggestedResponse = await generateSuggestedResponse(
+        incomingMessage,
+        agent,
+        messageHistory || []
+      )
+
+      // Add to escalation queue
+      const { data: queueEntry, error: queueError } = await supabase
+        .from('message_queue')
+        .insert({
+          tenant_id: tenantId,
+          conversation_id: conversationId,
+          queue_type: 'escalated',
+          original_message: incomingMessage,
+          reason: result.escalationReason,
+          suggested_response: suggestedResponse,
+          status: 'pending',
+          priority: 1, // Higher priority for escalations
+        })
+        .select()
+        .single()
+
+      if (queueError) {
+        console.error('Failed to queue escalation:', queueError)
+      }
+
+      // Update conversation status
       await supabase
         .from('conversations')
         .update({
@@ -128,15 +181,6 @@ export async function handleIncomingMessage(
         })
         .eq('id', conversationId)
 
-      // Log incoming message to CRM
-      logMessageToCRM({
-        tenantId,
-        phone: conversation.contact_phone,
-        contactName: conversation.contact_name || undefined,
-        message: incomingMessage,
-        direction: 'inbound',
-      }).catch(err => console.error('CRM log error:', err))
-
       // Update CRM status to escalated
       updateCRMStatus({
         tenantId,
@@ -145,6 +189,7 @@ export async function handleIncomingMessage(
         note: `Eskaliert: ${result.escalationReason}`,
       }).catch(err => console.error('CRM status error:', err))
 
+      // Send escalation response to customer
       await saveAndSendMessage({
         conversationId,
         tenantId,
@@ -160,6 +205,7 @@ export async function handleIncomingMessage(
         success: true,
         response: result.response,
         action: 'escalated',
+        queueId: queueEntry?.id,
       }
     }
 
@@ -171,16 +217,7 @@ export async function handleIncomingMessage(
         .eq('id', conversationId)
     }
 
-    // 7. Log incoming message to CRM
-    logMessageToCRM({
-      tenantId,
-      phone: conversation.contact_phone,
-      contactName: conversation.contact_name || undefined,
-      message: incomingMessage,
-      direction: 'inbound',
-    }).catch(err => console.error('CRM log error:', err))
-
-    // 8. Sende Antwort
+    // 7. Sende Antwort
     await saveAndSendMessage({
       conversationId,
       tenantId,
@@ -417,4 +454,124 @@ async function saveAndSendMessage(options: {
     direction: 'outbound',
     agentName: options.agentName,
   }).catch(err => console.error('CRM log error:', err))
+}
+
+/**
+ * Verarbeitet eine aus der Queue kommende Nachricht
+ * (Wird vom Queue Processor aufgerufen)
+ */
+export async function processQueuedMessage(queueId: string): Promise<{
+  success: boolean
+  error?: string
+}> {
+  const supabase = getSupabase()
+
+  try {
+    // Get queue entry
+    const { data: queueEntry, error: fetchError } = await supabase
+      .from('message_queue')
+      .select('*, conversations(*, agents(*), whatsapp_accounts(instance_name))')
+      .eq('id', queueId)
+      .single()
+
+    if (fetchError || !queueEntry) {
+      return { success: false, error: 'Queue entry not found' }
+    }
+
+    if (queueEntry.status !== 'pending') {
+      return { success: false, error: 'Queue entry already processed' }
+    }
+
+    const conversation = queueEntry.conversations
+    if (!conversation) {
+      await supabase
+        .from('message_queue')
+        .update({ status: 'dismissed' })
+        .eq('id', queueId)
+      return { success: false, error: 'Conversation not found' }
+    }
+
+    const agent = conversation.agents
+    const instanceName = conversation.whatsapp_accounts?.instance_name
+
+    if (!agent || !instanceName) {
+      return { success: false, error: 'Missing agent or WhatsApp account' }
+    }
+
+    // Get message history
+    const { data: messageHistory } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversation.id)
+      .order('created_at', { ascending: true })
+      .limit(20)
+
+    // Process with AI agent
+    const result = await processIncomingMessage(
+      queueEntry.original_message,
+      conversation,
+      agent,
+      messageHistory || [],
+      { tenantId: queueEntry.tenant_id, useTools: true }
+    )
+
+    // Handle response
+    if (result.shouldEscalate) {
+      // Convert to escalation queue entry
+      await supabase
+        .from('message_queue')
+        .update({
+          queue_type: 'escalated',
+          reason: result.escalationReason,
+          suggested_response: result.response,
+          status: 'pending',
+          priority: 1,
+        })
+        .eq('id', queueId)
+
+      // Update conversation
+      await supabase
+        .from('conversations')
+        .update({
+          status: 'escalated',
+          escalated_at: new Date().toISOString(),
+          escalation_reason: result.escalationReason,
+        })
+        .eq('id', conversation.id)
+
+      return { success: true }
+    }
+
+    // Send response
+    await saveAndSendMessage({
+      conversationId: conversation.id,
+      tenantId: queueEntry.tenant_id,
+      instanceName,
+      phone: conversation.contact_phone,
+      content: result.response,
+      senderType: 'agent',
+      scriptStep: conversation.current_script_step,
+      contactName: conversation.contact_name || undefined,
+      agentName: agent.agent_name || agent.name,
+    })
+
+    // Mark queue entry as resolved
+    await supabase
+      .from('message_queue')
+      .update({
+        status: 'resolved',
+        resolved_at: new Date().toISOString(),
+        resolution_message: result.response,
+      })
+      .eq('id', queueId)
+
+    return { success: true }
+
+  } catch (error) {
+    console.error('Error processing queued message:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
 }

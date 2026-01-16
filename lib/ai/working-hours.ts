@@ -20,6 +20,7 @@ interface WorkingHoursResult {
   currentTime: string
   nextOpenTime?: string
   message?: string
+  timezone: string
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -46,12 +47,15 @@ const DAY_NAMES_DE: Record<string, string> = {
  * Prüft ob aktuell Geschäftszeit ist
  */
 export function checkWorkingHours(officeHours: OfficeHours | null): WorkingHoursResult {
+  const defaultTimezone = 'Europe/Berlin'
+
   // Wenn keine Office Hours konfiguriert, immer offen
   if (!officeHours || !officeHours.enabled) {
     return {
       isOpen: true,
       currentDay: getCurrentDayName(),
-      currentTime: getCurrentTime('Europe/Berlin'),
+      currentTime: getCurrentTime(defaultTimezone),
+      timezone: defaultTimezone,
     }
   }
 
@@ -84,6 +88,7 @@ export function checkWorkingHours(officeHours: OfficeHours | null): WorkingHours
       currentTime,
       nextOpenTime: nextOpen,
       message: generateClosedMessage(nextOpen),
+      timezone,
     }
   }
 
@@ -95,6 +100,7 @@ export function checkWorkingHours(officeHours: OfficeHours | null): WorkingHours
       isOpen: true,
       currentDay: weekday,
       currentTime,
+      timezone,
     }
   }
 
@@ -109,6 +115,7 @@ export function checkWorkingHours(officeHours: OfficeHours | null): WorkingHours
     currentTime,
     nextOpenTime: nextOpen,
     message: generateClosedMessage(nextOpen),
+    timezone,
   }
 }
 
@@ -211,4 +218,56 @@ export function getDefaultOfficeHours(): OfficeHours {
       sunday: { enabled: false, start: '10:00', end: '14:00' },
     },
   }
+}
+
+/**
+ * Berechnet den nächsten Werktag um 08:00 Uhr
+ * (Mo-Fr, 08:00 in der angegebenen Zeitzone)
+ */
+export function getNextBusinessDay8AM(timezone: string = 'Europe/Berlin'): Date {
+  const now = new Date()
+
+  // Get current time in the specified timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  const parts = formatter.formatToParts(now)
+  const year = parseInt(parts.find(p => p.type === 'year')?.value || '2024')
+  const month = parseInt(parts.find(p => p.type === 'month')?.value || '1') - 1
+  const day = parseInt(parts.find(p => p.type === 'day')?.value || '1')
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '12')
+
+  // Create a date in the local timezone
+  const localDate = new Date(year, month, day, 8, 0, 0, 0)
+
+  // Check if today is still valid (before 08:00 and weekday)
+  const dayOfWeek = localDate.getDay()
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+  const isBeforeOpen = hour < 8
+
+  if (isWeekday && isBeforeOpen) {
+    // Today at 08:00 is fine
+    return localDate
+  }
+
+  // Find next weekday
+  let daysToAdd = 1
+  let nextDay = new Date(localDate)
+  nextDay.setDate(nextDay.getDate() + daysToAdd)
+
+  while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+    daysToAdd++
+    nextDay = new Date(localDate)
+    nextDay.setDate(nextDay.getDate() + daysToAdd)
+  }
+
+  nextDay.setHours(8, 0, 0, 0)
+  return nextDay
 }
