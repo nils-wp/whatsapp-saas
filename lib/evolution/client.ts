@@ -43,14 +43,16 @@ async function evolutionFetch<T>(
 }
 
 export async function createInstance(instanceName: string) {
+  // Note: Device name in WhatsApp "Linked Devices" is controlled by
+  // Evolution API server environment variables:
+  // - CONFIG_SESSION_PHONE_CLIENT=chatsetter
+  // - CONFIG_SESSION_PHONE_NAME=Desktop
   return evolutionFetch('/instance/create', {
     method: 'POST',
     body: JSON.stringify({
       instanceName,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
-      // Device name shown in WhatsApp "Linked Devices"
-      browser: ['chatsetter', 'Desktop', '10.0'],
     }),
   })
 }
