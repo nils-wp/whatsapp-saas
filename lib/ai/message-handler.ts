@@ -64,9 +64,10 @@ export async function handleIncomingMessage(
     }
 
     // 2. Prüfe Geschäftszeiten
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const officeHours = (agent as any).office_hours
-    const outsideHoursMessage = (agent as any).outside_hours_message || (agent as any).escalation_message
-    const workingHours = checkWorkingHours(officeHours)
+    const outsideHoursMessage = (agent as { outside_hours_message?: string; escalation_message?: string }).outside_hours_message || (agent as { escalation_message?: string }).escalation_message
+    const workingHours = checkWorkingHours(officeHours ?? null)
 
     if (!workingHours.isOpen && outsideHoursMessage) {
       // Außerhalb der Geschäftszeiten
@@ -377,7 +378,7 @@ async function saveAndSendMessage(options: {
   )
 
   // 3. Update Message Status
-  const whatsappMessageId = (sendResult.data as any)?.key?.id
+  const whatsappMessageId = (sendResult.data as { key?: { id?: string } })?.key?.id
   await supabase
     .from('messages')
     .update({
@@ -399,7 +400,7 @@ async function saveAndSendMessage(options: {
   // 5. Update Daily Analytics (optional - ignore errors)
   try {
     const today = new Date().toISOString().split('T')[0]
-    await (supabase.rpc as any)('increment_daily_messages_sent', {
+    await supabase.rpc('increment_daily_messages_sent', {
       p_tenant_id: options.tenantId,
       p_date: today,
     })

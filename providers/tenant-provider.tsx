@@ -151,14 +151,25 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [user, setCurrentTenant])
 
   useEffect(() => {
-    fetchTenantData()
-
+    let mounted = true
     const supabase = createClient()
+
+    // Defer initial fetch to avoid synchronous setState during render
+    const timer = setTimeout(() => {
+      if (mounted) {
+        fetchTenantData()
+      }
+    }, 0)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchTenantData()
+      if (mounted) {
+        fetchTenantData()
+      }
     })
 
     return () => {
+      mounted = false
+      clearTimeout(timer)
       subscription.unsubscribe()
     }
   }, [fetchTenantData])

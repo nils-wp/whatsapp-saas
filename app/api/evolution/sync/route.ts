@@ -200,7 +200,7 @@ export async function POST(request: Request) {
       }
 
       // Try multiple fields to find phone/remoteJid
-      let remoteJid = chat.remoteJid || chat.id || chat.jid || chat.owner || ''
+      const remoteJid = chat.remoteJid || chat.id || chat.jid || chat.owner || ''
       let phone = ''
       const contactName = chat.name || chat.pushName || chat.contact?.name || null
 

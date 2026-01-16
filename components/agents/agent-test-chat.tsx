@@ -52,7 +52,7 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
 
   function replaceVariables(template: string): string {
     // Erst Spintax auflösen {option1|option2|option3}
-    let result = resolveSpintax(template)
+    const result = resolveSpintax(template)
 
     // Dann Variablen ersetzen {{variable}}
     return result

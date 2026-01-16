@@ -118,7 +118,7 @@ export default function AcceptInvitePage() {
               : status === 'error'
               ? error
               : invite
-              ? `You've been invited to join "${invite.tenantName}"`
+              ? `You&apos;ve been invited to join &quot;${invite.tenantName}&quot;`
               : 'Processing invite...'}
           </CardDescription>
         </CardHeader>
@@ -165,7 +165,7 @@ export default function AcceptInvitePage() {
             <>
               <div className="p-4 rounded-lg bg-[#252525] text-center">
                 <p className="text-gray-400 text-sm mb-2">You need to login to accept this invite</p>
-                <p className="text-white">Join "{invite.tenantName}" as {invite.role}</p>
+                <p className="text-white">Join &quot;{invite.tenantName}&quot; as {invite.role}</p>
               </div>
               <div className="flex gap-2">
                 <Button asChild className="flex-1 bg-emerald-500 hover:bg-emerald-600">

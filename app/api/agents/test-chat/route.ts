@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Check for escalation keywords
-    const escalationTopics = (agent as any).escalation_topics || []
+    const escalationTopics = (agent as { escalation_topics?: string[] }).escalation_topics || []
     const defaultKeywords = ['mensch', 'mitarbeiter', 'chef', 'manager', 'beschwerde', 'anwalt']
     const allKeywords = [...new Set([...escalationTopics, ...defaultKeywords])]
 
@@ -76,12 +76,14 @@ export async function POST(request: Request) {
     }
 
     // Build system prompt
+    type AgentExtended = typeof agent & { faq_entries?: FAQEntry[]; personality?: string; goal?: string; company_info?: string }
+    const agentExt = agent as AgentExtended
     const scriptSteps = (agent.script_steps || []) as ScriptStep[]
     const currentScriptStep = scriptSteps.find(s => s.step === currentStep)
-    const faqEntries = ((agent as any).faq_entries || []) as FAQEntry[]
+    const faqEntries = (agentExt.faq_entries || []) as FAQEntry[]
 
-    const personality = (agent as any).personality || 'Freundlich und professionell'
-    const goal = (agent as any).goal || (agent as any).company_info || 'Hilf dem Kunden und beantworte seine Fragen'
+    const personality = agentExt.personality || 'Freundlich und professionell'
+    const goal = agentExt.goal || agentExt.company_info || 'Hilf dem Kunden und beantworte seine Fragen'
 
     let systemPrompt = `Du bist ${agent.agent_name || agent.name}, ein KI-Assistent für WhatsApp.
 

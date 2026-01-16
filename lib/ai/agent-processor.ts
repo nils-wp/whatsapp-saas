@@ -7,7 +7,21 @@ import { chatCompletion } from './azure-openai'
 import { resolveSpintax } from '@/lib/utils/spintax'
 import type { Tables } from '@/types/database'
 
-type Agent = Tables<'agents'>
+type Agent = Tables<'agents'> & {
+  escalation_topics?: string[]
+  escalation_keywords?: string[]
+  faq_entries?: Array<{ question: string; answer: string }>
+  faq?: Array<{ question: string; answer: string }>
+  personality?: string
+  goal?: string
+  company_info?: string
+  office_hours?: Record<string, unknown>
+  outside_hours_message?: string
+  escalation_message?: string
+  colleague_name?: string
+  booking_cta?: string
+  calendly_link?: string
+}
 type Conversation = Tables<'conversations'>
 type Message = Tables<'messages'>
 
@@ -40,7 +54,7 @@ export async function processIncomingMessage(
   messageHistory: Message[]
 ): Promise<ProcessingResult> {
   // 1. Prüfe auf Eskalations-Keywords
-  const escalationTopics = (agent as any).escalation_topics || (agent as any).escalation_keywords || []
+  const escalationTopics = agent.escalation_topics || agent.escalation_keywords || []
   const escalationCheck = checkEscalationKeywords(incomingMessage, escalationTopics)
   if (escalationCheck.shouldEscalate) {
     return {
@@ -90,11 +104,11 @@ export async function processIncomingMessage(
  * Baut den System-Prompt basierend auf Agent-Konfiguration
  */
 function buildSystemPrompt(agent: Agent, currentStep?: ScriptStep): string {
-  const faqEntries = (agent as any).faq_entries || (agent as any).faq || []
-  const faqSection = buildFAQSection(faqEntries as Array<{ question: string; answer: string }>)
+  const faqEntries = agent.faq_entries || agent.faq || []
+  const faqSection = buildFAQSection(faqEntries)
 
-  const personality = (agent as any).personality || 'Freundlich und professionell'
-  const goal = (agent as any).goal || (agent as any).company_info || 'Hilf dem Kunden und beantworte seine Fragen'
+  const personality = agent.personality || 'Freundlich und professionell'
+  const goal = agent.goal || agent.company_info || 'Hilf dem Kunden und beantworte seine Fragen'
 
   let prompt = `Du bist ${agent.agent_name || agent.name}, ein KI-Assistent für WhatsApp.
 
@@ -281,9 +295,9 @@ export async function generateFirstMessage(
     message = message.replace(/\{\{name\}\}/g, contactName || 'du')
     message = message.replace(/\{\{contact_name\}\}/g, contactName || 'du')
     message = message.replace(/\{\{agent_name\}\}/g, agent.agent_name || agent.name)
-    message = message.replace(/\{\{colleague_name\}\}/g, (agent as any).colleague_name || 'ein Kollege')
-    message = message.replace(/\{\{booking_cta\}\}/g, (agent as any).booking_cta || '')
-    message = message.replace(/\{\{calendly_link\}\}/g, (agent as any).calendly_link || '')
+    message = message.replace(/\{\{colleague_name\}\}/g, agent.colleague_name || 'ein Kollege')
+    message = message.replace(/\{\{booking_cta\}\}/g, agent.booking_cta || '')
+    message = message.replace(/\{\{calendly_link\}\}/g, agent.calendly_link || '')
 
     // Custom trigger data
     if (triggerData) {
@@ -296,8 +310,8 @@ export async function generateFirstMessage(
   }
 
   // Fallback: Generiere mit AI
-  const agentGoal = (agent as any).goal || (agent as any).company_info || 'Kunden helfen'
-  const agentPersonality = (agent as any).personality || 'freundlich und professionell'
+  const agentGoal = agent.goal || agent.company_info || 'Kunden helfen'
+  const agentPersonality = agent.personality || 'freundlich und professionell'
 
   const prompt = `Du bist ${agent.agent_name || agent.name}. Schreibe eine kurze, freundliche erste Nachricht an ${contactName || 'einen neuen Kontakt'}.
 Ziel: ${agentGoal}

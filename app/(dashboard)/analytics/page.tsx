@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   BarChart3,
   TrendingUp,
@@ -170,34 +170,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Simple Bar Chart Visualization */}
-              <div className="space-y-3">
-                {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day, i) => {
-                  const sent = 80 + Math.random() * 40
-                  const received = 60 + Math.random() * 40
-                  return (
-                    <div key={day} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground w-8">{day}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {Math.round(sent)} / {Math.round(received)}
-                        </span>
-                      </div>
-                      <div className="flex gap-1">
-                        <div
-                          className="h-4 rounded bg-primary transition-all"
-                          style={{ width: `${sent}%` }}
-                        />
-                      </div>
-                      <div className="flex gap-1">
-                        <div
-                          className="h-4 rounded bg-muted-foreground/30 transition-all"
-                          style={{ width: `${received}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <WeeklyChart />
 
               <Separator />
 
@@ -463,6 +436,46 @@ function AccountRow({
           {rec.label}
         </Badge>
       </div>
+    </div>
+  )
+}
+
+// Pre-computed chart data to avoid Math.random during render
+const WEEKLY_CHART_DATA = [
+  { day: 'Mo', sent: 95, received: 72 },
+  { day: 'Di', sent: 112, received: 85 },
+  { day: 'Mi', sent: 88, received: 68 },
+  { day: 'Do', sent: 105, received: 78 },
+  { day: 'Fr', sent: 98, received: 75 },
+  { day: 'Sa', sent: 82, received: 62 },
+  { day: 'So', sent: 91, received: 70 },
+]
+
+function WeeklyChart() {
+  return (
+    <div className="space-y-3">
+      {WEEKLY_CHART_DATA.map(({ day, sent, received }) => (
+        <div key={day} className="space-y-1">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground w-8">{day}</span>
+            <span className="text-xs text-muted-foreground">
+              {sent} / {received}
+            </span>
+          </div>
+          <div className="flex gap-1">
+            <div
+              className="h-4 rounded bg-primary transition-all"
+              style={{ width: `${sent}%` }}
+            />
+          </div>
+          <div className="flex gap-1">
+            <div
+              className="h-4 rounded bg-muted-foreground/30 transition-all"
+              style={{ width: `${received}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

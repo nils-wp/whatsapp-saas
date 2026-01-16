@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Evolution API not configured' }, { status: 500 })
     }
 
-    const results: Record<string, any> = {}
+    const results: Record<string, unknown> = {}
 
     // 1. Try findContacts endpoint
     try {
@@ -57,8 +57,8 @@ export async function POST(request: Request) {
         status: contactsRes.status,
         data: contactsRes.ok ? await contactsRes.json() : await contactsRes.text()
       }
-    } catch (e: any) {
-      results.findContacts = { error: e.message }
+    } catch (e) {
+      results.findContacts = { error: e instanceof Error ? e.message : 'Unknown error' }
     }
 
     // 2. Try fetchProfilePictureUrl endpoint
@@ -79,8 +79,8 @@ export async function POST(request: Request) {
           status: picRes.status,
           data: picRes.ok ? await picRes.json() : await picRes.text()
         }
-      } catch (e: any) {
-        results.profilePicture = { error: e.message }
+      } catch (e) {
+        results.profilePicture = { error: e instanceof Error ? e.message : 'Unknown error' }
       }
     }
 
@@ -102,8 +102,8 @@ export async function POST(request: Request) {
           status: profileRes.status,
           data: profileRes.ok ? await profileRes.json() : await profileRes.text()
         }
-      } catch (e: any) {
-        results.getProfile = { error: e.message }
+      } catch (e) {
+        results.getProfile = { error: e instanceof Error ? e.message : 'Unknown error' }
       }
     }
 
@@ -124,14 +124,14 @@ export async function POST(request: Request) {
         const data = await chatsRes.json()
         const chats = Array.isArray(data) ? data : (data.chats || [])
         // Find first individual chat
-        const individualChat = chats.find((c: any) => {
+        const individualChat = chats.find((c: { remoteJid?: string; id?: string }) => {
           const rid = c.remoteJid || c.id || ''
           return rid.includes('@s.whatsapp.net')
         })
         results.sampleIndividualChat = individualChat || 'No individual chat found'
       }
-    } catch (e: any) {
-      results.sampleChat = { error: e.message }
+    } catch (e) {
+      results.sampleChat = { error: e instanceof Error ? e.message : 'Unknown error' }
     }
 
     return NextResponse.json(results)

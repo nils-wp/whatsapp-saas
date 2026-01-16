@@ -156,14 +156,25 @@ export default function NewTriggerPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Event auswählen" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {availableEvents.map((event) => (
-                      <SelectItem key={event.value} value={event.value}>
-                        <div className="flex flex-col">
-                          <span>{event.label}</span>
+                  <SelectContent className="max-h-80">
+                    {/* Group events by category */}
+                    {(() => {
+                      const categories = [...new Set(availableEvents.map(e => e.category || 'Allgemein'))]
+                      return categories.map(category => (
+                        <div key={category}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                            {category}
+                          </div>
+                          {availableEvents
+                            .filter(e => (e.category || 'Allgemein') === category)
+                            .map((event) => (
+                              <SelectItem key={event.value} value={event.value}>
+                                {event.label}
+                              </SelectItem>
+                            ))}
                         </div>
-                      </SelectItem>
-                    ))}
+                      ))
+                    })()}
                   </SelectContent>
                 </Select>
                 {selectedEvent && (

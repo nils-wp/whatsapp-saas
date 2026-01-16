@@ -82,7 +82,7 @@ export async function findLeadByPhone(
       id: lead.id,
       displayName: lead.display_name,
       status: lead.status_label,
-      contacts: lead.contacts?.map((c: any) => ({
+      contacts: lead.contacts?.map((c: { id: string; name: string; emails?: Array<{ email: string; type: string }>; phones?: Array<{ phone: string; type: string }> }) => ({
         id: c.id,
         name: c.name,
         emails: c.emails || [],
@@ -120,7 +120,7 @@ export async function findLeadByEmail(
       id: lead.id,
       displayName: lead.display_name,
       status: lead.status_label,
-      contacts: lead.contacts?.map((c: any) => ({
+      contacts: lead.contacts?.map((c: { id: string; name: string; emails?: Array<{ email: string; type: string }>; phones?: Array<{ phone: string; type: string }> }) => ({
         id: c.id,
         name: c.name,
         emails: c.emails || [],
@@ -179,7 +179,7 @@ export async function createLead(
       id: lead.id,
       displayName: lead.display_name,
       status: lead.status_label,
-      contacts: lead.contacts?.map((c: any) => ({
+      contacts: lead.contacts?.map((c: { id: string; name: string; emails?: Array<{ email: string; type: string }>; phones?: Array<{ phone: string; type: string }> }) => ({
         id: c.id,
         name: c.name,
         emails: c.emails || [],
@@ -382,7 +382,7 @@ export async function getSmsActivities(
 
     const data = await response.json()
 
-    return data.data?.map((sms: any) => ({
+    return data.data?.map((sms: { id: string; text: string; direction: 'inbound' | 'outbound'; remote_phone: string; date_created: string }) => ({
       id: sms.id,
       text: sms.text,
       direction: sms.direction,
@@ -408,7 +408,7 @@ export async function getLeadStatuses(
 
     const data = await response.json()
 
-    return data.data?.map((s: any) => ({
+    return data.data?.map((s: { id: string; label: string }) => ({
       id: s.id,
       label: s.label,
     })) || []
@@ -431,7 +431,7 @@ export async function getOpportunityStatuses(
 
     const data = await response.json()
 
-    return data.data?.map((s: any) => ({
+    return data.data?.map((s: { id: string; label: string; type: string }) => ({
       id: s.id,
       label: s.label,
       type: s.type, // 'active', 'won', 'lost'

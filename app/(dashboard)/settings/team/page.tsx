@@ -95,7 +95,7 @@ export default function TeamPage() {
       const data = await response.json()
 
       if (response.ok && data.members) {
-        setMembers(data.members.map((m: any) => ({
+        setMembers(data.members.map((m: { id: string; userId?: string; name?: string; email: string; role: string; status: string; invitedAt?: string }) => ({
           id: m.id,
           userId: m.userId,
           name: m.name,

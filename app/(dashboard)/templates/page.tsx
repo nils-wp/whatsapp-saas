@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Link from 'next/link'
 import {
   FileText,
@@ -38,9 +39,6 @@ const iconMap: Record<string, LucideIcon> = {
   bot: Bot,
 }
 
-function getIcon(iconName: string): LucideIcon {
-  return iconMap[iconName] || Bot
-}
 
 export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -148,6 +146,11 @@ export default function TemplatesPage() {
   )
 }
 
+function TemplateIcon({ iconName, className }: { iconName: string; className?: string }) {
+  const IconComponent = iconMap[iconName] || Bot
+  return <IconComponent className={className} />
+}
+
 function FeaturedTemplateCard({
   template,
   onUse,
@@ -155,7 +158,6 @@ function FeaturedTemplateCard({
   template: Template
   onUse: () => void
 }) {
-  const Icon = getIcon(template.icon)
   const t = useTranslations('templates')
 
   return (
@@ -167,7 +169,7 @@ function FeaturedTemplateCard({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-start gap-4">
           <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
-            <Icon className="h-8 w-8 text-white" />
+            <TemplateIcon iconName={template.icon} className="h-8 w-8 text-white" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-white mb-1">{template.name}</h3>
@@ -204,14 +206,13 @@ function TemplateCard({
   template: Template
   onUse: () => void
 }) {
-  const Icon = getIcon(template.icon)
   const t = useTranslations('templates')
 
   return (
     <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 hover:border-[#3a3a3a] transition-colors">
       <div className="flex items-start justify-between mb-4">
         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center">
-          <Icon className="h-6 w-6 text-emerald-500" />
+          <TemplateIcon iconName={template.icon} className="h-6 w-6 text-emerald-500" />
         </div>
         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#252525] text-gray-400">
           {template.category}

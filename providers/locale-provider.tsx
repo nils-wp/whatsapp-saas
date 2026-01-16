@@ -49,22 +49,43 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
   useEffect(() => {
     const savedLocale = localStorage.getItem('locale') as Locale | null
     if (savedLocale && locales.includes(savedLocale)) {
-      setLocaleState(savedLocale)
+      // Use setTimeout to avoid setState during render
+      const timer = setTimeout(() => setLocaleState(savedLocale), 0)
+      return () => clearTimeout(timer)
     }
   }, [])
 
   // Load messages when locale changes
   useEffect(() => {
-    setIsLoading(true)
-    loadMessages(locale)
-      .then((msgs) => {
-        setMessages(msgs)
-        setIsLoading(false)
-      })
-      .catch((error) => {
-        console.error('Failed to load messages:', error)
-        setIsLoading(false)
-      })
+    let mounted = true
+
+    const load = async () => {
+      try {
+        const msgs = await loadMessages(locale)
+        if (mounted) {
+          setMessages(msgs)
+          setIsLoading(false)
+        }
+      } catch (err) {
+        console.error('Failed to load messages:', err)
+        if (mounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    // Defer the loading to avoid synchronous setState
+    const timer = setTimeout(() => {
+      if (mounted) {
+        setIsLoading(true)
+        load()
+      }
+    }, 0)
+
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
   }, [locale])
 
   const setLocale = useCallback((newLocale: Locale) => {
