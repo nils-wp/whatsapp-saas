@@ -98,6 +98,19 @@ export async function deleteInstance(instanceName: string) {
   })
 }
 
+/**
+ * Recreates an instance with the correct browser name.
+ * Use this to fix instances showing wrong device name.
+ */
+export async function recreateInstance(instanceName: string) {
+  // 1. Logout first
+  await disconnectInstance(instanceName)
+  // 2. Delete the instance
+  await deleteInstance(instanceName)
+  // 3. Create new instance with correct browser name
+  return createInstance(instanceName)
+}
+
 export async function sendTextMessage(
   instanceName: string,
   phone: string,
