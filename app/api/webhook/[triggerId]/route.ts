@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { startNewConversation } from '@/lib/ai/message-handler'
 
 function getSupabase() {
   return createClient(
@@ -60,86 +61,27 @@ export async function POST(
     // Clean phone number
     const phone = payload.phone.replace(/\D/g, '')
 
-    // Check for existing conversation
-    const { data: existingConversation } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('tenant_id', trigger.tenant_id)
-      .eq('contact_phone', phone)
-      .eq('status', 'active')
-      .single()
+    // Use the unified startNewConversation function that handles everything
+    const result = await startNewConversation({
+      tenantId: trigger.tenant_id,
+      triggerId: trigger.id,
+      phone,
+      contactName: payload.name,
+      externalLeadId: payload.lead_id,
+      triggerData: payload,
+    })
 
-    if (existingConversation) {
-      return NextResponse.json({
-        success: true,
-        message: 'Conversation already exists',
-        conversation_id: existingConversation.id,
-      })
-    }
-
-    // Create conversation
-    const { data: conversation, error: convError } = await supabase
-      .from('conversations')
-      .insert({
-        tenant_id: trigger.tenant_id,
-        whatsapp_account_id: trigger.whatsapp_account_id,
-        agent_id: trigger.agent_id,
-        trigger_id: trigger.id,
-        contact_phone: phone,
-        contact_name: payload.name || null,
-        external_lead_id: payload.lead_id || null,
-        status: 'active',
-        current_script_step: 1,
-      })
-      .select()
-      .single()
-
-    if (convError) {
-      console.error('Error creating conversation:', convError)
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to create conversation' },
+        { error: result.error || 'Failed to start conversation' },
         { status: 500 }
       )
     }
 
-    // Replace variables in first message
-    let firstMessage = trigger.first_message
-    firstMessage = firstMessage.replace(/\{\{name\}\}/g, payload.name || 'du')
-    firstMessage = firstMessage.replace(/\{\{email\}\}/g, payload.email || '')
-    firstMessage = firstMessage.replace(/\{\{phone\}\}/g, phone)
-
-    // Create message record
-    const { error: msgError } = await supabase.from('messages').insert({
-      tenant_id: trigger.tenant_id,
-      conversation_id: conversation.id,
-      direction: 'outbound',
-      sender_type: 'agent',
-      content: firstMessage,
-      script_step_used: 0,
-      status: 'pending',
-    })
-
-    if (msgError) {
-      console.error('Error creating message:', msgError)
-    }
-
-    // Update trigger stats
-    await supabase
-      .from('triggers')
-      .update({
-        total_triggered: trigger.total_triggered + 1,
-        total_conversations: trigger.total_conversations + 1,
-      })
-      .eq('id', trigger.id)
-
-    // Here you would typically trigger the actual message sending
-    // directly through Evolution API
-    // For now, we'll just mark it as scheduled
-
     return NextResponse.json({
       success: true,
-      conversation_id: conversation.id,
-      message: 'Conversation created and first message scheduled',
+      conversation_id: result.conversationId,
+      message: 'Conversation created and first message sent',
     })
   } catch (error) {
     console.error('Webhook error:', error)

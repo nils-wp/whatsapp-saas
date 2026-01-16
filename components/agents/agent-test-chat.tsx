@@ -185,8 +185,8 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        <ScrollArea className="flex-1 p-4">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
+        <ScrollArea className="flex-1 p-4 h-full">
           <div className="space-y-4">
             {messages.map((message) => (
               <div

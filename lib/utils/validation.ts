@@ -47,9 +47,12 @@ export const agentSchema = z.object({
   whatsapp_account_id: z.string().optional(),
 })
 
+export const triggerTypeEnum = z.enum(['webhook', 'activecampaign', 'close', 'pipedrive', 'hubspot', 'monday'])
+export type TriggerType = z.infer<typeof triggerTypeEnum>
+
 export const triggerSchema = z.object({
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen lang sein'),
-  type: z.enum(['webhook', 'activecampaign', 'close']),
+  type: triggerTypeEnum,
   whatsapp_account_id: z.string().uuid('Bitte wähle einen WhatsApp-Account'),
   agent_id: z.string().uuid('Bitte wähle einen Agent'),
   first_message: z.string().min(10, 'Erste Nachricht muss mindestens 10 Zeichen lang sein'),

@@ -18,8 +18,19 @@ import { WebhookGenerator } from '@/components/triggers/webhook-generator'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
-import { triggerSchema, type TriggerFormData } from '@/lib/utils/validation'
+import { useIntegrations } from '@/lib/hooks/use-integrations'
+import { triggerSchema, type TriggerFormData, type TriggerType } from '@/lib/utils/validation'
 import { toast } from 'sonner'
+
+// CRM type options with labels
+const CRM_OPTIONS: Array<{ value: TriggerType; label: string; requiresConnection: boolean }> = [
+  { value: 'webhook', label: 'Webhook', requiresConnection: false },
+  { value: 'close', label: 'Close CRM', requiresConnection: true },
+  { value: 'activecampaign', label: 'ActiveCampaign', requiresConnection: true },
+  { value: 'pipedrive', label: 'Pipedrive', requiresConnection: true },
+  { value: 'hubspot', label: 'HubSpot', requiresConnection: true },
+  { value: 'monday', label: 'Monday.com', requiresConnection: true },
+]
 
 export default function EditTriggerPage({
   params,
@@ -31,6 +42,23 @@ export default function EditTriggerPage({
   const updateTrigger = useUpdateTrigger()
   const { data: accounts } = useAccounts()
   const { data: agents } = useAgents()
+  const { data: integrations } = useIntegrations()
+
+  // Check which CRMs are connected
+  const connectedCRMs = {
+    close: integrations?.close_enabled ?? false,
+    activecampaign: integrations?.activecampaign_enabled ?? false,
+    pipedrive: integrations?.pipedrive_enabled ?? false,
+    hubspot: integrations?.hubspot_enabled ?? false,
+    monday: integrations?.monday_enabled ?? false,
+  }
+
+  // Filter available CRM options - include current type even if not connected
+  const availableCRMOptions = CRM_OPTIONS.filter(
+    option => !option.requiresConnection ||
+              connectedCRMs[option.value as keyof typeof connectedCRMs] ||
+              trigger?.type === option.value
+  )
 
   const {
     register,
@@ -42,7 +70,7 @@ export default function EditTriggerPage({
     resolver: zodResolver(triggerSchema),
     values: trigger ? {
       name: trigger.name,
-      type: trigger.type as 'webhook' | 'activecampaign' | 'close',
+      type: trigger.type as TriggerType,
       whatsapp_account_id: trigger.whatsapp_account_id || '',
       agent_id: trigger.agent_id || '',
       first_message: trigger.first_message,

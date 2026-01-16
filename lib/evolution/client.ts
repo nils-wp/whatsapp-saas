@@ -49,6 +49,8 @@ export async function createInstance(instanceName: string) {
       instanceName,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
+      // Device name shown in WhatsApp "Linked Devices"
+      browserName: 'chatsetter',
     }),
   })
 }

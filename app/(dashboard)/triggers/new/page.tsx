@@ -14,14 +14,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
-import { triggerSchema, type TriggerFormData } from '@/lib/utils/validation'
+import { useIntegrations } from '@/lib/hooks/use-integrations'
+import { triggerSchema, type TriggerFormData, type TriggerType } from '@/lib/utils/validation'
 import { toast } from 'sonner'
+
+// CRM type options with labels
+const CRM_OPTIONS: Array<{ value: TriggerType; label: string; requiresConnection: boolean }> = [
+  { value: 'webhook', label: 'Webhook', requiresConnection: false },
+  { value: 'close', label: 'Close CRM', requiresConnection: true },
+  { value: 'activecampaign', label: 'ActiveCampaign', requiresConnection: true },
+  { value: 'pipedrive', label: 'Pipedrive', requiresConnection: true },
+  { value: 'hubspot', label: 'HubSpot', requiresConnection: true },
+  { value: 'monday', label: 'Monday.com', requiresConnection: true },
+]
 
 export default function NewTriggerPage() {
   const router = useRouter()
   const createTrigger = useCreateTrigger()
   const { data: accounts } = useAccounts()
   const { data: agents } = useAgents()
+  const { data: integrations } = useIntegrations()
+
+  // Check which CRMs are connected
+  const connectedCRMs = {
+    close: integrations?.close_enabled ?? false,
+    activecampaign: integrations?.activecampaign_enabled ?? false,
+    pipedrive: integrations?.pipedrive_enabled ?? false,
+    hubspot: integrations?.hubspot_enabled ?? false,
+    monday: integrations?.monday_enabled ?? false,
+  }
+
+  // Filter available CRM options based on connection status
+  const availableCRMOptions = CRM_OPTIONS.filter(
+    option => !option.requiresConnection || connectedCRMs[option.value as keyof typeof connectedCRMs]
+  )
 
   const {
     register,
@@ -90,17 +116,24 @@ export default function NewTriggerPage() {
               <Label>Typ *</Label>
               <Select
                 value={selectedType}
-                onValueChange={(value) => setValue('type', value as 'webhook' | 'activecampaign' | 'close')}
+                onValueChange={(value) => setValue('type', value as TriggerType)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Typ auswählen" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="webhook">Webhook</SelectItem>
-                  <SelectItem value="activecampaign">ActiveCampaign</SelectItem>
-                  <SelectItem value="close">Close CRM</SelectItem>
+                  {availableCRMOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {availableCRMOptions.length === 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Verbinde CRMs unter Einstellungen → Integrationen um mehr Optionen zu sehen.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
