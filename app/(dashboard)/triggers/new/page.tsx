@@ -15,7 +15,7 @@ import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
 import { useIntegrations } from '@/lib/hooks/use-integrations'
-import { triggerSchema, type TriggerFormData, type TriggerType } from '@/lib/utils/validation'
+import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS } from '@/lib/utils/validation'
 import { toast } from 'sonner'
 
 // CRM type options with labels
@@ -64,6 +64,16 @@ export default function NewTriggerPage() {
   })
 
   const selectedType = watch('type')
+  const selectedEvent = watch('trigger_event')
+
+  // Get available events for the selected CRM type
+  const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
+
+  // Reset event when type changes
+  const handleTypeChange = (value: TriggerType) => {
+    setValue('type', value)
+    setValue('trigger_event', '')
+  }
 
   async function onSubmit(data: TriggerFormData) {
     try {
@@ -113,13 +123,13 @@ export default function NewTriggerPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Typ *</Label>
+              <Label>Quelle *</Label>
               <Select
                 value={selectedType}
-                onValueChange={(value) => setValue('type', value as TriggerType)}
+                onValueChange={(value) => handleTypeChange(value as TriggerType)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Typ auswählen" />
+                  <SelectValue placeholder="Quelle auswählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableCRMOptions.map((option) => (
@@ -135,6 +145,34 @@ export default function NewTriggerPage() {
                 </p>
               )}
             </div>
+
+            {selectedType && availableEvents.length > 0 && (
+              <div className="space-y-2">
+                <Label>Event *</Label>
+                <Select
+                  value={selectedEvent || ''}
+                  onValueChange={(value) => setValue('trigger_event', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Event auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEvents.map((event) => (
+                      <SelectItem key={event.value} value={event.value}>
+                        <div className="flex flex-col">
+                          <span>{event.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedEvent && (
+                  <p className="text-xs text-muted-foreground">
+                    {availableEvents.find(e => e.value === selectedEvent)?.description}
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
