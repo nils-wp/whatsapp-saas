@@ -124,7 +124,6 @@ function CRMSection({ integrations }: { integrations: TenantIntegrations | null 
 
 function CloseCard({ integrations }: { integrations: TenantIntegrations | null | undefined }) {
   const [showDialog, setShowDialog] = useState(false)
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const updateIntegrations = useUpdateIntegrations()
   const testClose = useTestClose()
@@ -177,7 +176,6 @@ function CloseCard({ integrations }: { integrations: TenantIntegrations | null |
         ]}
         onConnect={() => setShowDialog(true)}
         onDisconnect={handleDisconnect}
-        onSettings={() => setShowSettingsDialog(true)}
       />
 
       {/* Connect Dialog */}
@@ -215,119 +213,7 @@ function CloseCard({ integrations }: { integrations: TenantIntegrations | null |
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Settings Dialog */}
-      <CloseSettingsDialog
-        open={showSettingsDialog}
-        onOpenChange={setShowSettingsDialog}
-        integrations={integrations}
-      />
     </>
-  )
-}
-
-function CloseSettingsDialog({
-  open,
-  onOpenChange,
-  integrations,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  integrations: TenantIntegrations | null | undefined
-}) {
-  const updateIntegrations = useUpdateIntegrations()
-  const { data: statuses } = useCloseStatuses(integrations?.close_api_key ?? null)
-
-  const [statusNew, setStatusNew] = useState(integrations?.close_status_new || '')
-  const [statusContacted, setStatusContacted] = useState(integrations?.close_status_contacted || '')
-  const [statusBooked, setStatusBooked] = useState(integrations?.close_status_booked || '')
-  const [statusNotInterested, setStatusNotInterested] = useState(integrations?.close_status_not_interested || '')
-
-  const handleSave = async () => {
-    await updateIntegrations.mutateAsync({
-      close_status_new: statusNew || null,
-      close_status_contacted: statusContacted || null,
-      close_status_booked: statusBooked || null,
-      close_status_not_interested: statusNotInterested || null,
-    })
-    toast.success('Einstellungen gespeichert')
-    onOpenChange(false)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Close CRM Einstellungen</DialogTitle>
-          <DialogDescription>
-            Ordne die Lead-Status den Conversation-Outcomes zu.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Status für neue Leads</Label>
-            <Select value={statusNew} onValueChange={setStatusNew}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses?.leadStatuses?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Status für kontaktierte Leads</Label>
-            <Select value={statusContacted} onValueChange={setStatusContacted}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses?.leadStatuses?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Status für gebuchte Termine</Label>
-            <Select value={statusBooked} onValueChange={setStatusBooked}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses?.leadStatuses?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Status für kein Interesse</Label>
-            <Select value={statusNotInterested} onValueChange={setStatusNotInterested}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses?.leadStatuses?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Abbrechen
-          </Button>
-          <Button onClick={handleSave} disabled={updateIntegrations.isPending}>
-            {updateIntegrations.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Speichern
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
