@@ -80,7 +80,7 @@ export async function processQueuedMessages(): Promise<QueueProcessingResult> {
     // Process each entry
     for (const entry of queueEntries) {
       try {
-        const conversation = entry.conversations as {
+        const conversation = entry.conversations as unknown as {
           id: string
           status: string
           agents: { id: string; office_hours: Record<string, unknown> | null } | null

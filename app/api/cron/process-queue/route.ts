@@ -1,22 +1,20 @@
 import { NextResponse } from 'next/server'
 import { processQueuedMessages, getQueueStats } from '@/lib/ai/queue-processor'
 
-/**
- * POST /api/cron/process-queue
- *
- * Verarbeitet Nachrichten aus der Message Queue.
- * Prüft für jeden Eintrag die individuellen Arbeitszeiten des Agents.
- *
- * WICHTIG: Sollte häufig laufen (alle 15 Min), NICHT nur um 08:00 Uhr!
- * Der Processor prüft selbst, ob die Arbeitszeiten des jeweiligen Agents offen sind.
- *
- * Authentifizierung via CRON_SECRET Environment Variable.
- *
- * Beispiel Cron (Coolify/Vercel):
- * - Schedule: "*/15 * * * *" (alle 15 Minuten)
- * - URL: POST /api/cron/process-queue
- * - Header: Authorization: Bearer <CRON_SECRET>
- */
+// POST /api/cron/process-queue
+//
+// Verarbeitet Nachrichten aus der Message Queue.
+// Prüft für jeden Eintrag die individuellen Arbeitszeiten des Agents.
+//
+// WICHTIG: Sollte häufig laufen (alle 15 Min), NICHT nur um 08:00 Uhr!
+// Der Processor prüft selbst, ob die Arbeitszeiten des jeweiligen Agents offen sind.
+//
+// Authentifizierung via CRON_SECRET Environment Variable.
+//
+// Beispiel Cron (Coolify/Vercel):
+// - Schedule: jeden 15. Minute (cron: star-slash-15 * * * *)
+// - URL: POST /api/cron/process-queue
+// - Header: Authorization: Bearer CRON_SECRET
 export async function POST(request: Request) {
   try {
     // Authenticate cron request
