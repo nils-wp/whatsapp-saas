@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
-import { MoreVertical, Trash2, Eye } from 'lucide-react'
+import { de } from 'date-fns/locale'
+import { MoreVertical, Trash2, Eye, CheckCheck } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -26,16 +27,15 @@ interface ConversationListProps {
   onDelete?: (id: string) => void
 }
 
-const statusConfig: Record<string, { label: string; dot: string; text: string }> = {
-  active: { label: 'Active', dot: 'bg-emerald-500', text: 'text-emerald-500' },
-  paused: { label: 'Paused', dot: 'bg-yellow-500', text: 'text-yellow-500' },
-  escalated: { label: 'Escalated', dot: 'bg-red-500', text: 'text-red-500' },
-  completed: { label: 'Completed', dot: 'bg-blue-500', text: 'text-blue-500' },
-  disqualified: { label: 'Disqualified', dot: 'bg-gray-500', text: 'text-gray-500' },
+const statusConfig: Record<string, { label: string; color: string }> = {
+  active: { label: 'Aktiv', color: 'text-[#00a884]' },
+  paused: { label: 'Pausiert', color: 'text-[#f7c948]' },
+  escalated: { label: 'Eskaliert', color: 'text-[#ea4335]' },
+  completed: { label: 'Abgeschlossen', color: 'text-[#53bdeb]' },
+  disqualified: { label: 'Disqualifiziert', color: 'text-[#8696a0]' },
 }
 
 function formatPhoneNumber(phone: string): string {
-  // Format: +49 176 12345678
   if (phone.startsWith('49') && phone.length >= 10) {
     return `+${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5)}`
   }
@@ -59,15 +59,15 @@ function getInitials(name: string | null, phone: string): string {
 export function ConversationList({ conversations, selectedId, onDelete }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500 p-8 text-center">
-        No conversations found
+      <div className="flex items-center justify-center h-full text-[#8696a0] p-8 text-center">
+        Keine Konversationen gefunden
       </div>
     )
   }
 
   return (
     <ScrollArea className="h-full">
-      <div className="divide-y divide-[#2a2a2a]">
+      <div>
         {conversations.map((conversation) => {
           const status = statusConfig[conversation.status] || statusConfig.active
           const isSelected = conversation.id === selectedId
@@ -77,45 +77,46 @@ export function ConversationList({ conversations, selectedId, onDelete }: Conver
             <div
               key={conversation.id}
               className={cn(
-                'flex items-center gap-3 p-4 transition-colors group',
+                'flex items-center gap-3 px-4 py-3 transition-colors group cursor-pointer border-b border-[#222d34]',
                 isSelected
-                  ? 'bg-emerald-500/10 border-l-2 border-emerald-500'
-                  : 'hover:bg-[#252525]'
+                  ? 'bg-[#2a3942]'
+                  : 'hover:bg-[#202c33]'
               )}
             >
               <Link href={`/conversations/${conversation.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-11 w-11 border border-[#3a3a3a]">
+                <Avatar className="h-12 w-12 shrink-0">
                   <AvatarImage
                     src={conversation.profile_picture_url || undefined}
                     alt={conversation.contact_name || conversation.contact_phone}
                   />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 text-emerald-500 font-medium">
+                  <AvatarFallback className="bg-[#6b7c85] text-[#e9edef] font-medium text-base">
                     {getInitials(conversation.contact_name, conversation.contact_phone)}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-white truncate">
+                    <p className="font-medium text-[#e9edef] truncate text-[15px]">
                       {displayName}
                     </p>
-                    <span className="text-xs text-gray-500 shrink-0">
+                    <span className="text-xs text-[#8696a0] shrink-0">
                       {conversation.last_message_at
                         ? formatDistanceToNow(new Date(conversation.last_message_at), {
-                            addSuffix: true,
+                            addSuffix: false,
+                            locale: de,
                           })
                         : '-'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="flex items-center gap-1.5 text-xs">
-                      <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
-                      <span className={status.text}>{status.label}</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <CheckCheck className="h-4 w-4 text-[#53bdeb] shrink-0" />
+                    <span className={cn('text-sm truncate', status.color)}>
+                      {status.label}
                     </span>
                     {conversation.agents?.name && (
-                      <span className="text-xs text-gray-500 truncate">
-                        • {conversation.agents.name}
+                      <span className="text-sm text-[#8696a0] truncate">
+                        · {conversation.agents.name}
                       </span>
                     )}
                   </div>
@@ -124,15 +125,15 @@ export function ConversationList({ conversations, selectedId, onDelete }: Conver
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-colors opacity-0 group-hover:opacity-100">
-                    <MoreVertical className="h-4 w-4" />
+                  <button className="p-2 rounded-full text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942] transition-colors opacity-0 group-hover:opacity-100">
+                    <MoreVertical className="h-5 w-5" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-[#2a2a2a]">
-                  <DropdownMenuItem asChild className="text-gray-300 focus:text-white focus:bg-[#252525]">
+                <DropdownMenuContent align="end" className="bg-[#233138] border-[#233138] shadow-xl">
+                  <DropdownMenuItem asChild className="text-[#e9edef] focus:text-[#e9edef] focus:bg-[#2a3942]">
                     <Link href={`/conversations/${conversation.id}`}>
                       <Eye className="mr-2 h-4 w-4" />
-                      View
+                      Anzeigen
                     </Link>
                   </DropdownMenuItem>
                   {onDelete && (
@@ -141,10 +142,10 @@ export function ConversationList({ conversations, selectedId, onDelete }: Conver
                         e.preventDefault()
                         onDelete(conversation.id)
                       }}
-                      className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                      className="text-[#ea4335] focus:text-[#ea4335] focus:bg-[#2a3942]"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
+                      Löschen
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

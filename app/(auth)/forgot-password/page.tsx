@@ -4,12 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Mail, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { forgotPasswordSchema, type ForgotPasswordFormData } from '@/lib/utils/validation'
 
@@ -51,70 +50,102 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">E-Mail gesendet</CardTitle>
-          <CardDescription>
-            Wir haben dir eine E-Mail mit einem Link zum Zurücksetzen deines
-            Passworts geschickt. Bitte überprüfe dein Postfach.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Link href="/login" className="w-full">
-            <Button variant="outline" className="w-full">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Zurück zum Login
-            </Button>
-          </Link>
-        </CardFooter>
-      </Card>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 mb-3">
+          E-Mail gesendet
+        </h1>
+        <p className="text-slate-500 mb-8 leading-relaxed">
+          Wir haben dir einen Link zum Zurücksetzen deines Passworts geschickt.
+          <br />
+          Bitte überprüfe dein Postfach und deinen Spam-Ordner.
+        </p>
+        <Link href="/login">
+          <Button
+            variant="outline"
+            className="h-12 px-8 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Zurück zum Login
+          </Button>
+        </Link>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Passwort vergessen?</CardTitle>
-        <CardDescription>
-          Gib deine E-Mail-Adresse ein und wir senden dir einen Link zum
-          Zurücksetzen deines Passworts.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-              {error}
-            </div>
-          )}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+          Passwort vergessen?
+        </h1>
+        <p className="text-slate-500">
+          Kein Problem. Gib deine E-Mail ein und wir senden dir einen Reset-Link.
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">E-Mail</Label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Email field */}
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+            E-Mail-Adresse
+          </Label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="email"
               type="email"
-              placeholder="max@beispiel.de"
+              placeholder="name@firma.de"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('email')}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Link senden
-          </Button>
-          <Link
-            href="/login"
-            className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurück zum Login
-          </Link>
-        </CardFooter>
+          {errors.email && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        {/* Submit button */}
+        <Button
+          type="submit"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Link wird gesendet...
+            </>
+          ) : (
+            'Link senden'
+          )}
+        </Button>
       </form>
-    </Card>
+
+      {/* Back to login */}
+      <div className="mt-8 text-center">
+        <Link
+          href="/login"
+          className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Zurück zum Login
+        </Link>
+      </div>
+    </div>
   )
 }

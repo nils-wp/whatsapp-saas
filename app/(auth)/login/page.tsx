@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginFormData } from '@/lib/utils/validation'
 
@@ -49,67 +48,120 @@ export default function LoginPage() {
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Willkommen zurück</CardTitle>
-        <CardDescription>
-          Melde dich mit deinen Zugangsdaten an
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-              {error}
-            </div>
-          )}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+          Willkommen zurück
+        </h1>
+        <p className="text-slate-500">
+          Melde dich an, um fortzufahren
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">E-Mail</Label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Email field */}
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+            E-Mail-Adresse
+          </Label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="email"
               type="email"
-              placeholder="max@beispiel.de"
+              placeholder="name@firma.de"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('email')}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
           </div>
+          {errors.email && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.email.message}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Passwort</Label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                Passwort vergessen?
-              </Link>
-            </div>
+        {/* Password field */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+              Passwort
+            </Label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+            >
+              Vergessen?
+            </Link>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="password"
               type="password"
+              placeholder="••••••••"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Anmelden
-          </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Noch kein Konto?{' '}
-            <Link href="/signup" className="text-primary hover:underline">
-              Jetzt registrieren
-            </Link>
-          </p>
-        </CardFooter>
+          {errors.password && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
+        {/* Submit button */}
+        <Button
+          type="submit"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Anmelden...
+            </>
+          ) : (
+            <>
+              Anmelden
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
       </form>
-    </Card>
+
+      {/* Divider */}
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-white text-slate-400">Neu hier?</span>
+        </div>
+      </div>
+
+      {/* Sign up link */}
+      <Link href="/signup" className="block">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-12 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+        >
+          Kostenloses Konto erstellen
+        </Button>
+      </Link>
+    </div>
   )
 }

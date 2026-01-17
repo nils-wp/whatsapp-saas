@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Lock, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/utils/validation'
 
@@ -24,9 +23,24 @@ export default function ResetPasswordPage() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
   })
+
+  const password = watch('password', '')
+
+  // Password strength indicator
+  const getPasswordStrength = (pwd: string) => {
+    let strength = 0
+    if (pwd.length >= 8) strength++
+    if (/[A-Z]/.test(pwd)) strength++
+    if (/[0-9]/.test(pwd)) strength++
+    if (/[^A-Za-z0-9]/.test(pwd)) strength++
+    return strength
+  }
+
+  const passwordStrength = getPasswordStrength(password)
 
   useEffect(() => {
     // Check if we have access to update password (via hash fragment)
@@ -65,72 +79,146 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Passwort aktualisiert</CardTitle>
-          <CardDescription>
-            Dein Passwort wurde erfolgreich geändert. Du wirst gleich
-            weitergeleitet...
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 mb-3">
+          Passwort aktualisiert
+        </h1>
+        <p className="text-slate-500 mb-2 leading-relaxed">
+          Dein Passwort wurde erfolgreich geändert.
+        </p>
+        <p className="text-sm text-slate-400">
+          Du wirst gleich weitergeleitet...
+        </p>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Neues Passwort setzen</CardTitle>
-        <CardDescription>
-          Gib dein neues Passwort ein
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-              {error}
-            </div>
-          )}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+          Neues Passwort setzen
+        </h1>
+        <p className="text-slate-500">
+          Wähle ein sicheres Passwort für dein Konto
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Neues Passwort</Label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Password field */}
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+            Neues Passwort
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="password"
               type="password"
+              placeholder="Mind. 8 Zeichen, 1 Großbuchstabe, 1 Zahl"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
           </div>
+          {/* Password strength indicator */}
+          {password && (
+            <div className="space-y-2">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                      level <= passwordStrength
+                        ? passwordStrength <= 1
+                          ? 'bg-red-500'
+                          : passwordStrength <= 2
+                          ? 'bg-amber-500'
+                          : passwordStrength <= 3
+                          ? 'bg-emerald-400'
+                          : 'bg-emerald-500'
+                        : 'bg-slate-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">
+                {passwordStrength <= 1 && 'Schwach'}
+                {passwordStrength === 2 && 'Mittel'}
+                {passwordStrength === 3 && 'Stark'}
+                {passwordStrength === 4 && 'Sehr stark'}
+              </p>
+            </div>
+          )}
+          {errors.password && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.password.message}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
+        {/* Confirm password field */}
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+            Passwort bestätigen
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="confirmPassword"
               type="password"
+              placeholder="Passwort wiederholen"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('confirmPassword')}
             />
-            {errors.confirmPassword && (
-              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Passwort speichern
-          </Button>
-          <Link
-            href="/login"
-            className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurück zum Login
-          </Link>
-        </CardFooter>
+          {errors.confirmPassword && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.confirmPassword.message}
+            </p>
+          )}
+        </div>
+
+        {/* Submit button */}
+        <Button
+          type="submit"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Passwort wird gespeichert...
+            </>
+          ) : (
+            'Passwort speichern'
+          )}
+        </Button>
       </form>
-    </Card>
+
+      {/* Back to login */}
+      <div className="mt-8 text-center">
+        <Link
+          href="/login"
+          className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Zurück zum Login
+        </Link>
+      </div>
+    </div>
   )
 }

@@ -1,21 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Mail, Lock, User, AlertCircle, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { signupSchema, type SignupFormData } from '@/lib/utils/validation'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -24,9 +21,24 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   })
+
+  const password = watch('password', '')
+
+  // Password strength indicator
+  const getPasswordStrength = (pwd: string) => {
+    let strength = 0
+    if (pwd.length >= 8) strength++
+    if (/[A-Z]/.test(pwd)) strength++
+    if (/[0-9]/.test(pwd)) strength++
+    if (/[^A-Za-z0-9]/.test(pwd)) strength++
+    return strength
+  }
+
+  const passwordStrength = getPasswordStrength(password)
 
   async function onSubmit(data: SignupFormData) {
     setIsLoading(true)
@@ -61,104 +73,229 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Bestätige deine E-Mail</CardTitle>
-          <CardDescription>
-            Wir haben dir eine E-Mail mit einem Bestätigungslink geschickt.
-            Bitte überprüfe dein Postfach.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Link href="/login" className="w-full">
-            <Button variant="outline" className="w-full">
-              Zurück zum Login
-            </Button>
-          </Link>
-        </CardFooter>
-      </Card>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 mb-3">
+          Bestätige deine E-Mail
+        </h1>
+        <p className="text-slate-500 mb-8 leading-relaxed">
+          Wir haben dir einen Bestätigungslink geschickt.
+          <br />
+          Bitte überprüfe dein Postfach und deinen Spam-Ordner.
+        </p>
+        <Link href="/login">
+          <Button
+            variant="outline"
+            className="h-12 px-8 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+          >
+            Zurück zum Login
+          </Button>
+        </Link>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Konto erstellen</CardTitle>
-        <CardDescription>
-          Starte deine 14-tägige kostenlose Testphase
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-              {error}
-            </div>
-          )}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium mb-4">
+          <Sparkles className="h-3.5 w-3.5" />
+          14 Tage kostenlos testen
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+          Konto erstellen
+        </h1>
+        <p className="text-slate-500">
+          In wenigen Minuten startklar
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Name field */}
+        <div className="space-y-2">
+          <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+            Vollständiger Name
+          </Label>
+          <div className="relative">
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="name"
               type="text"
               placeholder="Max Mustermann"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('name')}
             />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
           </div>
+          {errors.name && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.name.message}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">E-Mail</Label>
+        {/* Email field */}
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+            Geschäftliche E-Mail
+          </Label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="email"
               type="email"
-              placeholder="max@beispiel.de"
+              placeholder="name@firma.de"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('email')}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
           </div>
+          {errors.email && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.email.message}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Passwort</Label>
+        {/* Password field */}
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+            Passwort
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="password"
               type="password"
+              placeholder="Mind. 8 Zeichen, 1 Großbuchstabe, 1 Zahl"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
           </div>
+          {/* Password strength indicator */}
+          {password && (
+            <div className="space-y-2">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                      level <= passwordStrength
+                        ? passwordStrength <= 1
+                          ? 'bg-red-500'
+                          : passwordStrength <= 2
+                          ? 'bg-amber-500'
+                          : passwordStrength <= 3
+                          ? 'bg-emerald-400'
+                          : 'bg-emerald-500'
+                        : 'bg-slate-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">
+                {passwordStrength <= 1 && 'Schwach'}
+                {passwordStrength === 2 && 'Mittel'}
+                {passwordStrength === 3 && 'Stark'}
+                {passwordStrength === 4 && 'Sehr stark'}
+              </p>
+            </div>
+          )}
+          {errors.password && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.password.message}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
+        {/* Confirm password field */}
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+            Passwort bestätigen
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="confirmPassword"
               type="password"
+              placeholder="Passwort wiederholen"
+              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('confirmPassword')}
             />
-            {errors.confirmPassword && (
-              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Registrieren
-          </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Bereits registriert?{' '}
-            <Link href="/login" className="text-primary hover:underline">
-              Jetzt anmelden
-            </Link>
-          </p>
-        </CardFooter>
+          {errors.confirmPassword && (
+            <p className="text-sm text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.confirmPassword.message}
+            </p>
+          )}
+        </div>
+
+        {/* Terms notice */}
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Mit der Registrierung akzeptierst du unsere{' '}
+          <Link href="/terms" className="text-emerald-600 hover:underline">
+            AGB
+          </Link>{' '}
+          und{' '}
+          <Link href="/privacy" className="text-emerald-600 hover:underline">
+            Datenschutzerklärung
+          </Link>
+          .
+        </p>
+
+        {/* Submit button */}
+        <Button
+          type="submit"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Konto wird erstellt...
+            </>
+          ) : (
+            <>
+              Kostenlos starten
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
       </form>
-    </Card>
+
+      {/* Divider */}
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-white text-slate-400">Bereits registriert?</span>
+        </div>
+      </div>
+
+      {/* Login link */}
+      <Link href="/login" className="block">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-12 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+        >
+          Zum Login
+        </Button>
+      </Link>
+    </div>
   )
 }

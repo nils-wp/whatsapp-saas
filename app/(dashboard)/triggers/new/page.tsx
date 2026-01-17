@@ -15,7 +15,7 @@ import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
 import { useIntegrations } from '@/lib/hooks/use-integrations'
-import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS } from '@/lib/utils/validation'
+import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS, type EventFilterValues } from '@/lib/utils/validation'
 import { toast } from 'sonner'
 
 // CRM type options with labels
@@ -65,19 +65,60 @@ export default function NewTriggerPage() {
 
   const selectedType = watch('type')
   const selectedEvent = watch('trigger_event')
+  const eventFilters = watch('event_filters')
 
   // Get available events for the selected CRM type
   const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
 
-  // Reset event when type changes
+  // Get filter configuration for the selected event
+  const filterConfig = selectedType && selectedEvent
+    ? EVENT_FILTERS[selectedType]?.[selectedEvent]
+    : null
+
+  // Reset event and filters when type changes
   const handleTypeChange = (value: TriggerType) => {
     setValue('type', value)
     setValue('trigger_event', '')
+    setValue('event_filters', {})
+  }
+
+  // Reset filters when event changes
+  const handleEventChange = (value: string) => {
+    setValue('trigger_event', value)
+    setValue('event_filters', {})
+  }
+
+  // Update a single filter value
+  const handleFilterChange = (key: string, value: string) => {
+    const currentFilters = eventFilters || {}
+    if (value) {
+      setValue('event_filters', { ...currentFilters, [key]: value })
+    } else {
+      const { [key]: _, ...rest } = currentFilters
+      setValue('event_filters', rest)
+    }
   }
 
   async function onSubmit(data: TriggerFormData) {
     try {
-      const trigger = await createTrigger.mutateAsync(data)
+      // Build external_config with trigger_event and event_filters
+      const external_config = {
+        trigger_event: data.trigger_event,
+        event_filters: data.event_filters,
+      }
+
+      // Create trigger with external_config
+      const triggerData = {
+        name: data.name,
+        type: data.type,
+        whatsapp_account_id: data.whatsapp_account_id,
+        agent_id: data.agent_id,
+        first_message: data.first_message,
+        first_message_delay_seconds: data.first_message_delay_seconds,
+        external_config,
+      }
+
+      const trigger = await createTrigger.mutateAsync(triggerData)
       toast.success('Trigger erfolgreich erstellt')
       router.push(`/triggers/${trigger.id}`)
     } catch (error) {
@@ -151,7 +192,7 @@ export default function NewTriggerPage() {
                 <Label>Event *</Label>
                 <Select
                   value={selectedEvent || ''}
-                  onValueChange={(value) => setValue('trigger_event', value)}
+                  onValueChange={handleEventChange}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Event auswählen" />
@@ -182,6 +223,32 @@ export default function NewTriggerPage() {
                     {availableEvents.find(e => e.value === selectedEvent)?.description}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Event-specific filters */}
+            {filterConfig && filterConfig.filters.length > 0 && (
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <Label className="text-sm font-medium">Filter-Bedingungen</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional: Schränke ein, wann der Trigger ausgelöst wird
+                  </p>
+                </div>
+                {filterConfig.filters.map((filter) => (
+                  <div key={filter.key} className="space-y-2">
+                    <Label htmlFor={`filter-${filter.key}`}>{filter.label}</Label>
+                    <Input
+                      id={`filter-${filter.key}`}
+                      placeholder={filter.placeholder}
+                      value={(eventFilters?.[filter.key] as string) || ''}
+                      onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                    />
+                    {filter.description && (
+                      <p className="text-xs text-muted-foreground">{filter.description}</p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

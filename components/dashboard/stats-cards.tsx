@@ -35,24 +35,24 @@ export function StatsCards({ stats }: StatsCardsProps) {
       value: stats.appointmentsBooked,
       icon: Calendar,
       change: stats.changes?.appointmentsBooked,
-      iconBg: 'bg-emerald-500/10',
-      iconColor: 'text-emerald-500',
+      iconBg: 'bg-[#00a884]/10',
+      iconColor: 'text-[#00a884]',
     },
     {
       titleKey: 'activeConversations',
       value: stats.activeConversations,
       icon: MessageSquare,
       change: stats.changes?.activeConversations,
-      iconBg: 'bg-blue-500/10',
-      iconColor: 'text-blue-500',
+      iconBg: 'bg-[#53bdeb]/10',
+      iconColor: 'text-[#53bdeb]',
     },
     {
       titleKey: 'conversionRate',
       value: `${stats.conversionRate}%`,
       icon: TrendingUp,
       change: stats.changes?.conversionRate,
-      iconBg: 'bg-purple-500/10',
-      iconColor: 'text-purple-500',
+      iconBg: 'bg-[#8696a0]/10',
+      iconColor: 'text-[#8696a0]',
       isPercentage: true,
     },
     {
@@ -60,8 +60,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       value: stats.connectedNumbers,
       icon: Phone,
       change: stats.changes?.connectedNumbers,
-      iconBg: 'bg-orange-500/10',
-      iconColor: 'text-orange-500',
+      iconBg: 'bg-[#f7c948]/10',
+      iconColor: 'text-[#f7c948]',
     },
   ]
 
@@ -70,44 +70,44 @@ export function StatsCards({ stats }: StatsCardsProps) {
       {cards.map((card) => (
         <div
           key={card.titleKey}
-          className="relative overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6"
+          className="relative overflow-hidden rounded-xl border border-[#222d34] bg-[#111b21] p-5 transition-colors hover:bg-[#1a252c]"
         >
           <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-400">
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-[#8696a0]">
                 {t(card.titleKey)}
               </p>
-              <p className="text-3xl font-bold tracking-tight text-white">
+              <p className="text-3xl font-semibold tracking-tight text-[#e9edef]">
                 {typeof card.value === 'number'
                   ? card.value.toLocaleString()
                   : card.value}
               </p>
               {card.change !== undefined && card.change !== 0 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 pt-1">
                   <span
                     className={cn(
                       'flex items-center text-xs font-medium',
-                      card.change >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      card.change >= 0 ? 'text-[#00a884]' : 'text-[#ea4335]'
                     )}
                   >
                     {card.change >= 0 ? (
-                      <ArrowUpRight className="h-3 w-3" />
+                      <ArrowUpRight className="h-3.5 w-3.5" />
                     ) : (
-                      <ArrowDownRight className="h-3 w-3" />
+                      <ArrowDownRight className="h-3.5 w-3.5" />
                     )}
                     {Math.abs(card.change)}%
                   </span>
-                  <span className="text-xs text-gray-500">{t('vsLastWeek')}</span>
+                  <span className="text-xs text-[#667781]">{t('vsLastWeek')}</span>
                 </div>
               )}
             </div>
             <div
               className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-lg',
+                'flex h-11 w-11 items-center justify-center rounded-xl',
                 card.iconBg
               )}
             >
-              <card.icon className={cn('h-6 w-6', card.iconColor)} />
+              <card.icon className={cn('h-5 w-5', card.iconColor)} />
             </div>
           </div>
         </div>

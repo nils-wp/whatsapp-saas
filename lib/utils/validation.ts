@@ -262,10 +262,333 @@ export const CRM_EVENTS: Record<TriggerType, Array<{ value: string; label: strin
   ],
 }
 
+// Event filter configuration - defines what filters are available per event
+// Each filter can be:
+// - 'text': Free text input
+// - 'select': Select from predefined options (fetched dynamically from CRM)
+// - 'multi_select': Select multiple values
+export interface EventFilterField {
+  key: string
+  label: string
+  type: 'text' | 'select' | 'multi_select'
+  placeholder?: string
+  description?: string
+  // For 'select' type: if 'dynamic', options are fetched from CRM API
+  // If array, use static options
+  options?: 'dynamic' | Array<{ value: string; label: string }>
+  // The webhook payload path to check this filter against
+  payloadPath: string
+  // Optional: if true, check if the payload value is in the filter array (for multi_select)
+  matchMode?: 'equals' | 'contains' | 'in'
+}
+
+export interface EventFilterConfig {
+  filters: EventFilterField[]
+}
+
+// Event filters configuration per CRM type and event
+export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig>> = {
+  webhook: {},
+  close: {
+    // Lead status changed - filter by target status
+    lead_status_changed: {
+      filters: [
+        {
+          key: 'target_status',
+          label: 'Ziel-Status',
+          type: 'select',
+          placeholder: 'Status auswählen...',
+          description: 'Trigger nur wenn der Lead in diesen Status wechselt',
+          options: 'dynamic', // Will fetch lead statuses from Close API
+          payloadPath: 'data.new_status_label',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Opportunity status changed - filter by target status
+    opportunity_status_changed: {
+      filters: [
+        {
+          key: 'target_status',
+          label: 'Ziel-Status',
+          type: 'select',
+          placeholder: 'Status auswählen...',
+          description: 'Trigger nur wenn die Opportunity in diesen Status wechselt',
+          options: 'dynamic',
+          payloadPath: 'data.new_status_label',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Contact tag added - filter by specific tag
+    contact_tag_added: {
+      filters: [
+        {
+          key: 'tag_name',
+          label: 'Tag-Name',
+          type: 'text',
+          placeholder: 'z.B. "VIP"',
+          description: 'Trigger nur wenn dieser Tag hinzugefügt wird',
+          payloadPath: 'data.tag',
+          matchMode: 'equals',
+        },
+      ],
+    },
+  },
+  activecampaign: {
+    // Deal stage changed
+    deal_stage_changed: {
+      filters: [
+        {
+          key: 'target_stage',
+          label: 'Ziel-Stage',
+          type: 'select',
+          placeholder: 'Stage auswählen...',
+          description: 'Trigger nur wenn der Deal in diese Stage wechselt',
+          options: 'dynamic',
+          payloadPath: 'deal.stage',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Contact tag added
+    contact_tag_added: {
+      filters: [
+        {
+          key: 'tag_name',
+          label: 'Tag-Name',
+          type: 'text',
+          placeholder: 'z.B. "Newsletter"',
+          description: 'Trigger nur wenn dieser Tag hinzugefügt wird',
+          payloadPath: 'contact.tag',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Form submitted - filter by form
+    form_submitted: {
+      filters: [
+        {
+          key: 'form_id',
+          label: 'Formular',
+          type: 'select',
+          placeholder: 'Formular auswählen...',
+          description: 'Trigger nur bei diesem Formular',
+          options: 'dynamic',
+          payloadPath: 'form.id',
+          matchMode: 'equals',
+        },
+      ],
+    },
+  },
+  pipedrive: {
+    // Deal stage changed
+    deal_stage_changed: {
+      filters: [
+        {
+          key: 'target_stage_id',
+          label: 'Ziel-Stage',
+          type: 'select',
+          placeholder: 'Stage auswählen...',
+          description: 'Trigger nur wenn der Deal in diese Stage wechselt',
+          options: 'dynamic',
+          payloadPath: 'current.stage_id',
+          matchMode: 'equals',
+        },
+        {
+          key: 'pipeline_id',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Optional: Nur für diese Pipeline',
+          options: 'dynamic',
+          payloadPath: 'current.pipeline_id',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Person updated - filter by field
+    person_updated: {
+      filters: [
+        {
+          key: 'field_changed',
+          label: 'Geändertes Feld',
+          type: 'text',
+          placeholder: 'z.B. "phone"',
+          description: 'Trigger nur wenn dieses Feld geändert wurde',
+          payloadPath: 'meta.changed_fields',
+          matchMode: 'contains',
+        },
+      ],
+    },
+  },
+  hubspot: {
+    // Deal stage changed
+    deal_stage_changed: {
+      filters: [
+        {
+          key: 'target_stage',
+          label: 'Ziel-Stage',
+          type: 'select',
+          placeholder: 'Stage auswählen...',
+          description: 'Trigger nur wenn der Deal in diese Stage wechselt',
+          options: 'dynamic',
+          payloadPath: 'properties.dealstage',
+          matchMode: 'equals',
+        },
+        {
+          key: 'pipeline',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Optional: Nur für diese Pipeline',
+          options: 'dynamic',
+          payloadPath: 'properties.pipeline',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Contact property changed
+    contact_property_changed: {
+      filters: [
+        {
+          key: 'property_name',
+          label: 'Eigenschaft',
+          type: 'select',
+          placeholder: 'Eigenschaft auswählen...',
+          description: 'Trigger nur wenn diese Eigenschaft geändert wird',
+          options: 'dynamic',
+          payloadPath: 'propertyName',
+          matchMode: 'equals',
+        },
+        {
+          key: 'property_value',
+          label: 'Neuer Wert',
+          type: 'text',
+          placeholder: 'Optional: Nur bei diesem Wert',
+          description: 'Optional: Trigger nur wenn der neue Wert diesem entspricht',
+          payloadPath: 'properties.*', // Dynamic based on property_name
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Form submitted
+    form_submitted: {
+      filters: [
+        {
+          key: 'form_id',
+          label: 'Formular',
+          type: 'select',
+          placeholder: 'Formular auswählen...',
+          description: 'Trigger nur bei diesem Formular',
+          options: 'dynamic',
+          payloadPath: 'formId',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Ticket status changed
+    ticket_status_changed: {
+      filters: [
+        {
+          key: 'target_status',
+          label: 'Ziel-Status',
+          type: 'select',
+          placeholder: 'Status auswählen...',
+          description: 'Trigger nur wenn das Ticket in diesen Status wechselt',
+          options: 'dynamic',
+          payloadPath: 'properties.hs_pipeline_stage',
+          matchMode: 'equals',
+        },
+      ],
+    },
+  },
+  monday: {
+    // Item status changed
+    item_status_changed: {
+      filters: [
+        {
+          key: 'target_status',
+          label: 'Ziel-Status',
+          type: 'text',
+          placeholder: 'z.B. "Done"',
+          description: 'Trigger nur wenn der Status zu diesem Wert wechselt',
+          payloadPath: 'event.value.label.text',
+          matchMode: 'equals',
+        },
+        {
+          key: 'column_id',
+          label: 'Status-Spalte',
+          type: 'text',
+          placeholder: 'Optional: Spalten-ID',
+          description: 'Optional: Nur für diese Spalte',
+          payloadPath: 'event.columnId',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Column value changed
+    column_value_changed: {
+      filters: [
+        {
+          key: 'column_id',
+          label: 'Spalte',
+          type: 'text',
+          placeholder: 'Spalten-ID',
+          description: 'Trigger nur wenn diese Spalte geändert wird',
+          payloadPath: 'event.columnId',
+          matchMode: 'equals',
+        },
+        {
+          key: 'new_value',
+          label: 'Neuer Wert',
+          type: 'text',
+          placeholder: 'Optional: Wert',
+          description: 'Optional: Trigger nur bei diesem Wert',
+          payloadPath: 'event.value.value',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Item moved to group
+    item_moved_to_group: {
+      filters: [
+        {
+          key: 'target_group_id',
+          label: 'Ziel-Gruppe',
+          type: 'text',
+          placeholder: 'Gruppen-ID',
+          description: 'Trigger nur wenn in diese Gruppe verschoben',
+          payloadPath: 'event.destGroupId',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    // Subitem status changed
+    subitem_status_changed: {
+      filters: [
+        {
+          key: 'target_status',
+          label: 'Ziel-Status',
+          type: 'text',
+          placeholder: 'z.B. "Working on it"',
+          description: 'Trigger nur bei diesem Status',
+          payloadPath: 'event.value.label.text',
+          matchMode: 'equals',
+        },
+      ],
+    },
+  },
+}
+
+// Helper type for event filter values
+export type EventFilterValues = Record<string, string | string[]>
+
 export const triggerSchema = z.object({
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen lang sein'),
   type: triggerTypeEnum,
   trigger_event: z.string().optional(),
+  event_filters: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
   whatsapp_account_id: z.string().uuid('Bitte wähle einen WhatsApp-Account'),
   agent_id: z.string().uuid('Bitte wähle einen Agent'),
   first_message: z.string().min(10, 'Erste Nachricht muss mindestens 10 Zeichen lang sein'),

@@ -27,11 +27,10 @@ export function MessageBubble({ message, sentByName }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound'
   const StatusIcon = statusIcons[message.status as keyof typeof statusIcons] || Clock
 
-  // Determine sender label
   const getSenderLabel = () => {
-    if (message.sender_type === 'agent') return 'Agent'
+    if (message.sender_type === 'agent') return 'KI Agent'
     if (message.sender_type === 'human' && sentByName) return sentByName
-    if (message.sender_type === 'human') return 'Human'
+    if (message.sender_type === 'human') return 'Mitarbeiter'
     return null
   }
 
@@ -40,33 +39,33 @@ export function MessageBubble({ message, sentByName }: MessageBubbleProps) {
   return (
     <div
       className={cn(
-        'flex mb-2',
+        'flex mb-1',
         isOutbound ? 'justify-end' : 'justify-start'
       )}
     >
       <div
         className={cn(
-          'max-w-[70%] rounded-lg px-4 py-2',
+          'relative max-w-[85%] sm:max-w-[70%] px-3 py-2 shadow-sm',
           isOutbound
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted'
+            ? 'bg-[#005c4b] text-[#e9edef] rounded-tl-lg rounded-tr-lg rounded-bl-lg rounded-br-sm'
+            : 'bg-[#202c33] text-[#e9edef] rounded-tl-sm rounded-tr-lg rounded-bl-lg rounded-br-lg'
         )}
       >
         {/* Sender indicator for outbound */}
         {isOutbound && senderLabel && (
-          <p className="text-xs opacity-70 mb-1">
+          <p className="text-[11px] text-[#8fdfcb] font-medium mb-0.5">
             {senderLabel}
           </p>
         )}
 
         {/* Message content */}
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        <p className="whitespace-pre-wrap break-words text-[14.2px] leading-[19px]">{message.content}</p>
 
         {/* Timestamp and status */}
         <div
           className={cn(
-            'flex items-center gap-1 mt-1 text-xs',
-            isOutbound ? 'justify-end opacity-70' : 'text-muted-foreground'
+            'flex items-center gap-1 mt-1 text-[11px] select-none',
+            isOutbound ? 'justify-end text-[#8fdfcb]/70' : 'text-[#8696a0]'
           )}
         >
           <span>
@@ -75,9 +74,12 @@ export function MessageBubble({ message, sentByName }: MessageBubbleProps) {
           {isOutbound && (
             <StatusIcon
               className={cn(
-                'h-3 w-3',
-                message.status === 'read' && 'text-blue-400',
-                message.status === 'failed' && 'text-red-400'
+                'h-[14px] w-[14px] ml-0.5',
+                message.status === 'read' && 'text-[#53bdeb]',
+                message.status === 'delivered' && 'text-[#8fdfcb]/70',
+                message.status === 'sent' && 'text-[#8fdfcb]/70',
+                message.status === 'pending' && 'text-[#8fdfcb]/50',
+                message.status === 'failed' && 'text-[#ea4335]'
               )}
             />
           )}
