@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
-import { useIntegrations } from '@/lib/hooks/use-integrations'
+import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPipelines } from '@/lib/hooks/use-integrations'
 import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS, type EventFilterValues } from '@/lib/utils/validation'
 import { ActionConfig } from '@/components/triggers/action-config'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,6 +39,67 @@ export default function NewTriggerPage() {
   const { data: accounts } = useAccounts()
   const { data: agents } = useAgents()
   const { data: integrations } = useIntegrations()
+
+  // Fetch dynamic options for filters
+  const { data: closeStatuses, isLoading: closeStatusesLoading } = useCloseStatuses(
+    integrations?.close_api_key ?? null
+  )
+  const { data: pipedrivePipelines, isLoading: pipedrivePipelinesLoading } = usePipedrivePipelines(
+    integrations?.pipedrive_api_token ?? null
+  )
+  const { data: hubspotPipelines, isLoading: hubspotPipelinesLoading } = useHubSpotPipelines(
+    integrations?.hubspot_access_token ?? null
+  )
+
+  // Helper to get dynamic options for a filter
+  const getDynamicOptions = (
+    crmType: TriggerType,
+    filterKey: string
+  ): { options: Array<{ value: string; label: string }>; isLoading: boolean } => {
+    if (crmType === 'close') {
+      if (filterKey === 'target_status' || filterKey === 'lead_status') {
+        return {
+          options: closeStatuses?.leadStatuses?.map(s => ({ value: s.label, label: s.label })) ?? [],
+          isLoading: closeStatusesLoading,
+        }
+      }
+      if (filterKey === 'pipeline') {
+        return {
+          options: closeStatuses?.opportunityStatuses?.map(s => ({ value: s.id, label: s.label })) ?? [],
+          isLoading: closeStatusesLoading,
+        }
+      }
+    }
+    if (crmType === 'pipedrive') {
+      if (filterKey === 'pipeline_id') {
+        return {
+          options: pipedrivePipelines?.pipelines?.map(p => ({ value: String(p.id), label: p.name })) ?? [],
+          isLoading: pipedrivePipelinesLoading,
+        }
+      }
+      if (filterKey === 'target_stage_id') {
+        return {
+          options: pipedrivePipelines?.stages?.map(s => ({ value: String(s.id), label: s.name })) ?? [],
+          isLoading: pipedrivePipelinesLoading,
+        }
+      }
+    }
+    if (crmType === 'hubspot') {
+      if (filterKey === 'pipeline') {
+        return {
+          options: hubspotPipelines?.pipelines?.map(p => ({ value: p.id, label: p.label })) ?? [],
+          isLoading: hubspotPipelinesLoading,
+        }
+      }
+      if (filterKey === 'target_stage') {
+        return {
+          options: hubspotPipelines?.stages?.map(s => ({ value: s.id, label: s.label })) ?? [],
+          isLoading: hubspotPipelinesLoading,
+        }
+      }
+    }
+    return { options: [], isLoading: false }
+  }
 
   // Check which CRMs are connected
   const connectedCRMs = {
@@ -334,29 +395,43 @@ export default function NewTriggerPage() {
                     )}
 
                     {/* Select filter (dynamic or static options) */}
-                    {filter.type === 'select' && (
-                      <Select
-                        value={(eventFilters?.[filter.key] as string) || ''}
-                        onValueChange={(value) => handleFilterChange(filter.key, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={filter.placeholder || 'Auswählen...'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filter.options === 'dynamic' ? (
-                            <SelectItem value="_dynamic" disabled>
-                              Wird dynamisch geladen...
-                            </SelectItem>
-                          ) : (
-                            Array.isArray(filter.options) && filter.options.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
+                    {filter.type === 'select' && (() => {
+                      const isDynamic = filter.options === 'dynamic'
+                      const dynamicData = isDynamic && selectedType
+                        ? getDynamicOptions(selectedType, filter.key)
+                        : { options: [], isLoading: false }
+                      const options = isDynamic ? dynamicData.options : (Array.isArray(filter.options) ? filter.options : [])
+                      const isLoading = isDynamic && dynamicData.isLoading
+
+                      return (
+                        <Select
+                          value={(eventFilters?.[filter.key] as string) || ''}
+                          onValueChange={(value) => handleFilterChange(filter.key, value)}
+                          disabled={isLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoading ? 'Wird geladen...' : (filter.placeholder || 'Auswählen...')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {isLoading ? (
+                              <SelectItem value="_loading" disabled>
+                                Wird geladen...
                               </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
+                            ) : options.length === 0 ? (
+                              <SelectItem value="_empty" disabled>
+                                Keine Optionen verfügbar
+                              </SelectItem>
+                            ) : (
+                              options.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )
+                    })()}
 
                     {/* Text filter */}
                     {filter.type === 'text' && (
