@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Play } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Play, Variable } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,9 +11,12 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { CRM_ACTIONS, getActionCategories, getActionsByCategory, type CRMAction, type ActionField } from '@/lib/utils/crm-actions'
 import type { TriggerType } from '@/lib/utils/validation'
 import { cn } from '@/lib/utils'
+import { VariablePicker, VariableDisplay } from './variable-picker'
+import type { TriggerVariable } from '@/lib/utils/trigger-variables'
 
 interface ActionInstance {
   id: string
@@ -33,6 +36,9 @@ interface ActionConfigProps {
     hubspot: boolean
     monday: boolean
   }
+  // For dynamic variables from trigger
+  triggerType: TriggerType
+  triggerEvent?: string
 }
 
 // Available CRM options for actions (excluding webhook)
@@ -44,7 +50,13 @@ const CRM_ACTION_OPTIONS: Array<{ value: TriggerType; label: string }> = [
   { value: 'monday', label: 'Monday.com' },
 ]
 
-export function ActionConfig({ actions, onChange, connectedCRMs }: ActionConfigProps) {
+export function ActionConfig({
+  actions,
+  onChange,
+  connectedCRMs,
+  triggerType,
+  triggerEvent,
+}: ActionConfigProps) {
   const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set())
 
   // Filter available CRMs based on connections
@@ -123,191 +135,207 @@ export function ActionConfig({ actions, onChange, connectedCRMs }: ActionConfigP
           Aktionen
         </CardTitle>
         <CardDescription>
-          Konfiguriere Aktionen, die nach der WhatsApp-Nachricht ausgeführt werden
+          Konfiguriere Aktionen, die nach der WhatsApp-Nachricht ausgefuhrt werden.
+          Verwende Variablen aus dem Trigger-Payload fur dynamische Werte.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {availableCRMs.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Verbinde zuerst ein CRM unter Einstellungen → Integrationen, um Aktionen zu konfigurieren.
+            Verbinde zuerst ein CRM unter Einstellungen - Integrationen, um Aktionen zu konfigurieren.
           </p>
         )}
 
-        {/* List of configured actions */}
-        {actions.map((action, index) => {
-          const isExpanded = expandedActions.has(action.id)
-          const actionDef = CRM_ACTIONS[action.crm_type]?.find(a => a.value === action.action)
-          const categories = getActionCategories(action.crm_type)
+        {/* List of configured actions - with scroll area for many actions */}
+        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+          {actions.map((action, index) => {
+            const isExpanded = expandedActions.has(action.id)
+            const actionDef = CRM_ACTIONS[action.crm_type]?.find(a => a.value === action.action)
+            const categories = getActionCategories(action.crm_type)
 
-          return (
-            <Collapsible
-              key={action.id}
-              open={isExpanded}
-              onOpenChange={() => toggleExpanded(action.id)}
-            >
-              <div className={cn(
-                'border rounded-lg transition-colors',
-                action.enabled ? 'border-border' : 'border-muted bg-muted/20'
-              )}>
-                {/* Action header */}
-                <div className="flex items-center gap-2 p-3">
-                  <button
-                    type="button"
-                    className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </button>
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => moveAction(index, 'up')}
-                      disabled={index === 0}
-                    >
-                      <ChevronUp className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => moveAction(index, 'down')}
-                      disabled={index === actions.length - 1}
-                    >
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </div>
-
-                  <CollapsibleTrigger asChild>
+            return (
+              <Collapsible
+                key={action.id}
+                open={isExpanded}
+                onOpenChange={() => toggleExpanded(action.id)}
+              >
+                <div className={cn(
+                  'border rounded-lg transition-colors',
+                  action.enabled ? 'border-border' : 'border-muted bg-muted/20'
+                )}>
+                  {/* Action header */}
+                  <div className="flex items-center gap-2 p-3">
                     <button
                       type="button"
-                      className="flex-1 flex items-center gap-2 text-left"
+                      className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
                     >
-                      <Badge variant="outline" className="text-xs">
-                        {getCRMLabel(action.crm_type)}
-                      </Badge>
-                      <span className={cn(
-                        'font-medium',
-                        !action.enabled && 'text-muted-foreground'
-                      )}>
-                        {getActionLabel(action.crm_type, action.action)}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
-                      )}
+                      <GripVertical className="h-4 w-4" />
                     </button>
-                  </CollapsibleTrigger>
 
-                  <Switch
-                    checked={action.enabled}
-                    onCheckedChange={(enabled) => updateAction(action.id, { enabled })}
-                  />
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => removeAction(action.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Action configuration */}
-                <CollapsibleContent>
-                  <div className="border-t p-4 space-y-4">
-                    {/* CRM and Action selection */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>CRM</Label>
-                        <Select
-                          value={action.crm_type}
-                          onValueChange={(value) => {
-                            const newCRM = value as TriggerType
-                            const firstAction = CRM_ACTIONS[newCRM]?.[0]?.value || ''
-                            updateAction(action.id, {
-                              crm_type: newCRM,
-                              action: firstAction,
-                              fields: {},
-                            })
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableCRMs.map((crm) => (
-                              <SelectItem key={crm.value} value={crm.value}>
-                                {crm.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Aktion</Label>
-                        <Select
-                          value={action.action}
-                          onValueChange={(value) => updateAction(action.id, { action: value, fields: {} })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Aktion auswählen" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-80">
-                            {categories.map(category => (
-                              <div key={category}>
-                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
-                                  {category}
-                                </div>
-                                {getActionsByCategory(action.crm_type, category).map((a) => (
-                                  <SelectItem key={a.value} value={a.value}>
-                                    {a.label}
-                                  </SelectItem>
-                                ))}
-                              </div>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => moveAction(index, 'up')}
+                        disabled={index === 0}
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => moveAction(index, 'down')}
+                        disabled={index === actions.length - 1}
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
                     </div>
 
-                    {/* Action description */}
-                    {actionDef && (
-                      <p className="text-sm text-muted-foreground">
-                        {actionDef.description}
-                      </p>
-                    )}
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex-1 flex items-center gap-2 text-left"
+                      >
+                        <Badge variant="outline" className="text-xs">
+                          {getCRMLabel(action.crm_type)}
+                        </Badge>
+                        <span className={cn(
+                          'font-medium',
+                          !action.enabled && 'text-muted-foreground'
+                        )}>
+                          {getActionLabel(action.crm_type, action.action)}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
+                        )}
+                      </button>
+                    </CollapsibleTrigger>
 
-                    {/* Action fields */}
-                    {actionDef && actionDef.fields.length > 0 && (
-                      <div className="space-y-4 pt-2 border-t">
-                        {actionDef.fields.map((field) => (
-                          <ActionFieldInput
-                            key={field.key}
-                            field={field}
-                            value={action.fields[field.key]}
-                            onChange={(value) => {
+                    <Switch
+                      checked={action.enabled}
+                      onCheckedChange={(enabled) => updateAction(action.id, { enabled })}
+                    />
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeAction(action.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Action configuration */}
+                  <CollapsibleContent>
+                    <div className="border-t p-4 space-y-4">
+                      {/* CRM and Action selection */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>CRM</Label>
+                          <Select
+                            value={action.crm_type}
+                            onValueChange={(value) => {
+                              const newCRM = value as TriggerType
+                              const firstAction = CRM_ACTIONS[newCRM]?.[0]?.value || ''
                               updateAction(action.id, {
-                                fields: { ...action.fields, [field.key]: value },
+                                crm_type: newCRM,
+                                action: firstAction,
+                                fields: {},
                               })
                             }}
-                          />
-                        ))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableCRMs.map((crm) => (
+                                <SelectItem key={crm.value} value={crm.value}>
+                                  {crm.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Aktion</Label>
+                          <Select
+                            value={action.action}
+                            onValueChange={(value) => updateAction(action.id, { action: value, fields: {} })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Aktion auswahlen" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-80">
+                              <ScrollArea className="h-72">
+                                {categories.map(category => (
+                                  <div key={category}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0 z-10">
+                                      {category}
+                                    </div>
+                                    {getActionsByCategory(action.crm_type, category).map((a) => (
+                                      <SelectItem key={a.value} value={a.value}>
+                                        {a.label}
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                ))}
+                              </ScrollArea>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          )
-        })}
+
+                      {/* Action description */}
+                      {actionDef && (
+                        <p className="text-sm text-muted-foreground">
+                          {actionDef.description}
+                        </p>
+                      )}
+
+                      {/* Variable hint */}
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <Variable className="h-4 w-4 text-primary shrink-0" />
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium text-primary">Tipp:</span> Bei Textfeldern kannst du Variablen aus dem Trigger-Payload einfugen,
+                          z.B. Kontaktdaten oder Lead-Informationen.
+                        </p>
+                      </div>
+
+                      {/* Action fields */}
+                      {actionDef && actionDef.fields.length > 0 && (
+                        <div className="space-y-4 pt-2 border-t">
+                          {actionDef.fields.map((field) => (
+                            <ActionFieldInput
+                              key={field.key}
+                              field={field}
+                              value={action.fields[field.key]}
+                              onChange={(value) => {
+                                updateAction(action.id, {
+                                  fields: { ...action.fields, [field.key]: value },
+                                })
+                              }}
+                              triggerType={triggerType}
+                              triggerEvent={triggerEvent}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            )
+          })}
+        </div>
 
         {/* Add action button */}
         {availableCRMs.length > 0 && (
@@ -318,7 +346,7 @@ export function ActionConfig({ actions, onChange, connectedCRMs }: ActionConfigP
             onClick={addAction}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Aktion hinzufügen
+            Aktion hinzufugen
           </Button>
         )}
       </CardContent>
@@ -326,14 +354,33 @@ export function ActionConfig({ actions, onChange, connectedCRMs }: ActionConfigP
   )
 }
 
-// Individual field input component
+// Individual field input component with variable support
 interface ActionFieldInputProps {
   field: ActionField
   value: unknown
   onChange: (value: unknown) => void
+  triggerType: TriggerType
+  triggerEvent?: string
 }
 
-function ActionFieldInput({ field, value, onChange }: ActionFieldInputProps) {
+function ActionFieldInput({
+  field,
+  value,
+  onChange,
+  triggerType,
+  triggerEvent,
+}: ActionFieldInputProps) {
+  // Track input ref for cursor position
+  const handleVariableSelect = (variable: TriggerVariable, currentValue: string) => {
+    const placeholder = `{{${variable.key}}}`
+    // Append variable at the end
+    const newValue = currentValue ? `${currentValue} ${placeholder}` : placeholder
+    onChange(newValue)
+  }
+
+  // Check if this field type supports variables
+  const supportsVariables = ['text', 'textarea', 'email', 'phone', 'url'].includes(field.type)
+
   const renderInput = () => {
     switch (field.type) {
       case 'text':
@@ -341,22 +388,60 @@ function ActionFieldInput({ field, value, onChange }: ActionFieldInputProps) {
       case 'phone':
       case 'url':
         return (
-          <Input
-            type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
-            placeholder={field.placeholder}
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
-          />
+          <div className="space-y-2">
+            {supportsVariables && (
+              <VariablePicker
+                triggerType={triggerType}
+                triggerEvent={triggerEvent}
+                onSelect={(variable) => handleVariableSelect(variable, (value as string) || '')}
+              />
+            )}
+            <Input
+              type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+              placeholder={field.placeholder}
+              value={(value as string) || ''}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            {typeof value === 'string' && value.includes('{{') && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Vorschau:</span>
+                <VariableDisplay
+                  value={value}
+                  triggerType={triggerType}
+                  triggerEvent={triggerEvent}
+                />
+              </div>
+            )}
+          </div>
         )
 
       case 'textarea':
         return (
-          <Textarea
-            placeholder={field.placeholder}
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
-            rows={3}
-          />
+          <div className="space-y-2">
+            {supportsVariables && (
+              <VariablePicker
+                triggerType={triggerType}
+                triggerEvent={triggerEvent}
+                onSelect={(variable) => handleVariableSelect(variable, (value as string) || '')}
+              />
+            )}
+            <Textarea
+              placeholder={field.placeholder}
+              value={(value as string) || ''}
+              onChange={(e) => onChange(e.target.value)}
+              rows={3}
+            />
+            {typeof value === 'string' && value.includes('{{') && (
+              <div className="flex flex-wrap items-start gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0">Vorschau:</span>
+                <VariableDisplay
+                  value={value}
+                  triggerType={triggerType}
+                  triggerEvent={triggerEvent}
+                />
+              </div>
+            )}
+          </div>
         )
 
       case 'number':
@@ -402,12 +487,30 @@ function ActionFieldInput({ field, value, onChange }: ActionFieldInputProps) {
 
       case 'select':
         if (field.options === 'dynamic') {
+          // Dynamic select - show text input with variable support
           return (
-            <Input
-              placeholder={field.placeholder || 'ID eingeben...'}
-              value={(value as string) || ''}
-              onChange={(e) => onChange(e.target.value)}
-            />
+            <div className="space-y-2">
+              <VariablePicker
+                triggerType={triggerType}
+                triggerEvent={triggerEvent}
+                onSelect={(variable) => handleVariableSelect(variable, (value as string) || '')}
+              />
+              <Input
+                placeholder={field.placeholder || 'ID eingeben oder Variable wahlen...'}
+                value={(value as string) || ''}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              {typeof value === 'string' && value.includes('{{') && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Vorschau:</span>
+                  <VariableDisplay
+                    value={value}
+                    triggerType={triggerType}
+                    triggerEvent={triggerEvent}
+                  />
+                </div>
+              )}
+            </div>
           )
         }
         return (
@@ -416,7 +519,7 @@ function ActionFieldInput({ field, value, onChange }: ActionFieldInputProps) {
             onValueChange={onChange}
           >
             <SelectTrigger>
-              <SelectValue placeholder={field.placeholder || 'Auswählen...'} />
+              <SelectValue placeholder={field.placeholder || 'Auswahlen...'} />
             </SelectTrigger>
             <SelectContent>
               {Array.isArray(field.options) && field.options.map((option) => (
@@ -447,11 +550,18 @@ function ActionFieldInput({ field, value, onChange }: ActionFieldInputProps) {
 
       default:
         return (
-          <Input
-            placeholder={field.placeholder}
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
-          />
+          <div className="space-y-2">
+            <VariablePicker
+              triggerType={triggerType}
+              triggerEvent={triggerEvent}
+              onSelect={(variable) => handleVariableSelect(variable, (value as string) || '')}
+            />
+            <Input
+              placeholder={field.placeholder}
+              value={(value as string) || ''}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </div>
         )
     }
   }

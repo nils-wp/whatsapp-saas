@@ -476,6 +476,8 @@ export default function NewTriggerPage() {
           actions={actions}
           onChange={setActions}
           connectedCRMs={connectedCRMs}
+          triggerType={selectedType || 'webhook'}
+          triggerEvent={selectedEvent}
         />
 
         <div className="flex justify-end gap-4">
