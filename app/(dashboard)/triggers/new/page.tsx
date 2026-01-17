@@ -16,6 +16,11 @@ import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
 import { useIntegrations } from '@/lib/hooks/use-integrations'
 import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS, type EventFilterValues } from '@/lib/utils/validation'
+import { ActionConfig } from '@/components/triggers/action-config'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { X } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 // CRM type options with labels
@@ -67,6 +72,15 @@ export default function NewTriggerPage() {
   const selectedEvent = watch('trigger_event')
   const eventFilters = watch('event_filters')
 
+  // Actions state
+  const [actions, setActions] = useState<Array<{
+    id: string
+    crm_type: TriggerType
+    action: string
+    fields: Record<string, unknown>
+    enabled: boolean
+  }>>([])
+
   // Get available events for the selected CRM type
   const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
 
@@ -88,7 +102,7 @@ export default function NewTriggerPage() {
     setValue('event_filters', {})
   }
 
-  // Update a single filter value
+  // Update a single filter value (text or single select)
   const handleFilterChange = (key: string, value: string) => {
     const currentFilters = eventFilters || {}
     if (value) {
@@ -99,12 +113,40 @@ export default function NewTriggerPage() {
     }
   }
 
+  // Update multi-select filter value
+  const handleMultiSelectChange = (key: string, value: string, checked: boolean) => {
+    const currentFilters = eventFilters || {}
+    const currentValues = (currentFilters[key] as string[]) || []
+
+    if (checked) {
+      setValue('event_filters', { ...currentFilters, [key]: [...currentValues, value] })
+    } else {
+      const newValues = currentValues.filter(v => v !== value)
+      if (newValues.length > 0) {
+        setValue('event_filters', { ...currentFilters, [key]: newValues })
+      } else {
+        const { [key]: _, ...rest } = currentFilters
+        setValue('event_filters', rest)
+      }
+    }
+  }
+
+  // Remove a value from multi-select
+  const removeMultiSelectValue = (key: string, value: string) => {
+    handleMultiSelectChange(key, value, false)
+  }
+
   async function onSubmit(data: TriggerFormData) {
     try {
-      // Build external_config with trigger_event and event_filters
+      // Build external_config with trigger_event, event_filters, and actions
       const external_config = {
         trigger_event: data.trigger_event,
         event_filters: data.event_filters,
+        actions: actions.filter(a => a.enabled).map(a => ({
+          crm_type: a.crm_type as string,
+          action: a.action,
+          fields: a.fields as Record<string, string | number | boolean | null>,
+        })),
       }
 
       // Create trigger with external_config
@@ -238,12 +280,94 @@ export default function NewTriggerPage() {
                 {filterConfig.filters.map((filter) => (
                   <div key={filter.key} className="space-y-2">
                     <Label htmlFor={`filter-${filter.key}`}>{filter.label}</Label>
-                    <Input
-                      id={`filter-${filter.key}`}
-                      placeholder={filter.placeholder}
-                      value={(eventFilters?.[filter.key] as string) || ''}
-                      onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                    />
+
+                    {/* Multi-select filter (e.g., Source for ActiveCampaign) */}
+                    {filter.type === 'multi_select' && Array.isArray(filter.options) && (
+                      <div className="space-y-3">
+                        {/* Selected values as badges */}
+                        {((eventFilters?.[filter.key] as string[]) || []).length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {((eventFilters?.[filter.key] as string[]) || []).map((value) => {
+                              const option = filter.options && Array.isArray(filter.options)
+                                ? filter.options.find(o => o.value === value)
+                                : null
+                              return (
+                                <Badge
+                                  key={value}
+                                  variant="secondary"
+                                  className="flex items-center gap-1 pr-1"
+                                >
+                                  {option?.label || value}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeMultiSelectValue(filter.key, value)}
+                                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {/* Checkbox options */}
+                        <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg border">
+                          {filter.options.map((option) => {
+                            const isChecked = ((eventFilters?.[filter.key] as string[]) || []).includes(option.value)
+                            return (
+                              <label
+                                key={option.value}
+                                className="flex items-center gap-2 cursor-pointer"
+                              >
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) =>
+                                    handleMultiSelectChange(filter.key, option.value, !!checked)
+                                  }
+                                />
+                                <span className="text-sm">{option.label}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Select filter (dynamic or static options) */}
+                    {filter.type === 'select' && (
+                      <Select
+                        value={(eventFilters?.[filter.key] as string) || ''}
+                        onValueChange={(value) => handleFilterChange(filter.key, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={filter.placeholder || 'Auswählen...'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filter.options === 'dynamic' ? (
+                            <SelectItem value="_dynamic" disabled>
+                              Wird dynamisch geladen...
+                            </SelectItem>
+                          ) : (
+                            Array.isArray(filter.options) && filter.options.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {/* Text filter */}
+                    {filter.type === 'text' && (
+                      <Input
+                        id={`filter-${filter.key}`}
+                        placeholder={filter.placeholder}
+                        value={(eventFilters?.[filter.key] as string) || ''}
+                        onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                      />
+                    )}
+
                     {filter.description && (
                       <p className="text-xs text-muted-foreground">{filter.description}</p>
                     )}
@@ -346,6 +470,13 @@ export default function NewTriggerPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Actions Configuration */}
+        <ActionConfig
+          actions={actions}
+          onChange={setActions}
+          connectedCRMs={connectedCRMs}
+        />
 
         <div className="flex justify-end gap-4">
           <Link href="/triggers">

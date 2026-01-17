@@ -286,6 +286,26 @@ export interface EventFilterConfig {
   filters: EventFilterField[]
 }
 
+// Source options for ActiveCampaign (like n8n)
+export const ACTIVECAMPAIGN_SOURCES = [
+  { value: 'public', label: 'Public' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'api', label: 'API' },
+  { value: 'system', label: 'System' },
+] as const
+
+// Common source filter for ActiveCampaign events
+const activecampaignSourceFilter: EventFilterField = {
+  key: 'source',
+  label: 'Quelle (Source)',
+  type: 'multi_select',
+  placeholder: 'Quellen auswählen...',
+  description: 'Optional: Nur aus diesen Quellen triggern',
+  options: [...ACTIVECAMPAIGN_SOURCES],
+  payloadPath: 'source',
+  matchMode: 'in',
+}
+
 // Event filters configuration per CRM type and event
 export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig>> = {
   webhook: {},
@@ -299,8 +319,22 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
           type: 'select',
           placeholder: 'Status auswählen...',
           description: 'Trigger nur wenn der Lead in diesen Status wechselt',
-          options: 'dynamic', // Will fetch lead statuses from Close API
+          options: 'dynamic',
           payloadPath: 'data.new_status_label',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    lead_created: {
+      filters: [
+        {
+          key: 'lead_status',
+          label: 'Lead-Status',
+          type: 'select',
+          placeholder: 'Optional: Status filtern',
+          description: 'Nur Leads mit diesem Status',
+          options: 'dynamic',
+          payloadPath: 'data.status_label',
           matchMode: 'equals',
         },
       ],
@@ -320,6 +354,20 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
         },
       ],
     },
+    opportunity_created: {
+      filters: [
+        {
+          key: 'pipeline',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Nur Opportunities in dieser Pipeline',
+          options: 'dynamic',
+          payloadPath: 'data.pipeline_id',
+          matchMode: 'equals',
+        },
+      ],
+    },
     // Contact tag added - filter by specific tag
     contact_tag_added: {
       filters: [
@@ -334,9 +382,118 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
         },
       ],
     },
+    task_created: {
+      filters: [
+        {
+          key: 'task_type',
+          label: 'Aufgaben-Typ',
+          type: 'text',
+          placeholder: 'z.B. "call", "email"',
+          description: 'Nur bei diesem Aufgaben-Typ',
+          payloadPath: 'data._type',
+          matchMode: 'equals',
+        },
+      ],
+    },
+    custom_activity_created: {
+      filters: [
+        {
+          key: 'activity_type',
+          label: 'Aktivitäts-Typ',
+          type: 'select',
+          placeholder: 'Typ auswählen...',
+          description: 'Nur bei diesem Custom Activity Typ',
+          options: 'dynamic',
+          payloadPath: 'data.custom_activity_type_id',
+          matchMode: 'equals',
+        },
+      ],
+    },
   },
   activecampaign: {
-    // Deal stage changed
+    // All events with source filter
+    contact_created: {
+      filters: [activecampaignSourceFilter],
+    },
+    contact_updated: {
+      filters: [activecampaignSourceFilter],
+    },
+    contact_tag_added: {
+      filters: [
+        {
+          key: 'tag_name',
+          label: 'Tag-Name oder ID',
+          type: 'text',
+          placeholder: 'z.B. "Newsletter" oder "123"',
+          description: 'Trigger nur wenn dieser Tag hinzugefügt wird',
+          payloadPath: 'contact.tag',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    contact_tag_removed: {
+      filters: [
+        {
+          key: 'tag_name',
+          label: 'Tag-Name oder ID',
+          type: 'text',
+          placeholder: 'z.B. "Newsletter"',
+          description: 'Trigger nur wenn dieser Tag entfernt wird',
+          payloadPath: 'contact.tag',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    contact_subscribed: {
+      filters: [
+        {
+          key: 'list_id',
+          label: 'Liste',
+          type: 'select',
+          placeholder: 'Liste auswählen...',
+          description: 'Nur bei Anmeldung zu dieser Liste',
+          options: 'dynamic',
+          payloadPath: 'list.id',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    contact_unsubscribed: {
+      filters: [
+        {
+          key: 'list_id',
+          label: 'Liste',
+          type: 'select',
+          placeholder: 'Liste auswählen...',
+          description: 'Nur bei Abmeldung von dieser Liste',
+          options: 'dynamic',
+          payloadPath: 'list.id',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    deal_created: {
+      filters: [
+        {
+          key: 'pipeline_id',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Nur Deals in dieser Pipeline',
+          options: 'dynamic',
+          payloadPath: 'deal.pipeline',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    deal_updated: {
+      filters: [activecampaignSourceFilter],
+    },
     deal_stage_changed: {
       filters: [
         {
@@ -349,23 +506,49 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
           payloadPath: 'deal.stage',
           matchMode: 'equals',
         },
-      ],
-    },
-    // Contact tag added
-    contact_tag_added: {
-      filters: [
         {
-          key: 'tag_name',
-          label: 'Tag-Name',
-          type: 'text',
-          placeholder: 'z.B. "Newsletter"',
-          description: 'Trigger nur wenn dieser Tag hinzugefügt wird',
-          payloadPath: 'contact.tag',
+          key: 'pipeline_id',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Nur für diese Pipeline',
+          options: 'dynamic',
+          payloadPath: 'deal.pipeline',
           matchMode: 'equals',
         },
+        activecampaignSourceFilter,
       ],
     },
-    // Form submitted - filter by form
+    deal_won: {
+      filters: [
+        {
+          key: 'pipeline_id',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Nur für diese Pipeline',
+          options: 'dynamic',
+          payloadPath: 'deal.pipeline',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    deal_lost: {
+      filters: [
+        {
+          key: 'pipeline_id',
+          label: 'Pipeline',
+          type: 'select',
+          placeholder: 'Pipeline auswählen...',
+          description: 'Nur für diese Pipeline',
+          options: 'dynamic',
+          payloadPath: 'deal.pipeline',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
     form_submitted: {
       filters: [
         {
@@ -378,7 +561,86 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
           payloadPath: 'form.id',
           matchMode: 'equals',
         },
+        activecampaignSourceFilter,
       ],
+    },
+    automation_started: {
+      filters: [
+        {
+          key: 'automation_id',
+          label: 'Automation',
+          type: 'select',
+          placeholder: 'Automation auswählen...',
+          description: 'Nur bei dieser Automation',
+          options: 'dynamic',
+          payloadPath: 'automation.id',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    automation_ended: {
+      filters: [
+        {
+          key: 'automation_id',
+          label: 'Automation',
+          type: 'select',
+          placeholder: 'Automation auswählen...',
+          description: 'Nur bei dieser Automation',
+          options: 'dynamic',
+          payloadPath: 'automation.id',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    campaign_opened: {
+      filters: [
+        {
+          key: 'campaign_id',
+          label: 'Kampagne',
+          type: 'select',
+          placeholder: 'Kampagne auswählen...',
+          description: 'Nur bei dieser Kampagne',
+          options: 'dynamic',
+          payloadPath: 'campaign.id',
+          matchMode: 'equals',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    campaign_clicked: {
+      filters: [
+        {
+          key: 'campaign_id',
+          label: 'Kampagne',
+          type: 'select',
+          placeholder: 'Kampagne auswählen...',
+          description: 'Nur bei dieser Kampagne',
+          options: 'dynamic',
+          payloadPath: 'campaign.id',
+          matchMode: 'equals',
+        },
+        {
+          key: 'link_url',
+          label: 'Link-URL',
+          type: 'text',
+          placeholder: 'Optional: URL filtern',
+          description: 'Nur bei Klick auf diesen Link',
+          payloadPath: 'link.url',
+          matchMode: 'contains',
+        },
+        activecampaignSourceFilter,
+      ],
+    },
+    sms_sent: {
+      filters: [activecampaignSourceFilter],
+    },
+    sms_received: {
+      filters: [activecampaignSourceFilter],
+    },
+    sms_replied: {
+      filters: [activecampaignSourceFilter],
     },
   },
   pipedrive: {
