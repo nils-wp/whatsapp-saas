@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
-import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPipelines } from '@/lib/hooks/use-integrations'
+import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPipelines, useActiveCampaignMetadata, useHubSpotMetadata } from '@/lib/hooks/use-integrations'
 import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS, type EventFilterValues } from '@/lib/utils/validation'
 import { ActionConfig } from '@/components/triggers/action-config'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -40,14 +40,29 @@ export default function NewTriggerPage() {
   const { data: agents } = useAgents()
   const { data: integrations } = useIntegrations()
 
-  // Fetch dynamic options for filters
+  // Fetch dynamic options for filters - Close
   const { data: closeStatuses, isLoading: closeStatusesLoading } = useCloseStatuses(
     integrations?.close_api_key ?? null
   )
+
+  // Fetch dynamic options for filters - Pipedrive
   const { data: pipedrivePipelines, isLoading: pipedrivePipelinesLoading } = usePipedrivePipelines(
     integrations?.pipedrive_api_token ?? null
   )
+
+  // Fetch dynamic options for filters - HubSpot (basic)
   const { data: hubspotPipelines, isLoading: hubspotPipelinesLoading } = useHubSpotPipelines(
+    integrations?.hubspot_access_token ?? null
+  )
+
+  // Fetch dynamic options for filters - ActiveCampaign (all metadata)
+  const { data: acMetadata, isLoading: acMetadataLoading } = useActiveCampaignMetadata(
+    integrations?.activecampaign_api_url ?? null,
+    integrations?.activecampaign_api_key ?? null
+  )
+
+  // Fetch dynamic options for filters - HubSpot (extended metadata)
+  const { data: hubspotMetadata, isLoading: hubspotMetadataLoading } = useHubSpotMetadata(
     integrations?.hubspot_access_token ?? null
   )
 
@@ -56,6 +71,7 @@ export default function NewTriggerPage() {
     crmType: TriggerType,
     filterKey: string
   ): { options: Array<{ value: string; label: string }>; isLoading: boolean } => {
+    // Close CRM
     if (crmType === 'close') {
       if (filterKey === 'target_status' || filterKey === 'lead_status') {
         return {
@@ -70,6 +86,48 @@ export default function NewTriggerPage() {
         }
       }
     }
+
+    // ActiveCampaign
+    if (crmType === 'activecampaign') {
+      if (filterKey === 'list_id') {
+        return {
+          options: acMetadata?.lists?.map(l => ({ value: l.id, label: l.name })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+      if (filterKey === 'pipeline_id') {
+        return {
+          options: acMetadata?.pipelines?.map(p => ({ value: p.id, label: p.title })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+      if (filterKey === 'target_stage') {
+        return {
+          options: acMetadata?.stages?.map(s => ({ value: s.id, label: s.title })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+      if (filterKey === 'form_id') {
+        return {
+          options: acMetadata?.forms?.map(f => ({ value: f.id, label: f.name })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+      if (filterKey === 'automation_id') {
+        return {
+          options: acMetadata?.automations?.map(a => ({ value: a.id, label: a.name })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+      if (filterKey === 'campaign_id') {
+        return {
+          options: acMetadata?.campaigns?.map(c => ({ value: c.id, label: c.name })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
+    }
+
+    // Pipedrive
     if (crmType === 'pipedrive') {
       if (filterKey === 'pipeline_id') {
         return {
@@ -84,6 +142,8 @@ export default function NewTriggerPage() {
         }
       }
     }
+
+    // HubSpot
     if (crmType === 'hubspot') {
       if (filterKey === 'pipeline') {
         return {
@@ -93,11 +153,31 @@ export default function NewTriggerPage() {
       }
       if (filterKey === 'target_stage') {
         return {
-          options: hubspotPipelines?.stages?.map(s => ({ value: s.id, label: s.label })) ?? [],
-          isLoading: hubspotPipelinesLoading,
+          options: hubspotMetadata?.stages?.map(s => ({ value: s.id, label: `${s.pipelineLabel} → ${s.label}` })) ?? [],
+          isLoading: hubspotMetadataLoading,
+        }
+      }
+      if (filterKey === 'form_id') {
+        return {
+          options: hubspotMetadata?.forms?.map(f => ({ value: f.id, label: f.name })) ?? [],
+          isLoading: hubspotMetadataLoading,
+        }
+      }
+      if (filterKey === 'property_name') {
+        return {
+          options: hubspotMetadata?.contactProperties?.map(p => ({ value: p.name, label: p.label })) ?? [],
+          isLoading: hubspotMetadataLoading,
+        }
+      }
+      if (filterKey === 'target_status') {
+        // Ticket statuses
+        return {
+          options: hubspotMetadata?.ticketStages?.map(s => ({ value: s.id, label: `${s.pipelineLabel} → ${s.label}` })) ?? [],
+          isLoading: hubspotMetadataLoading,
         }
       }
     }
+
     return { options: [], isLoading: false }
   }
 

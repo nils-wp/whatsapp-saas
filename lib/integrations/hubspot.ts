@@ -435,3 +435,67 @@ export async function updateWhatsAppStatus(
     hs_lead_status: status === 'booked' ? 'QUALIFIED' : status === 'not_interested' ? 'UNQUALIFIED' : 'IN_PROGRESS',
   })
 }
+
+// ===========================================
+// Metadata Functions for Dynamic Filters
+// ===========================================
+
+/**
+ * Holt alle Formulare
+ */
+export async function getForms(
+  config: HubSpotConfig
+): Promise<Array<{ id: string; name: string }>> {
+  const result = await hubspotRequest<{ results: Array<{ guid: string; name: string }> }>(
+    config,
+    '/marketing/v3/forms'
+  )
+
+  return result.success
+    ? result.data?.results?.map(f => ({ id: f.guid, name: f.name })) || []
+    : []
+}
+
+/**
+ * Holt alle Kontakt-Eigenschaften
+ */
+export async function getContactProperties(
+  config: HubSpotConfig
+): Promise<Array<{ name: string; label: string; type: string }>> {
+  const result = await hubspotRequest<{ results: Array<{ name: string; label: string; type: string }> }>(
+    config,
+    '/crm/v3/properties/contacts'
+  )
+
+  return result.success
+    ? result.data?.results?.map(p => ({ name: p.name, label: p.label, type: p.type })) || []
+    : []
+}
+
+/**
+ * Holt Ticket Pipelines
+ */
+export async function getTicketPipelines(
+  config: HubSpotConfig
+): Promise<Array<{ id: string; label: string; stages: Array<{ id: string; label: string }> }>> {
+  const result = await hubspotRequest<{ results: Array<{ id: string; label: string; stages: Array<{ id: string; label: string }> }> }>(
+    config,
+    '/crm/v3/pipelines/tickets'
+  )
+
+  return result.success ? result.data?.results || [] : []
+}
+
+/**
+ * Holt alle Deal Pipelines mit Stages
+ */
+export async function getPipelinesWithStages(
+  config: HubSpotConfig
+): Promise<Array<{ id: string; label: string; stages: Array<{ id: string; label: string }> }>> {
+  const result = await hubspotRequest<{ results: Array<{ id: string; label: string; stages: Array<{ id: string; label: string }> }> }>(
+    config,
+    '/crm/v3/pipelines/deals'
+  )
+
+  return result.success ? result.data?.results || [] : []
+}

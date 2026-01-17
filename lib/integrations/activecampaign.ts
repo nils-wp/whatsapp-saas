@@ -319,3 +319,195 @@ export async function testConnection(config: ActiveCampaignConfig): Promise<bool
     return false
   }
 }
+
+// ===========================================
+// Metadata Functions for Dynamic Filters
+// ===========================================
+
+/**
+ * Holt alle Listen
+ */
+export async function getLists(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/lists?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.lists?.map((l: { id: string; name: string }) => ({
+      id: l.id,
+      name: l.name,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getLists error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Pipelines (Deal Groups)
+ */
+export async function getPipelines(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; title: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/dealGroups?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.dealGroups?.map((p: { id: string; title: string }) => ({
+      id: p.id,
+      title: p.title,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getPipelines error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Stages für eine Pipeline
+ */
+export async function getStages(
+  config: ActiveCampaignConfig,
+  pipelineId?: string
+): Promise<Array<{ id: string; title: string; groupId: string }>> {
+  try {
+    const url = pipelineId
+      ? `${config.apiUrl}/api/3/dealStages?filters[d_groupid]=${pipelineId}&limit=100`
+      : `${config.apiUrl}/api/3/dealStages?limit=100`
+
+    const response = await fetch(url, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.dealStages?.map((s: { id: string; title: string; group: string }) => ({
+      id: s.id,
+      title: s.title,
+      groupId: s.group,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getStages error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Formulare
+ */
+export async function getForms(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/forms?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.forms?.map((f: { id: string; name: string }) => ({
+      id: f.id,
+      name: f.name,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getForms error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Automations
+ */
+export async function getAutomations(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/automations?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.automations?.map((a: { id: string; name: string }) => ({
+      id: a.id,
+      name: a.name,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getAutomations error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Kampagnen
+ */
+export async function getCampaigns(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/campaigns?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.campaigns?.map((c: { id: string; name: string }) => ({
+      id: c.id,
+      name: c.name,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getCampaigns error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt alle Tags
+ */
+export async function getTags(
+  config: ActiveCampaignConfig
+): Promise<Array<{ id: string; tag: string }>> {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/3/tags?limit=100`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.tags?.map((t: { id: string; tag: string }) => ({
+      id: t.id,
+      tag: t.tag,
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getTags error:', error)
+    return []
+  }
+}

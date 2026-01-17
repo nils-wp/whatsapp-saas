@@ -423,6 +423,69 @@ export function useMondayBoardDetails(apiToken: string | null, boardId: string |
   })
 }
 
+/**
+ * Lädt ActiveCampaign Metadata (Listen, Pipelines, Stages, Forms, Automations, Campaigns, Tags)
+ */
+export function useActiveCampaignMetadata(apiUrl: string | null, apiKey: string | null) {
+  return useQuery({
+    queryKey: ['activecampaign-metadata', apiUrl, apiKey],
+    queryFn: async () => {
+      if (!apiUrl || !apiKey) return null
+
+      const response = await fetch('/api/integrations/activecampaign/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiUrl, apiKey }),
+      })
+
+      if (!response.ok) return null
+
+      return response.json() as Promise<{
+        lists: Array<{ id: string; name: string }>
+        pipelines: Array<{ id: string; title: string }>
+        stages: Array<{ id: string; title: string; groupId: string }>
+        forms: Array<{ id: string; name: string }>
+        automations: Array<{ id: string; name: string }>
+        campaigns: Array<{ id: string; name: string }>
+        tags: Array<{ id: string; tag: string }>
+      }>
+    },
+    enabled: !!apiUrl && !!apiKey,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Lädt HubSpot Metadata (Pipelines, Stages, Forms, Contact Properties, Ticket Pipelines)
+ */
+export function useHubSpotMetadata(accessToken: string | null) {
+  return useQuery({
+    queryKey: ['hubspot-metadata', accessToken],
+    queryFn: async () => {
+      if (!accessToken) return null
+
+      const response = await fetch('/api/integrations/hubspot/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      })
+
+      if (!response.ok) return null
+
+      return response.json() as Promise<{
+        pipelines: Array<{ id: string; label: string }>
+        stages: Array<{ id: string; label: string; pipelineId: string; pipelineLabel: string }>
+        forms: Array<{ id: string; name: string }>
+        contactProperties: Array<{ name: string; label: string; type: string }>
+        ticketPipelines: Array<{ id: string; label: string }>
+        ticketStages: Array<{ id: string; label: string; pipelineId: string; pipelineLabel: string }>
+      }>
+    },
+    enabled: !!accessToken,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 // ===========================================
 // Helper Hook für einzelne CRM-Verbindung
 // ===========================================
