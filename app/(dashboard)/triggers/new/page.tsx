@@ -139,6 +139,12 @@ export default function NewTriggerPage() {
           isLoading: acMetadataLoading,
         }
       }
+      if (filterKey === 'tag_name') {
+        return {
+          options: acMetadata?.tags?.map(t => ({ value: t.tag, label: t.tag })) ?? [],
+          isLoading: acMetadataLoading,
+        }
+      }
     }
 
     // Pipedrive

@@ -422,10 +422,11 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
       filters: [
         {
           key: 'tag_name',
-          label: 'Tag-Name oder ID',
-          type: 'text',
-          placeholder: 'z.B. "Newsletter" oder "123"',
+          label: 'Tag',
+          type: 'select',
+          placeholder: 'Tag auswählen...',
           description: 'Trigger nur wenn dieser Tag hinzugefügt wird',
+          options: 'dynamic',
           payloadPath: 'contact.tag',
           matchMode: 'equals',
         },
@@ -436,10 +437,11 @@ export const EVENT_FILTERS: Record<TriggerType, Record<string, EventFilterConfig
       filters: [
         {
           key: 'tag_name',
-          label: 'Tag-Name oder ID',
-          type: 'text',
-          placeholder: 'z.B. "Newsletter"',
+          label: 'Tag',
+          type: 'select',
+          placeholder: 'Tag auswählen...',
           description: 'Trigger nur wenn dieser Tag entfernt wird',
+          options: 'dynamic',
           payloadPath: 'contact.tag',
           matchMode: 'equals',
         },
