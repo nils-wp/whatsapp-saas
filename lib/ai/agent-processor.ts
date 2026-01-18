@@ -20,7 +20,6 @@ type Agent = Tables<'agents'> & {
   office_hours?: Record<string, unknown>
   outside_hours_message?: string
   escalation_message?: string
-  colleague_name?: string
   booking_cta?: string
   calendly_link?: string
 }

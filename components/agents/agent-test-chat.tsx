@@ -58,9 +58,12 @@ export function AgentTestChat({ agent }: AgentTestChatProps) {
     return result
       .replace(/\{\{contact_name\}\}/g, 'Test User')
       .replace(/\{\{name\}\}/g, 'Test User')
+      .replace(/\{\{first_name\}\}/g, 'Test')
+      .replace(/\{\{vorname\}\}/g, 'Test')
+      .replace(/\{\{last_name\}\}/g, 'User')
+      .replace(/\{\{nachname\}\}/g, 'User')
       .replace(/\{\{booking_cta\}\}/g, agent.booking_cta || '')
       .replace(/\{\{calendly_link\}\}/g, agent.calendly_link || '[Calendly Link]')
-      .replace(/\{\{colleague_name\}\}/g, agent.colleague_name || 'ein Kollege')
       .replace(/\{\{agent_name\}\}/g, agent.agent_name || agent.name)
   }
 

@@ -37,7 +37,6 @@ export const agentSchema = z.object({
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen lang sein'),
   description: z.string().optional(),
   agent_name: z.string().min(2, 'Agent-Name muss mindestens 2 Zeichen lang sein'),
-  colleague_name: z.string().optional(),
   company_info: z.string().optional(),
   calendly_link: z.string().url('Bitte gib eine gültige URL ein').optional().or(z.literal('')),
   booking_cta: z.string().optional(),

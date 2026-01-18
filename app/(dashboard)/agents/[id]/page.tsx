@@ -52,7 +52,6 @@ export default function EditAgentPage({
         name: agent.name,
         description: agent.description || '',
         agent_name: agent.agent_name,
-        colleague_name: agent.colleague_name || '',
         company_info: agent.company_info || '',
         calendly_link: agent.calendly_link || '',
         booking_cta: agent.booking_cta,
@@ -165,15 +164,9 @@ export default function EditAgentPage({
                 <Textarea id="description" {...register('description')} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="agent_name">Agent-Name</Label>
-                  <Input id="agent_name" {...register('agent_name')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="colleague_name">Kollegen-Name</Label>
-                  <Input id="colleague_name" {...register('colleague_name')} />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="agent_name">Agent-Name</Label>
+                <Input id="agent_name" {...register('agent_name')} />
               </div>
 
               <div className="space-y-2">

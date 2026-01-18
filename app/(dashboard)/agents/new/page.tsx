@@ -56,7 +56,7 @@ export default function NewAgentPage() {
         script_steps: DEFAULT_SCRIPT_STEPS,
         faq_entries: [],
         escalation_topics: ESCALATION_TOPICS,
-        escalation_message: 'Gute Frage – da hole ich dir lieber {{colleague_name}} dazu. Ich gebe das weiter!',
+        escalation_message: 'Gute Frage – da muss ich kurz nachfragen. Ich melde mich gleich wieder!',
         disqualify_criteria: DISQUALIFY_CRITERIA,
         disqualify_message: 'Verstehe, dann bist du gerade an einem anderen Punkt. Melde dich gerne wieder!',
       })
@@ -137,33 +137,19 @@ export default function NewAgentPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="agent_name">Agent-Name *</Label>
-                <Input
-                  id="agent_name"
-                  placeholder="z.B. Lisa"
-                  {...register('agent_name')}
-                />
-                {errors.agent_name && (
-                  <p className="text-sm text-destructive">{errors.agent_name.message}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Name, mit dem sich der Agent vorstellt
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="colleague_name">Kollegen-Name</Label>
-                <Input
-                  id="colleague_name"
-                  placeholder="z.B. Max"
-                  {...register('colleague_name')}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Für Eskalationen
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="agent_name">Agent-Name *</Label>
+              <Input
+                id="agent_name"
+                placeholder="z.B. Lisa"
+                {...register('agent_name')}
+              />
+              {errors.agent_name && (
+                <p className="text-sm text-destructive">{errors.agent_name.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Name, mit dem sich der Agent vorstellt
+              </p>
             </div>
 
             <div className="space-y-2">
