@@ -8,6 +8,13 @@ interface ActiveCampaignConfig {
   apiKey: string
 }
 
+/**
+ * Normalisiert die API-URL (entfernt trailing slash)
+ */
+function normalizeApiUrl(apiUrl: string): string {
+  return apiUrl.replace(/\/+$/, '')
+}
+
 interface Contact {
   id: string
   email: string
@@ -38,7 +45,7 @@ export async function findContactByPhone(
     const normalizedPhone = phone.replace(/\D/g, '')
 
     const response = await fetch(
-      `${config.apiUrl}/api/3/contacts?search=${encodeURIComponent(normalizedPhone)}`,
+      `${normalizeApiUrl(config.apiUrl)}/api/3/contacts?search=${encodeURIComponent(normalizedPhone)}`,
       {
         headers: {
           'Api-Token': config.apiKey,
@@ -80,7 +87,7 @@ export async function findContactByEmail(
 ): Promise<Contact | null> {
   try {
     const response = await fetch(
-      `${config.apiUrl}/api/3/contacts?email=${encodeURIComponent(email)}`,
+      `${normalizeApiUrl(config.apiUrl)}/api/3/contacts?email=${encodeURIComponent(email)}`,
       {
         headers: {
           'Api-Token': config.apiKey,
@@ -124,7 +131,7 @@ export async function upsertContact(
   }
 ): Promise<Contact | null> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/contact/sync`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/contact/sync`, {
       method: 'POST',
       headers: {
         'Api-Token': config.apiKey,
@@ -171,7 +178,7 @@ export async function addTagToContact(
   tagId: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/contactTags`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/contactTags`, {
       method: 'POST',
       headers: {
         'Api-Token': config.apiKey,
@@ -202,7 +209,7 @@ export async function updateCustomField(
   value: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/fieldValues`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/fieldValues`, {
       method: 'POST',
       headers: {
         'Api-Token': config.apiKey,
@@ -239,7 +246,7 @@ export async function createDeal(
   }
 ): Promise<Deal | null> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/deals`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/deals`, {
       method: 'POST',
       headers: {
         'Api-Token': config.apiKey,
@@ -283,7 +290,7 @@ export async function updateDealStage(
   stageId: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/deals/${dealId}`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/deals/${dealId}`, {
       method: 'PUT',
       headers: {
         'Api-Token': config.apiKey,
@@ -308,7 +315,7 @@ export async function updateDealStage(
  */
 export async function testConnection(config: ActiveCampaignConfig): Promise<boolean> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/users/me`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/users/me`, {
       headers: {
         'Api-Token': config.apiKey,
       },
@@ -331,7 +338,7 @@ export async function getLists(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; name: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/lists?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/lists?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
@@ -357,19 +364,25 @@ export async function getPipelines(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; title: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/dealGroups?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/dealGroups?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
     })
 
-    if (!response.ok) return []
+    if (!response.ok) {
+      console.error('ActiveCampaign getPipelines failed:', response.status, response.statusText)
+      return []
+    }
 
     const data = await response.json()
-    return data.dealGroups?.map((p: { id: string; title: string }) => ({
+    const pipelines = data.dealGroups?.map((p: { id: string; title: string }) => ({
       id: p.id,
       title: p.title,
     })) || []
+
+    console.log('ActiveCampaign pipelines loaded:', pipelines.length)
+    return pipelines
   } catch (error) {
     console.error('ActiveCampaign getPipelines error:', error)
     return []
@@ -385,8 +398,8 @@ export async function getStages(
 ): Promise<Array<{ id: string; title: string; groupId: string }>> {
   try {
     const url = pipelineId
-      ? `${config.apiUrl}/api/3/dealStages?filters[d_groupid]=${pipelineId}&limit=100`
-      : `${config.apiUrl}/api/3/dealStages?limit=100`
+      ? `${normalizeApiUrl(config.apiUrl)}/api/3/dealStages?filters[d_groupid]=${pipelineId}&limit=100`
+      : `${normalizeApiUrl(config.apiUrl)}/api/3/dealStages?limit=100`
 
     const response = await fetch(url, {
       headers: {
@@ -415,7 +428,7 @@ export async function getForms(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; name: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/forms?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/forms?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
@@ -441,7 +454,7 @@ export async function getAutomations(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; name: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/automations?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/automations?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
@@ -467,7 +480,7 @@ export async function getCampaigns(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; name: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/campaigns?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/campaigns?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
@@ -493,7 +506,7 @@ export async function getTags(
   config: ActiveCampaignConfig
 ): Promise<Array<{ id: string; tag: string }>> {
   try {
-    const response = await fetch(`${config.apiUrl}/api/3/tags?limit=100`, {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/tags?limit=100`, {
       headers: {
         'Api-Token': config.apiKey,
       },
