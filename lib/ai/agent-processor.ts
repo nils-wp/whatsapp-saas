@@ -49,9 +49,56 @@ export interface ProcessingResult {
 interface ProcessingOptions {
   tenantId: string
   useTools?: boolean
+  /** Variables available for substitution in responses */
+  variables?: ConversationVariables
+}
+
+/** Variables extracted from conversation and trigger data */
+export interface ConversationVariables {
+  name?: string
+  contact_name?: string
+  contact_phone?: string
+  agent_name?: string
+  colleague_name?: string
+  booking_cta?: string
+  calendly_link?: string
+  /** Custom variables from trigger data */
+  [key: string]: string | undefined
 }
 
 const MAX_TOOL_ITERATIONS = 5
+
+/**
+ * Ersetzt Variablen in einem Text
+ * Unterstützt {{variable}} Format
+ */
+export function substituteVariables(text: string, variables: ConversationVariables): string {
+  let result = text
+
+  // Erst Spintax auflösen
+  result = resolveSpintax(result)
+
+  // Standard-Variablen
+  result = result.replace(/\{\{name\}\}/gi, variables.name || variables.contact_name || 'du')
+  result = result.replace(/\{\{contact_name\}\}/gi, variables.contact_name || variables.name || 'du')
+  result = result.replace(/\{\{contact_phone\}\}/gi, variables.contact_phone || '')
+  result = result.replace(/\{\{agent_name\}\}/gi, variables.agent_name || '')
+  result = result.replace(/\{\{colleague_name\}\}/gi, variables.colleague_name || 'ein Kollege')
+  result = result.replace(/\{\{booking_cta\}\}/gi, variables.booking_cta || '')
+  result = result.replace(/\{\{calendly_link\}\}/gi, variables.calendly_link || '')
+
+  // Alle anderen Variablen aus dem variables Objekt
+  for (const [key, value] of Object.entries(variables)) {
+    if (value !== undefined) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'gi'), String(value))
+    }
+  }
+
+  // Nicht ersetzte Variablen entfernen
+  result = result.replace(/\{\{[^}]+\}\}/g, '')
+
+  return result.trim()
+}
 
 /**
  * Hauptfunktion: Verarbeitet eine eingehende Nachricht
@@ -66,12 +113,27 @@ export async function processIncomingMessage(
   const tenantId = options?.tenantId || conversation.tenant_id
   const useTools = options?.useTools !== false
 
+  // Build variables for this conversation
+  const variables: ConversationVariables = {
+    name: conversation.contact_name || undefined,
+    contact_name: conversation.contact_name || undefined,
+    contact_phone: conversation.contact_phone,
+    agent_name: agent.agent_name || agent.name,
+    colleague_name: agent.colleague_name || undefined,
+    booking_cta: agent.booking_cta || undefined,
+    calendly_link: agent.calendly_link || undefined,
+    // Merge any custom variables from options
+    ...options?.variables,
+  }
+
   // 1. Prüfe auf Eskalations-Keywords
   const escalationTopics = agent.escalation_topics || agent.escalation_keywords || []
   const escalationCheck = checkEscalationKeywords(incomingMessage, escalationTopics)
   if (escalationCheck.shouldEscalate) {
+    // Apply variable substitution to escalation response
+    const escalationResponse = substituteVariables(getEscalationResponse(agent), variables)
     return {
-      response: getEscalationResponse(agent),
+      response: escalationResponse,
       shouldEscalate: true,
       escalationReason: escalationCheck.reason,
     }
@@ -81,8 +143,8 @@ export async function processIncomingMessage(
   const scriptSteps = (agent.script_steps || []) as unknown as ScriptStep[]
   const currentStep = scriptSteps.find(s => s.step === conversation.current_script_step)
 
-  // 3. Baue den System-Prompt
-  const systemPrompt = buildSystemPrompt(agent, currentStep, useTools)
+  // 3. Baue den System-Prompt (mit Variablen für Kontext)
+  const systemPrompt = buildSystemPrompt(agent, currentStep, useTools, variables)
 
   // 4. Baue die Chat-History
   const chatMessages = buildChatHistory(messageHistory, systemPrompt)
@@ -119,11 +181,14 @@ export async function processIncomingMessage(
   // 7. Prüfe Guardrails
   const guardedResponse = applyGuardrails(aiResponse, agent)
 
-  // 8. Bestimme nächsten Script-Step
+  // 8. Wende Variable-Substitution an (falls {{variablen}} in der Antwort)
+  const finalResponse = substituteVariables(guardedResponse, variables)
+
+  // 9. Bestimme nächsten Script-Step
   const nextStep = determineNextStep(incomingMessage, currentStep, scriptSteps)
 
   return {
-    response: guardedResponse,
+    response: finalResponse,
     shouldEscalate: false,
     nextScriptStep: nextStep,
     metadata: {
@@ -212,9 +277,15 @@ async function processWithTools(
 /**
  * Baut den System-Prompt basierend auf Agent-Konfiguration
  */
-function buildSystemPrompt(agent: Agent, currentStep?: ScriptStep, useTools: boolean = false): string {
+function buildSystemPrompt(
+  agent: Agent,
+  currentStep?: ScriptStep,
+  useTools: boolean = false,
+  variables?: ConversationVariables
+): string {
   const personality = agent.personality || 'Freundlich und professionell'
   const goal = agent.goal || agent.company_info || 'Hilf dem Kunden und beantworte seine Fragen'
+  const contactName = variables?.name || variables?.contact_name
 
   let prompt = `Du bist ${agent.agent_name || agent.name}, ein KI-Assistent für WhatsApp.
 
@@ -223,6 +294,7 @@ ${personality}
 
 ZIEL:
 ${goal}
+${contactName ? `\nAKTUELLER KONTAKT:\nName: ${contactName}` : ''}
 
 WICHTIGE REGELN:
 - Antworte immer auf Deutsch
@@ -230,7 +302,7 @@ WICHTIGE REGELN:
 - Sei freundlich aber professionell
 - Verwende keine Emojis außer wenn es passt
 - Wenn du etwas nicht weißt, sag es ehrlich
-- Versuche das Gespräch zum Ziel zu führen`
+- Versuche das Gespräch zum Ziel zu führen${contactName ? `\n- Sprich den Kontakt wenn passend mit seinem Namen "${contactName}" an` : ''}`
 
   if (currentStep) {
     prompt += `
@@ -409,28 +481,27 @@ export async function generateFirstMessage(
   const firstStep = scriptSteps.find(s => s.step === 1)
 
   if (firstStep?.message_template) {
-    // Ersetze Variablen in der Vorlage
-    let message = firstStep.message_template
+    // Build variables from agent and trigger data
+    const variables: ConversationVariables = {
+      name: contactName,
+      contact_name: contactName,
+      agent_name: agent.agent_name || agent.name,
+      colleague_name: agent.colleague_name || undefined,
+      booking_cta: agent.booking_cta || undefined,
+      calendly_link: agent.calendly_link || undefined,
+    }
 
-    // Erst Spintax auflösen {option1|option2|option3}
-    message = resolveSpintax(message)
-
-    // Dann Variablen ersetzen {{variable}}
-    message = message.replace(/\{\{name\}\}/g, contactName || 'du')
-    message = message.replace(/\{\{contact_name\}\}/g, contactName || 'du')
-    message = message.replace(/\{\{agent_name\}\}/g, agent.agent_name || agent.name)
-    message = message.replace(/\{\{colleague_name\}\}/g, agent.colleague_name || 'ein Kollege')
-    message = message.replace(/\{\{booking_cta\}\}/g, agent.booking_cta || '')
-    message = message.replace(/\{\{calendly_link\}\}/g, agent.calendly_link || '')
-
-    // Custom trigger data
+    // Add trigger data as custom variables
     if (triggerData) {
       for (const [key, value] of Object.entries(triggerData)) {
-        message = message.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value))
+        if (value !== undefined && value !== null) {
+          variables[key] = String(value)
+        }
       }
     }
 
-    return message
+    // Use the centralized substituteVariables function
+    return substituteVariables(firstStep.message_template, variables)
   }
 
   // Fallback: Generiere mit AI
