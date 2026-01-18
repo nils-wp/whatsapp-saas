@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { handleIncomingMessage } from '@/lib/ai/message-handler'
+import { getProfilePicture } from '@/lib/evolution/client'
 
 function getSupabase() {
   return createClient(
@@ -151,10 +152,17 @@ export async function POST(request: Request) {
 
         conversation = newConversation
         console.log('Created new conversation:', conversation.id)
+
+        // Fetch profile picture asynchronously (don't wait)
+        fetchAndSaveProfilePicture(supabase, conversation.id, instanceName, phone)
       }
 
-      // Reaktiviere pausierte Conversations und aktualisiere Namen wenn nötig
-      if (conversation.status === 'paused' || (pushName && !conversation.contact_name)) {
+      // Reaktiviere pausierte Conversations und aktualisiere Namen/Profilbild wenn nötig
+      const needsUpdate = conversation.status === 'paused' ||
+                          (pushName && !conversation.contact_name) ||
+                          !conversation.profile_picture_url
+
+      if (needsUpdate) {
         const updates: Record<string, unknown> = {}
         if (conversation.status === 'paused') {
           updates.status = 'active'
@@ -168,6 +176,11 @@ export async function POST(request: Request) {
             .from('conversations')
             .update(updates)
             .eq('id', conversation.id)
+        }
+
+        // Fetch profile picture if missing
+        if (!conversation.profile_picture_url) {
+          fetchAndSaveProfilePicture(supabase, conversation.id, instanceName, phone)
         }
       }
 
@@ -302,6 +315,38 @@ async function saveIncomingMessage(
       last_contact_message_at: new Date().toISOString(),
     })
     .eq('id', options.conversationId)
+}
+
+/**
+ * Holt und speichert das Profilbild für eine Konversation
+ */
+async function fetchAndSaveProfilePicture(
+  supabase: ReturnType<typeof getSupabase>,
+  conversationId: string,
+  instanceName: string,
+  phone: string
+) {
+  try {
+    const result = await getProfilePicture(instanceName, phone)
+
+    if (result.success && result.data) {
+      const pictureUrl = (result.data as { profilePictureUrl?: string })?.profilePictureUrl ||
+                         (result.data as { url?: string })?.url ||
+                         (result.data as { picture?: string })?.picture
+
+      if (pictureUrl) {
+        await supabase
+          .from('conversations')
+          .update({ profile_picture_url: pictureUrl })
+          .eq('id', conversationId)
+
+        console.log('Profile picture saved for conversation:', conversationId)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch profile picture:', error)
+    // Non-critical error, don't throw
+  }
 }
 
 /**
