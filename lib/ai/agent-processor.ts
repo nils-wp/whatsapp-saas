@@ -57,13 +57,33 @@ interface ProcessingOptions {
 export interface ConversationVariables {
   name?: string
   contact_name?: string
+  first_name?: string
+  last_name?: string
+  vorname?: string      // German alias for first_name
+  nachname?: string     // German alias for last_name
   contact_phone?: string
   agent_name?: string
-  colleague_name?: string
   booking_cta?: string
   calendly_link?: string
   /** Custom variables from trigger data */
   [key: string]: string | undefined
+}
+
+/**
+ * Splits a full name into first and last name
+ */
+export function splitName(fullName?: string): { firstName?: string; lastName?: string } {
+  if (!fullName) return {}
+
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length === 0) return {}
+  if (parts.length === 1) return { firstName: parts[0] }
+
+  // First part is first name, rest is last name
+  const firstName = parts[0]
+  const lastName = parts.slice(1).join(' ')
+
+  return { firstName, lastName }
 }
 
 const MAX_TOOL_ITERATIONS = 5
@@ -78,12 +98,25 @@ export function substituteVariables(text: string, variables: ConversationVariabl
   // Erst Spintax auflösen
   result = resolveSpintax(result)
 
-  // Standard-Variablen
-  result = result.replace(/\{\{name\}\}/gi, variables.name || variables.contact_name || 'du')
-  result = result.replace(/\{\{contact_name\}\}/gi, variables.contact_name || variables.name || 'du')
+  // Name Variablen (mit Fallbacks)
+  const firstName = variables.first_name || variables.vorname
+  const lastName = variables.last_name || variables.nachname
+  const fullName = variables.name || variables.contact_name ||
+                   (firstName && lastName ? `${firstName} ${lastName}` : firstName)
+
+  // Vollständiger Name
+  result = result.replace(/\{\{name\}\}/gi, fullName || 'du')
+  result = result.replace(/\{\{contact_name\}\}/gi, fullName || 'du')
+
+  // Vor- und Nachname
+  result = result.replace(/\{\{first_name\}\}/gi, firstName || fullName || 'du')
+  result = result.replace(/\{\{vorname\}\}/gi, firstName || fullName || 'du')
+  result = result.replace(/\{\{last_name\}\}/gi, lastName || '')
+  result = result.replace(/\{\{nachname\}\}/gi, lastName || '')
+
+  // Andere Standard-Variablen
   result = result.replace(/\{\{contact_phone\}\}/gi, variables.contact_phone || '')
   result = result.replace(/\{\{agent_name\}\}/gi, variables.agent_name || '')
-  result = result.replace(/\{\{colleague_name\}\}/gi, variables.colleague_name || 'ein Kollege')
   result = result.replace(/\{\{booking_cta\}\}/gi, variables.booking_cta || '')
   result = result.replace(/\{\{calendly_link\}\}/gi, variables.calendly_link || '')
 
@@ -114,12 +147,16 @@ export async function processIncomingMessage(
   const useTools = options?.useTools !== false
 
   // Build variables for this conversation
+  const { firstName, lastName } = splitName(conversation.contact_name || undefined)
   const variables: ConversationVariables = {
     name: conversation.contact_name || undefined,
     contact_name: conversation.contact_name || undefined,
+    first_name: firstName,
+    last_name: lastName,
+    vorname: firstName,
+    nachname: lastName,
     contact_phone: conversation.contact_phone,
     agent_name: agent.agent_name || agent.name,
-    colleague_name: agent.colleague_name || undefined,
     booking_cta: agent.booking_cta || undefined,
     calendly_link: agent.calendly_link || undefined,
     // Merge any custom variables from options
@@ -482,16 +519,20 @@ export async function generateFirstMessage(
 
   if (firstStep?.message_template) {
     // Build variables from agent and trigger data
+    const { firstName, lastName } = splitName(contactName)
     const variables: ConversationVariables = {
       name: contactName,
       contact_name: contactName,
+      first_name: firstName,
+      last_name: lastName,
+      vorname: firstName,
+      nachname: lastName,
       agent_name: agent.agent_name || agent.name,
-      colleague_name: agent.colleague_name || undefined,
       booking_cta: agent.booking_cta || undefined,
       calendly_link: agent.calendly_link || undefined,
     }
 
-    // Add trigger data as custom variables
+    // Add trigger data as custom variables (may include first_name, last_name from CRM)
     if (triggerData) {
       for (const [key, value] of Object.entries(triggerData)) {
         if (value !== undefined && value !== null) {

@@ -10,116 +10,165 @@ function getSupabase() {
   )
 }
 
+interface ExtractedName {
+  fullName?: string
+  firstName?: string
+  lastName?: string
+}
+
 /**
- * Extract contact name from CRM-specific webhook payload
+ * Extract contact name (full, first, last) from CRM-specific webhook payload
  * Each CRM has different field names for contact information
  */
 function extractContactNameFromPayload(
   triggerType: TriggerType,
   payload: Record<string, unknown>
-): string | undefined {
+): ExtractedName {
   switch (triggerType) {
     case 'close': {
       // Close CRM payload structures
       const data = payload.data as Record<string, unknown> | undefined
-      if (!data) return payload.name as string | undefined
+      if (!data) {
+        return { fullName: payload.name as string | undefined }
+      }
 
       // Lead/Contact name
-      if (data.display_name) return data.display_name as string
-      if (data.name) return data.name as string
+      if (data.display_name) {
+        return { fullName: data.display_name as string }
+      }
+      if (data.name) {
+        return { fullName: data.name as string }
+      }
 
       // If it's a lead event, check for first contact name
       const contacts = data.contacts as Array<{ name?: string }> | undefined
-      if (contacts?.[0]?.name) return contacts[0].name
+      if (contacts?.[0]?.name) {
+        return { fullName: contacts[0].name }
+      }
 
-      // Fallback to top-level name
-      return payload.name as string | undefined
+      return { fullName: payload.name as string | undefined }
     }
 
     case 'activecampaign': {
       // ActiveCampaign puts contact info in 'contact' object
       const contact = payload.contact as Record<string, unknown> | undefined
-      if (!contact) return payload.name as string | undefined
+      if (!contact) {
+        return { fullName: payload.name as string | undefined }
+      }
 
       const firstName = contact.firstName as string | undefined
       const lastName = contact.lastName as string | undefined
 
-      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
-      if (firstName) return firstName
-      if (lastName) return lastName
+      if (firstName || lastName) {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+        return { fullName, firstName, lastName }
+      }
 
       // Fallback to email if no name
       const email = contact.email as string | undefined
-      if (email) return email.split('@')[0] // Use email prefix as name
+      if (email) {
+        return { fullName: email.split('@')[0], firstName: email.split('@')[0] }
+      }
 
-      return payload.name as string | undefined
+      return { fullName: payload.name as string | undefined }
     }
 
     case 'pipedrive': {
       // Pipedrive uses 'current' for the current state of the object
       const current = payload.current as Record<string, unknown> | undefined
-      if (!current) return payload.name as string | undefined
+      if (!current) {
+        return { fullName: payload.name as string | undefined }
+      }
 
-      // Person events have name directly
-      if (current.name) return current.name as string
-
-      // Or first_name + last_name
+      // Check for first_name + last_name first
       const firstName = current.first_name as string | undefined
       const lastName = current.last_name as string | undefined
-      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
-      if (firstName) return firstName
-      if (lastName) return lastName
+      if (firstName || lastName) {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+        return { fullName, firstName, lastName }
+      }
+
+      // Person events have name directly
+      if (current.name) {
+        return { fullName: current.name as string }
+      }
 
       // Deal events have person_name
-      if (current.person_name) return current.person_name as string
+      if (current.person_name) {
+        return { fullName: current.person_name as string }
+      }
 
       // Check for person object in deal
       const person = current.person as Record<string, unknown> | undefined
-      if (person?.name) return person.name as string
+      if (person?.name) {
+        return { fullName: person.name as string }
+      }
 
-      return payload.name as string | undefined
+      return { fullName: payload.name as string | undefined }
     }
 
     case 'hubspot': {
       // HubSpot uses 'properties' for contact/deal properties
       const properties = payload.properties as Record<string, unknown> | undefined
-      if (!properties) return payload.name as string | undefined
+      if (!properties) {
+        return { fullName: payload.name as string | undefined }
+      }
 
       const firstName = properties.firstname as string | undefined
       const lastName = properties.lastname as string | undefined
 
-      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
-      if (firstName) return firstName
-      if (lastName) return lastName
+      if (firstName || lastName) {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+        return { fullName, firstName, lastName }
+      }
 
       // Company name for company events
-      if (properties.name) return properties.name as string
+      if (properties.name) {
+        return { fullName: properties.name as string }
+      }
 
       // Deal name
-      if (properties.dealname) return properties.dealname as string
+      if (properties.dealname) {
+        return { fullName: properties.dealname as string }
+      }
 
-      return payload.name as string | undefined
+      return { fullName: payload.name as string | undefined }
     }
 
     case 'monday': {
       // Monday.com uses 'event' object with pulseName (item name)
       const event = payload.event as Record<string, unknown> | undefined
-      if (!event) return payload.name as string | undefined
+      if (!event) {
+        return { fullName: payload.name as string | undefined }
+      }
 
       // Item/pulse name
-      if (event.pulseName) return event.pulseName as string
+      if (event.pulseName) {
+        return { fullName: event.pulseName as string }
+      }
 
       // Or columnValue with person info
       const value = event.value as Record<string, unknown> | undefined
-      if (value?.text) return value.text as string
+      if (value?.text) {
+        return { fullName: value.text as string }
+      }
 
-      return payload.name as string | undefined
+      return { fullName: payload.name as string | undefined }
     }
 
     case 'webhook':
-    default:
-      // Generic webhook - just use 'name' field
-      return payload.name as string | undefined
+    default: {
+      // Generic webhook - check for first_name/last_name or just name
+      const firstName = payload.first_name as string | undefined
+      const lastName = payload.last_name as string | undefined
+
+      if (firstName || lastName) {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+        return { fullName, firstName, lastName }
+      }
+
+      return { fullName: payload.name as string | undefined }
+    }
   }
 }
 
@@ -333,19 +382,29 @@ export async function POST(
     const phone = payload.phone.replace(/\D/g, '')
 
     // Extract contact name and lead ID from CRM-specific payload structure
-    const contactName = extractContactNameFromPayload(trigger.type as TriggerType, payload)
+    const extractedName = extractContactNameFromPayload(trigger.type as TriggerType, payload)
     const externalLeadId = extractLeadIdFromPayload(trigger.type as TriggerType, payload)
 
-    console.log(`Extracted from ${trigger.type} payload - Name: "${contactName}", Lead ID: "${externalLeadId}"`)
+    console.log(`Extracted from ${trigger.type} payload - Name: "${extractedName.fullName}", First: "${extractedName.firstName}", Last: "${extractedName.lastName}", Lead ID: "${externalLeadId}"`)
+
+    // Build trigger data with first/last name for variable substitution
+    const triggerDataWithNames = {
+      ...payload,
+      // Add extracted name fields for variable substitution
+      first_name: extractedName.firstName,
+      last_name: extractedName.lastName,
+      vorname: extractedName.firstName,
+      nachname: extractedName.lastName,
+    }
 
     // Use the unified startNewConversation function that handles everything
     const result = await startNewConversation({
       tenantId: trigger.tenant_id,
       triggerId: trigger.id,
       phone,
-      contactName,
+      contactName: extractedName.fullName,
       externalLeadId,
-      triggerData: payload,
+      triggerData: triggerDataWithNames,
     })
 
     if (!result.success) {
