@@ -10,6 +10,168 @@ function getSupabase() {
   )
 }
 
+/**
+ * Extract contact name from CRM-specific webhook payload
+ * Each CRM has different field names for contact information
+ */
+function extractContactNameFromPayload(
+  triggerType: TriggerType,
+  payload: Record<string, unknown>
+): string | undefined {
+  switch (triggerType) {
+    case 'close': {
+      // Close CRM payload structures
+      const data = payload.data as Record<string, unknown> | undefined
+      if (!data) return payload.name as string | undefined
+
+      // Lead/Contact name
+      if (data.display_name) return data.display_name as string
+      if (data.name) return data.name as string
+
+      // If it's a lead event, check for first contact name
+      const contacts = data.contacts as Array<{ name?: string }> | undefined
+      if (contacts?.[0]?.name) return contacts[0].name
+
+      // Fallback to top-level name
+      return payload.name as string | undefined
+    }
+
+    case 'activecampaign': {
+      // ActiveCampaign puts contact info in 'contact' object
+      const contact = payload.contact as Record<string, unknown> | undefined
+      if (!contact) return payload.name as string | undefined
+
+      const firstName = contact.firstName as string | undefined
+      const lastName = contact.lastName as string | undefined
+
+      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
+      if (firstName) return firstName
+      if (lastName) return lastName
+
+      // Fallback to email if no name
+      const email = contact.email as string | undefined
+      if (email) return email.split('@')[0] // Use email prefix as name
+
+      return payload.name as string | undefined
+    }
+
+    case 'pipedrive': {
+      // Pipedrive uses 'current' for the current state of the object
+      const current = payload.current as Record<string, unknown> | undefined
+      if (!current) return payload.name as string | undefined
+
+      // Person events have name directly
+      if (current.name) return current.name as string
+
+      // Or first_name + last_name
+      const firstName = current.first_name as string | undefined
+      const lastName = current.last_name as string | undefined
+      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
+      if (firstName) return firstName
+      if (lastName) return lastName
+
+      // Deal events have person_name
+      if (current.person_name) return current.person_name as string
+
+      // Check for person object in deal
+      const person = current.person as Record<string, unknown> | undefined
+      if (person?.name) return person.name as string
+
+      return payload.name as string | undefined
+    }
+
+    case 'hubspot': {
+      // HubSpot uses 'properties' for contact/deal properties
+      const properties = payload.properties as Record<string, unknown> | undefined
+      if (!properties) return payload.name as string | undefined
+
+      const firstName = properties.firstname as string | undefined
+      const lastName = properties.lastname as string | undefined
+
+      if (firstName && lastName) return `${firstName} ${lastName}`.trim()
+      if (firstName) return firstName
+      if (lastName) return lastName
+
+      // Company name for company events
+      if (properties.name) return properties.name as string
+
+      // Deal name
+      if (properties.dealname) return properties.dealname as string
+
+      return payload.name as string | undefined
+    }
+
+    case 'monday': {
+      // Monday.com uses 'event' object with pulseName (item name)
+      const event = payload.event as Record<string, unknown> | undefined
+      if (!event) return payload.name as string | undefined
+
+      // Item/pulse name
+      if (event.pulseName) return event.pulseName as string
+
+      // Or columnValue with person info
+      const value = event.value as Record<string, unknown> | undefined
+      if (value?.text) return value.text as string
+
+      return payload.name as string | undefined
+    }
+
+    case 'webhook':
+    default:
+      // Generic webhook - just use 'name' field
+      return payload.name as string | undefined
+  }
+}
+
+/**
+ * Extract lead/contact ID from CRM-specific webhook payload
+ * Used for linking conversations back to CRM records
+ */
+function extractLeadIdFromPayload(
+  triggerType: TriggerType,
+  payload: Record<string, unknown>
+): string | undefined {
+  switch (triggerType) {
+    case 'close': {
+      const data = payload.data as Record<string, unknown> | undefined
+      // Lead ID or contact ID
+      return (data?.id as string) || (payload.lead_id as string) || (payload.id as string)
+    }
+
+    case 'activecampaign': {
+      const contact = payload.contact as Record<string, unknown> | undefined
+      return (contact?.id as string) || (payload.contact_id as string) || (payload.id as string)
+    }
+
+    case 'pipedrive': {
+      const current = payload.current as Record<string, unknown> | undefined
+      // Person ID or deal ID
+      return (current?.id as string)?.toString() ||
+             (current?.person_id as string)?.toString() ||
+             (payload.id as string)?.toString()
+    }
+
+    case 'hubspot': {
+      // HubSpot object ID
+      return (payload.objectId as string)?.toString() ||
+             (payload.vid as string)?.toString() ||
+             (payload.id as string)?.toString()
+    }
+
+    case 'monday': {
+      const event = payload.event as Record<string, unknown> | undefined
+      // Pulse/item ID
+      return (event?.pulseId as string)?.toString() ||
+             (event?.itemId as string)?.toString() ||
+             (payload.id as string)?.toString()
+    }
+
+    case 'webhook':
+    default:
+      return payload.lead_id as string | undefined
+  }
+}
+
 // Get a nested value from an object using dot notation path
 function getNestedValue(obj: unknown, path: string): unknown {
   if (!path || typeof obj !== 'object' || obj === null) return undefined
@@ -170,13 +332,19 @@ export async function POST(
     // Clean phone number
     const phone = payload.phone.replace(/\D/g, '')
 
+    // Extract contact name and lead ID from CRM-specific payload structure
+    const contactName = extractContactNameFromPayload(trigger.type as TriggerType, payload)
+    const externalLeadId = extractLeadIdFromPayload(trigger.type as TriggerType, payload)
+
+    console.log(`Extracted from ${trigger.type} payload - Name: "${contactName}", Lead ID: "${externalLeadId}"`)
+
     // Use the unified startNewConversation function that handles everything
     const result = await startNewConversation({
       tenantId: trigger.tenant_id,
       triggerId: trigger.id,
       phone,
-      contactName: payload.name,
-      externalLeadId: payload.lead_id,
+      contactName,
+      externalLeadId,
       triggerData: payload,
     })
 
