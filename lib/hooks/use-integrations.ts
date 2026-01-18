@@ -290,13 +290,13 @@ export function useTestMonday() {
 // ===========================================
 
 /**
- * Lädt Close Lead Statuses
+ * Lädt Close Lead Statuses, Opportunity Statuses, Custom Activity Types und Pipelines
  */
 export function useCloseStatuses(apiKey: string | null) {
   return useQuery({
     queryKey: ['close-statuses', apiKey],
     queryFn: async () => {
-      if (!apiKey) return { leadStatuses: [], opportunityStatuses: [] }
+      if (!apiKey) return { leadStatuses: [], opportunityStatuses: [], customActivityTypes: [], pipelines: [] }
 
       const response = await fetch('/api/integrations/close/statuses', {
         method: 'POST',
@@ -304,11 +304,13 @@ export function useCloseStatuses(apiKey: string | null) {
         body: JSON.stringify({ apiKey }),
       })
 
-      if (!response.ok) return { leadStatuses: [], opportunityStatuses: [] }
+      if (!response.ok) return { leadStatuses: [], opportunityStatuses: [], customActivityTypes: [], pipelines: [] }
 
       return response.json() as Promise<{
         leadStatuses: Array<{ id: string; label: string }>
         opportunityStatuses: Array<{ id: string; label: string; type: string }>
+        customActivityTypes: Array<{ id: string; name: string }>
+        pipelines: Array<{ id: string; name: string }>
       }>
     },
     enabled: !!apiKey,

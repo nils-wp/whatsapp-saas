@@ -443,6 +443,53 @@ export async function getOpportunityStatuses(
 }
 
 /**
+ * Holt Custom Activity Types
+ */
+export async function getCustomActivityTypes(
+  config: CloseConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await closeRequest(config, '/custom_activity/')
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+
+    return data.data?.map((a: { id: string; name: string }) => ({
+      id: a.id,
+      name: a.name,
+    })) || []
+  } catch (error) {
+    console.error('Close getCustomActivityTypes error:', error)
+    return []
+  }
+}
+
+/**
+ * Holt Pipelines (Smart Views mit Pipeline-Typ)
+ */
+export async function getPipelines(
+  config: CloseConfig
+): Promise<Array<{ id: string; name: string }>> {
+  try {
+    // Close verwendet "Smart Views" für Pipelines
+    const response = await closeRequest(config, '/saved_search/?_type=pipeline')
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+
+    return data.data?.map((p: { id: string; name: string }) => ({
+      id: p.id,
+      name: p.name,
+    })) || []
+  } catch (error) {
+    console.error('Close getPipelines error:', error)
+    return []
+  }
+}
+
+/**
  * Testet die Verbindung
  */
 export async function testConnection(config: CloseConfig): Promise<boolean> {

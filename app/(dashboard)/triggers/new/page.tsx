@@ -80,8 +80,22 @@ export default function NewTriggerPage() {
         }
       }
       if (filterKey === 'pipeline') {
+        // Use actual pipelines if available, fallback to opportunity statuses
+        const pipelines = closeStatuses?.pipelines ?? []
+        if (pipelines.length > 0) {
+          return {
+            options: pipelines.map(p => ({ value: p.id, label: p.name })),
+            isLoading: closeStatusesLoading,
+          }
+        }
         return {
           options: closeStatuses?.opportunityStatuses?.map(s => ({ value: s.id, label: s.label })) ?? [],
+          isLoading: closeStatusesLoading,
+        }
+      }
+      if (filterKey === 'activity_type') {
+        return {
+          options: closeStatuses?.customActivityTypes?.map(a => ({ value: a.id, label: a.name })) ?? [],
           isLoading: closeStatusesLoading,
         }
       }

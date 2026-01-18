@@ -7,26 +7,30 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { leadStatuses: [], opportunityStatuses: [] },
+        { leadStatuses: [], opportunityStatuses: [], customActivityTypes: [], pipelines: [] },
         { status: 400 }
       )
     }
 
     const config = { apiKey }
 
-    const [leadStatuses, opportunityStatuses] = await Promise.all([
+    const [leadStatuses, opportunityStatuses, customActivityTypes, pipelines] = await Promise.all([
       close.getLeadStatuses(config),
       close.getOpportunityStatuses(config),
+      close.getCustomActivityTypes(config),
+      close.getPipelines(config),
     ])
 
     return NextResponse.json({
       leadStatuses,
       opportunityStatuses,
+      customActivityTypes,
+      pipelines,
     })
   } catch (error) {
     console.error('Close statuses error:', error)
     return NextResponse.json(
-      { leadStatuses: [], opportunityStatuses: [] },
+      { leadStatuses: [], opportunityStatuses: [], customActivityTypes: [], pipelines: [] },
       { status: 500 }
     )
   }
