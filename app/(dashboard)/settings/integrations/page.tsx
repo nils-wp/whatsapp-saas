@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Webhook,
   ArrowDownToLine,
@@ -242,6 +242,16 @@ function CloseSettingsDialog({
   const [statusContacted, setStatusContacted] = useState(integrations?.close_status_contacted || '')
   const [statusBooked, setStatusBooked] = useState(integrations?.close_status_booked || '')
   const [statusNotInterested, setStatusNotInterested] = useState(integrations?.close_status_not_interested || '')
+
+  // Sync state when dialog opens or integrations change
+  useEffect(() => {
+    if (open && integrations) {
+      setStatusNew(integrations.close_status_new || '')
+      setStatusContacted(integrations.close_status_contacted || '')
+      setStatusBooked(integrations.close_status_booked || '')
+      setStatusNotInterested(integrations.close_status_not_interested || '')
+    }
+  }, [open, integrations])
 
   const handleSave = async () => {
     await updateIntegrations.mutateAsync({
@@ -560,6 +570,17 @@ function PipedriveSettingsDialog({
   const [stageBooked, setStageBooked] = useState(integrations?.pipedrive_stage_booked || '')
   const [stageLost, setStageLost] = useState(integrations?.pipedrive_stage_lost || '')
 
+  // Sync state when dialog opens or integrations change
+  useEffect(() => {
+    if (open && integrations) {
+      setPipelineId(integrations.pipedrive_pipeline_id || '')
+      setStageNew(integrations.pipedrive_stage_new || '')
+      setStageContacted(integrations.pipedrive_stage_contacted || '')
+      setStageBooked(integrations.pipedrive_stage_booked || '')
+      setStageLost(integrations.pipedrive_stage_lost || '')
+    }
+  }, [open, integrations])
+
   const filteredStages = pipelineData?.stages?.filter(s => s.pipeline_id === pipelineId) || []
 
   const handleSave = async () => {
@@ -792,6 +813,17 @@ function HubSpotSettingsDialog({
   const [stageContacted, setStageContacted] = useState(integrations?.hubspot_stage_contacted || '')
   const [stageBooked, setStageBooked] = useState(integrations?.hubspot_stage_booked || '')
   const [stageLost, setStageLost] = useState(integrations?.hubspot_stage_lost || '')
+
+  // Sync state when dialog opens or integrations change
+  useEffect(() => {
+    if (open && integrations) {
+      setPipelineId(integrations.hubspot_pipeline_id || '')
+      setStageNew(integrations.hubspot_stage_new || '')
+      setStageContacted(integrations.hubspot_stage_contacted || '')
+      setStageBooked(integrations.hubspot_stage_booked || '')
+      setStageLost(integrations.hubspot_stage_lost || '')
+    }
+  }, [open, integrations])
 
   const filteredStages = pipelineData?.stages?.filter(s => s.pipeline_id === pipelineId) || []
 
@@ -1027,6 +1059,18 @@ function MondaySettingsDialog({
   const [groupContacted, setGroupContacted] = useState(integrations?.monday_group_contacted || '')
   const [groupBooked, setGroupBooked] = useState(integrations?.monday_group_booked || '')
   const [groupLost, setGroupLost] = useState(integrations?.monday_group_lost || '')
+
+  // Sync state when dialog opens or integrations change
+  useEffect(() => {
+    if (open && integrations) {
+      setBoardId(integrations.monday_board_id || '')
+      setPhoneColumnId(integrations.monday_phone_column_id || '')
+      setGroupNew(integrations.monday_group_new || '')
+      setGroupContacted(integrations.monday_group_contacted || '')
+      setGroupBooked(integrations.monday_group_booked || '')
+      setGroupLost(integrations.monday_group_lost || '')
+    }
+  }, [open, integrations])
 
   const phoneColumns = boardDetails?.columns?.filter(c => c.type === 'phone') || []
 

@@ -249,15 +249,18 @@ export default function EditTriggerPage({
       whatsapp_account_id: trigger.whatsapp_account_id || '',
       agent_id: trigger.agent_id || '',
       first_message: trigger.first_message,
-      first_message_delay_seconds: trigger.first_message_delay_seconds,
+      // Convert seconds to minutes for display
+      first_message_delay_minutes: Math.round(trigger.first_message_delay_seconds / 60),
       trigger_event: (trigger.external_config as { trigger_event?: string })?.trigger_event || '',
       event_filters: ((trigger.external_config as { event_filters?: Record<string, string | string[]> })?.event_filters || {}) as Record<string, string | string[]>,
+      validate_whatsapp_number: (trigger.external_config as { validate_whatsapp_number?: boolean })?.validate_whatsapp_number || false,
     } : undefined,
   })
 
   const selectedType = watch('type')
   const selectedEvent = watch('trigger_event')
   const eventFilters = watch('event_filters')
+  const validateWhatsAppNumber = watch('validate_whatsapp_number')
   const isActive = trigger?.is_active ?? true
 
   // Actions state - initialize from trigger data
@@ -342,10 +345,11 @@ export default function EditTriggerPage({
 
   const onSubmit: SubmitHandler<TriggerFormData> = async (data) => {
     try {
-      // Build external_config with trigger_event, event_filters, and actions
+      // Build external_config with trigger_event, event_filters, actions, and validation settings
       const external_config = {
         trigger_event: data.trigger_event,
         event_filters: data.event_filters,
+        validate_whatsapp_number: data.validate_whatsapp_number,
         actions: actions.filter(a => a.enabled).map(a => ({
           crm_type: a.crm_type as string,
           action: a.action,
@@ -358,9 +362,11 @@ export default function EditTriggerPage({
         name: data.name,
         type: data.type,
         whatsapp_account_id: data.whatsapp_account_id,
-        agent_id: data.agent_id,
+        // Only include agent_id if selected (optional)
+        agent_id: data.agent_id || null,
         first_message: data.first_message,
-        first_message_delay_seconds: data.first_message_delay_seconds,
+        // Convert minutes back to seconds for storage
+        first_message_delay_seconds: data.first_message_delay_minutes * 60,
         external_config,
       })
       toast.success('Trigger gespeichert')
@@ -652,15 +658,16 @@ export default function EditTriggerPage({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Agent</Label>
+                  <Label>Agent (Optional)</Label>
                   <Select
-                    value={watch('agent_id')}
-                    onValueChange={(value) => setValue('agent_id', value)}
+                    value={watch('agent_id') || '_none'}
+                    onValueChange={(value) => setValue('agent_id', value === '_none' ? '' : value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Agent auswählen" />
+                      <SelectValue placeholder="Kein Agent (nur Erstnachricht)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="_none">Kein Agent (nur Erstnachricht)</SelectItem>
                       {agents?.filter(a => a.is_active).map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           {agent.name}
@@ -668,9 +675,9 @@ export default function EditTriggerPage({
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.agent_id && (
-                    <p className="text-sm text-destructive">{errors.agent_id.message}</p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Ohne Agent wird nur die Erstnachricht gesendet.
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -699,16 +706,32 @@ export default function EditTriggerPage({
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Verzögerung (Sekunden)</Label>
+                <Label>Verzögerung (Minuten)</Label>
                 <Input
                   type="number"
                   min={0}
-                  max={300}
-                  {...register('first_message_delay_seconds', { valueAsNumber: true })}
+                  max={60}
+                  {...register('first_message_delay_minutes', { valueAsNumber: true })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Zeit zwischen Trigger und erster Nachricht
+                  Zeit zwischen Trigger und erster Nachricht (0 = sofort)
                 </p>
+              </div>
+
+              <div className="flex items-start gap-3 pt-2">
+                <Checkbox
+                  id="validate_whatsapp_number"
+                  checked={validateWhatsAppNumber}
+                  onCheckedChange={(checked) => setValue('validate_whatsapp_number', !!checked)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="validate_whatsapp_number" className="cursor-pointer">
+                    WhatsApp-Nummer validieren
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Prüft vor dem Senden, ob die Telefonnummer bei WhatsApp registriert ist
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

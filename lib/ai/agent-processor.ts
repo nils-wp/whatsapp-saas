@@ -22,6 +22,9 @@ type Agent = Tables<'agents'> & {
   escalation_message?: string
   booking_cta?: string
   calendly_link?: string
+  // Outcome detection
+  disqualify_criteria?: string[]
+  disqualify_message?: string
 }
 type Conversation = Tables<'conversations'>
 type Message = Tables<'messages'>
@@ -37,11 +40,15 @@ interface ScriptStep {
   }
 }
 
+export type ConversationOutcome = 'contacted' | 'qualified' | 'booked' | 'not_interested' | 'escalated' | null
+
 export interface ProcessingResult {
   response: string
   shouldEscalate: boolean
   escalationReason?: string
   nextScriptStep?: number
+  /** Detected conversation outcome for CRM sync */
+  outcome?: ConversationOutcome
   metadata?: Record<string, unknown>
 }
 
@@ -172,10 +179,25 @@ export async function processIncomingMessage(
       response: escalationResponse,
       shouldEscalate: true,
       escalationReason: escalationCheck.reason,
+      outcome: 'escalated',
     }
   }
 
-  // 2. Hole aktuellen Script-Step
+  // 2. Prüfe auf Disqualifikations-Kriterien (kein Interesse)
+  const disqualifyCriteria = agent.disqualify_criteria || []
+  const disqualifyCheck = checkDisqualificationCriteria(incomingMessage, disqualifyCriteria)
+  if (disqualifyCheck.shouldDisqualify) {
+    // Apply variable substitution to disqualification response
+    const disqualifyResponse = substituteVariables(getDisqualificationResponse(agent), variables)
+    return {
+      response: disqualifyResponse,
+      shouldEscalate: false,
+      outcome: 'not_interested',
+      metadata: { disqualificationReason: disqualifyCheck.reason },
+    }
+  }
+
+  // 3. Hole aktuellen Script-Step
   const scriptSteps = (agent.script_steps || []) as unknown as ScriptStep[]
   const currentStep = scriptSteps.find(s => s.step === conversation.current_script_step)
 
@@ -446,6 +468,55 @@ export function getEscalationResponse(agent: Agent): string {
     return agent.escalation_message
   }
   return `Ich verstehe, dass du mit einem Mitarbeiter sprechen möchtest. Ich leite das Gespräch weiter und jemand wird sich so schnell wie möglich bei dir melden. Vielen Dank für deine Geduld!`
+}
+
+/**
+ * Prüft auf Disqualifikations-Kriterien (kein Interesse, etc.)
+ * Returns the outcome if detected
+ */
+export function checkDisqualificationCriteria(
+  message: string,
+  criteria: string[]
+): { shouldDisqualify: boolean; reason?: string } {
+  const lowerMessage = message.toLowerCase()
+
+  // Standard-Disqualifikations-Keywords
+  const defaultCriteria = [
+    'kein interesse',
+    'nicht interessiert',
+    'no interest',
+    'not interested',
+    'bitte nicht mehr',
+    'stop',
+    'stopp',
+    'aufhören',
+    'lass mich in ruhe',
+    'nicht kontaktieren',
+    'abmelden',
+    'unsubscribe',
+  ]
+  const allCriteria = [...new Set([...criteria, ...defaultCriteria])]
+
+  for (const keyword of allCriteria) {
+    if (lowerMessage.includes(keyword.toLowerCase())) {
+      return {
+        shouldDisqualify: true,
+        reason: `Disqualifikation erkannt: "${keyword}"`,
+      }
+    }
+  }
+
+  return { shouldDisqualify: false }
+}
+
+/**
+ * Generiert eine Disqualifikations-Antwort
+ */
+export function getDisqualificationResponse(agent: Agent): string {
+  if (agent.disqualify_message) {
+    return agent.disqualify_message
+  }
+  return `Ich verstehe, danke für deine ehrliche Rückmeldung! Falls sich etwas ändert, bin ich jederzeit für dich da. Alles Gute!`
 }
 
 /**

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { startNewConversation } from '@/lib/ai/message-handler'
 import { EVENT_FILTERS, type TriggerType } from '@/lib/utils/validation'
+import { checkWhatsAppNumbers } from '@/lib/evolution/client'
 
 function getSupabase() {
   return createClient(
@@ -351,6 +352,7 @@ export async function POST(
     const externalConfig = trigger.external_config as {
       trigger_event?: string
       event_filters?: Record<string, string | string[]>
+      validate_whatsapp_number?: boolean
     } | null
 
     const filterResult = checkEventFilters(
@@ -380,6 +382,38 @@ export async function POST(
 
     // Clean phone number
     const phone = payload.phone.replace(/\D/g, '')
+
+    // Validate WhatsApp number if enabled
+    if (externalConfig?.validate_whatsapp_number) {
+      const instanceName = trigger.whatsapp_accounts?.instance_name
+      if (instanceName) {
+        try {
+          const checkResult = await checkWhatsAppNumbers(instanceName, [phone])
+          if (!checkResult.success) {
+            console.log(`WhatsApp validation failed: ${checkResult.error}`)
+            return NextResponse.json({
+              success: false,
+              error: 'WhatsApp number validation failed',
+              details: checkResult.error,
+            }, { status: 400 })
+          }
+
+          const numberCheck = checkResult.data?.[0]
+          if (!numberCheck?.exists) {
+            console.log(`Phone number ${phone} is not on WhatsApp`)
+            return NextResponse.json({
+              success: false,
+              error: 'Phone number is not registered on WhatsApp',
+              phone: phone,
+            }, { status: 400 })
+          }
+          console.log(`Phone number ${phone} validated - WhatsApp JID: ${numberCheck.jid}`)
+        } catch (error) {
+          console.error('Error validating WhatsApp number:', error)
+          // Continue without validation if check fails (don't block the webhook)
+        }
+      }
+    }
 
     // Extract contact name and lead ID from CRM-specific payload structure
     const extractedName = extractContactNameFromPayload(trigger.type as TriggerType, payload)

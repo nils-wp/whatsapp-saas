@@ -25,7 +25,8 @@ interface HandleMessageOptions {
 interface HandleMessageResult {
   success: boolean
   response?: string
-  action?: 'replied' | 'escalated' | 'queued_outside_hours' | 'error'
+  action?: 'replied' | 'escalated' | 'queued_outside_hours' | 'disqualified' | 'error'
+  outcome?: 'contacted' | 'qualified' | 'booked' | 'not_interested' | 'escalated'
   error?: string
   queueId?: string
   scheduledFor?: string
@@ -56,11 +57,6 @@ export async function handleIncomingMessage(
     const agent = conversation.agents
     const instanceName = conversation.whatsapp_accounts?.instance_name
 
-    if (!agent) {
-      console.error('No agent assigned to conversation')
-      return { success: false, error: 'No agent assigned', action: 'error' }
-    }
-
     if (!instanceName) {
       console.error('No WhatsApp instance for conversation')
       return { success: false, error: 'No WhatsApp instance', action: 'error' }
@@ -74,6 +70,44 @@ export async function handleIncomingMessage(
       message: incomingMessage,
       direction: 'inbound',
     }).catch(err => console.error('CRM log error:', err))
+
+    // If no agent is assigned, queue the message for manual handling
+    if (!agent) {
+      console.log('No agent assigned - queuing for manual response')
+      const { data: queueEntry, error: queueError } = await supabase
+        .from('message_queue')
+        .insert({
+          tenant_id: tenantId,
+          conversation_id: conversationId,
+          queue_type: 'escalated',
+          original_message: incomingMessage,
+          reason: 'Kein Agent zugewiesen - manuelle Bearbeitung erforderlich',
+          status: 'pending',
+          priority: 1,
+        })
+        .select()
+        .single()
+
+      if (queueError) {
+        console.error('Failed to queue message:', queueError)
+      }
+
+      // Update conversation status to escalated
+      await supabase
+        .from('conversations')
+        .update({
+          status: 'escalated',
+          escalated_at: new Date().toISOString(),
+          escalation_reason: 'Kein Agent zugewiesen',
+        })
+        .eq('id', conversationId)
+
+      return {
+        success: true,
+        action: 'escalated',
+        queueId: queueEntry?.id,
+      }
+    }
 
     // 2. Prüfe Geschäftszeiten
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,6 +231,29 @@ export async function handleIncomingMessage(
       }
     }
 
+    // 5b. Handle Outcome Detection (disqualification, etc.)
+    if (result.outcome && result.outcome !== 'escalated') {
+      // Update conversation with outcome
+      await supabase
+        .from('conversations')
+        .update({
+          outcome: result.outcome,
+          status: result.outcome === 'not_interested' ? 'completed' : 'active',
+          completed_at: result.outcome === 'not_interested' ? new Date().toISOString() : null,
+        })
+        .eq('id', conversationId)
+
+      // Update CRM status based on outcome
+      updateCRMStatus({
+        tenantId,
+        phone: conversation.contact_phone,
+        outcome: result.outcome,
+        note: result.metadata?.disqualificationReason as string || `Outcome: ${result.outcome}`,
+      }).catch(err => console.error('CRM outcome sync error:', err))
+
+      console.log(`Outcome detected: ${result.outcome} - CRM sync triggered`)
+    }
+
     // 6. Update Script Step wenn nötig
     if (result.nextScriptStep && result.nextScriptStep !== conversation.current_script_step) {
       await supabase
@@ -263,11 +320,12 @@ export async function startNewConversation(options: {
       return { success: false, error: 'Trigger is inactive' }
     }
 
+    // Agent is optional - triggers can work without an agent (just sends first message)
     const agent = trigger.agents
     const instanceName = trigger.whatsapp_accounts?.instance_name
 
-    if (!agent || !instanceName) {
-      return { success: false, error: 'Missing agent or WhatsApp account' }
+    if (!instanceName) {
+      return { success: false, error: 'Missing WhatsApp account' }
     }
 
     // 2. Prüfe auf existierende aktive Conversation
@@ -305,11 +363,34 @@ export async function startNewConversation(options: {
     }
 
     // 4. Generiere erste Nachricht
-    const firstMessage = await generateFirstMessage(
-      agent,
-      options.contactName,
-      options.triggerData
-    )
+    // If agent exists, use generateFirstMessage (with script steps)
+    // Otherwise, use the trigger's first_message directly with variable substitution
+    let firstMessage: string
+    if (agent) {
+      firstMessage = await generateFirstMessage(
+        agent,
+        options.contactName,
+        options.triggerData
+      )
+    } else {
+      // Use trigger's first_message with basic variable substitution
+      const { substituteVariables, splitName } = await import('./agent-processor')
+      const { firstName, lastName } = splitName(options.contactName)
+      const variables = {
+        name: options.contactName,
+        contact_name: options.contactName,
+        first_name: firstName,
+        last_name: lastName,
+        vorname: firstName,
+        nachname: lastName,
+        ...(options.triggerData ? Object.fromEntries(
+          Object.entries(options.triggerData)
+            .filter(([, v]) => v !== undefined && v !== null)
+            .map(([k, v]) => [k, String(v)])
+        ) : {}),
+      }
+      firstMessage = substituteVariables(trigger.first_message, variables)
+    }
 
     // 5. Warte konfigurierte Verzögerung
     if (trigger.first_message_delay_seconds > 0) {
@@ -318,17 +399,18 @@ export async function startNewConversation(options: {
       )
     }
 
-    // 6. Sende erste Nachricht
+    // 6. Sende erste Nachricht (Outreach - counts toward warm-up limit)
     await saveAndSendMessage({
       conversationId: conversation.id,
       tenantId: options.tenantId,
       instanceName,
       phone: options.phone,
       content: firstMessage,
-      senderType: 'agent',
+      senderType: agent ? 'agent' : 'human',
       scriptStep: 1,
       contactName: options.contactName,
-      agentName: agent.agent_name || agent.name,
+      agentName: agent?.agent_name || agent?.name || 'System',
+      isOutreach: true, // Only outreach messages count toward daily limit
     })
 
     // 7. Update CRM status to contacted
@@ -361,6 +443,7 @@ export async function startNewConversation(options: {
 
 /**
  * Speichert und sendet eine Nachricht
+ * @param isOutreach - If true, applies warm-up limits (only for first messages/outreach)
  */
 async function saveAndSendMessage(options: {
   conversationId: string
@@ -372,8 +455,35 @@ async function saveAndSendMessage(options: {
   scriptStep?: number
   contactName?: string
   agentName?: string
+  isOutreach?: boolean
 }): Promise<void> {
   const supabase = getSupabase()
+
+  // For outreach messages, check and update warm-up limits
+  if (options.isOutreach) {
+    const { data: account } = await supabase
+      .from('whatsapp_accounts')
+      .select('daily_limit, messages_sent_today')
+      .eq('instance_name', options.instanceName)
+      .single()
+
+    if (account) {
+      // Check if daily limit is reached
+      if (account.messages_sent_today >= account.daily_limit) {
+        console.warn(`Daily limit reached for ${options.instanceName}: ${account.messages_sent_today}/${account.daily_limit}`)
+        throw new Error('Daily message limit reached')
+      }
+
+      // Increment the counter for outreach messages
+      await supabase
+        .from('whatsapp_accounts')
+        .update({
+          messages_sent_today: account.messages_sent_today + 1,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq('instance_name', options.instanceName)
+    }
+  }
 
   // 1. Speichere in DB
   const { data: message, error: msgError } = await supabase
