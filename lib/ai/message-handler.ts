@@ -189,21 +189,9 @@ export async function handleIncomingMessage(
         note: `Eskaliert: ${result.escalationReason}`,
       }).catch(err => console.error('CRM status error:', err))
 
-      // Send escalation response to customer
-      await saveAndSendMessage({
-        conversationId,
-        tenantId,
-        instanceName,
-        phone: conversation.contact_phone,
-        content: result.response,
-        senderType: 'agent',
-        contactName: conversation.contact_name || undefined,
-        agentName: agent.agent_name || agent.name,
-      })
-
+      // No automatic response - human will respond directly from the escalation queue
       return {
         success: true,
-        response: result.response,
         action: 'escalated',
         queueId: queueEntry?.id,
       }
