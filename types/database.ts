@@ -159,6 +159,7 @@ export interface Database {
           response_delay_min: number
           response_delay_max: number
           max_messages_per_conversation: number
+          outcome_actions: Json
           created_at: string
           updated_at: string
         }
@@ -182,6 +183,7 @@ export interface Database {
           response_delay_min?: number
           response_delay_max?: number
           max_messages_per_conversation?: number
+          outcome_actions?: Json
           created_at?: string
           updated_at?: string
         }
@@ -205,6 +207,7 @@ export interface Database {
           response_delay_min?: number
           response_delay_max?: number
           max_messages_per_conversation?: number
+          outcome_actions?: Json
           created_at?: string
           updated_at?: string
         }
@@ -279,6 +282,7 @@ export interface Database {
           contact_name: string | null
           contact_push_name: string | null
           external_lead_id: string | null
+          trigger_data: Json
           status: string
           current_script_step: number
           escalated_at: string | null
@@ -301,6 +305,7 @@ export interface Database {
           contact_name?: string | null
           contact_push_name?: string | null
           external_lead_id?: string | null
+          trigger_data?: Json
           status?: string
           current_script_step?: number
           escalated_at?: string | null
@@ -323,6 +328,7 @@ export interface Database {
           contact_name?: string | null
           contact_push_name?: string | null
           external_lead_id?: string | null
+          trigger_data?: Json
           status?: string
           current_script_step?: number
           escalated_at?: string | null

@@ -16,10 +16,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { ScriptBuilder } from '@/components/agents/script-builder'
 import { FAQEditor } from '@/components/agents/faq-editor'
+import { OutcomeActions, type OutcomeActionsConfig } from '@/components/agents/outcome-actions'
 import { useAgent, useUpdateAgent } from '@/lib/hooks/use-agents'
+import { useIntegrations } from '@/lib/hooks/use-integrations'
 import { agentSchema, type AgentFormData } from '@/lib/utils/validation'
 import { toast } from 'sonner'
-import type { ScriptStep, FAQEntry } from '@/types'
+import type { ScriptStep, FAQEntry, Json } from '@/types'
 
 export default function EditAgentPage({
   params,
@@ -30,11 +32,22 @@ export default function EditAgentPage({
   const router = useRouter()
   const { data: agent, isLoading } = useAgent(id)
   const updateAgent = useUpdateAgent()
+  const { data: integrations } = useIntegrations()
 
   const [scriptSteps, setScriptSteps] = useState<ScriptStep[]>([])
   const [faqEntries, setFaqEntries] = useState<FAQEntry[]>([])
   const [escalationTopics, setEscalationTopics] = useState<string[]>([])
+  const [outcomeActions, setOutcomeActions] = useState<OutcomeActionsConfig>({})
   const [isActive, setIsActive] = useState(true)
+
+  // Check which CRMs are connected
+  const connectedCRMs = {
+    close: integrations?.close_enabled ?? false,
+    activecampaign: integrations?.activecampaign_enabled ?? false,
+    pipedrive: integrations?.pipedrive_enabled ?? false,
+    hubspot: integrations?.hubspot_enabled ?? false,
+    monday: integrations?.monday_enabled ?? false,
+  }
 
   const {
     register,
@@ -62,6 +75,7 @@ export default function EditAgentPage({
       setScriptSteps((agent.script_steps as ScriptStep[]) || [])
       setFaqEntries((agent.faq_entries as FAQEntry[]) || [])
       setEscalationTopics(agent.escalation_topics || [])
+      setOutcomeActions((agent.outcome_actions as unknown as OutcomeActionsConfig) || {})
       setIsActive(agent.is_active)
     }
   })
@@ -75,6 +89,7 @@ export default function EditAgentPage({
         script_steps: scriptSteps,
         faq_entries: faqEntries,
         escalation_topics: escalationTopics,
+        outcome_actions: outcomeActions as unknown as Json,
       })
       toast.success('Agent gespeichert')
     } catch (error) {
@@ -142,6 +157,7 @@ export default function EditAgentPage({
           <TabsTrigger value="script">Skript</TabsTrigger>
           <TabsTrigger value="faq">FAQ</TabsTrigger>
           <TabsTrigger value="escalation">Eskalation</TabsTrigger>
+          <TabsTrigger value="actions">Aktionen</TabsTrigger>
           <TabsTrigger value="settings">Einstellungen</TabsTrigger>
         </TabsList>
 
@@ -245,6 +261,14 @@ export default function EditAgentPage({
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="actions">
+          <OutcomeActions
+            config={outcomeActions}
+            onChange={setOutcomeActions}
+            connectedCRMs={connectedCRMs}
+          />
         </TabsContent>
 
         <TabsContent value="settings">

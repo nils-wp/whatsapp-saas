@@ -858,8 +858,6 @@ export const triggerSchema = z.object({
   first_message: z.string().min(10, 'Erste Nachricht muss mindestens 10 Zeichen lang sein'),
   // Delay in minutes (0-60)
   first_message_delay_minutes: z.number().min(0).max(60),
-  // Validate phone number is on WhatsApp before sending
-  validate_whatsapp_number: z.boolean().optional(),
 })
 
 export type LoginFormData = z.infer<typeof loginSchema>

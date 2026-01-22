@@ -59,6 +59,7 @@ export default function NewAgentPage() {
         escalation_message: 'Gute Frage – da muss ich kurz nachfragen. Ich melde mich gleich wieder!',
         disqualify_criteria: DISQUALIFY_CRITERIA,
         disqualify_message: 'Verstehe, dann bist du gerade an einem anderen Punkt. Melde dich gerne wieder!',
+        outcome_actions: {},
       })
 
       toast.success('Agent erfolgreich erstellt')

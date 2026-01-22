@@ -15,12 +15,10 @@ import { useCreateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
 import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPipelines, useActiveCampaignMetadata, useHubSpotMetadata } from '@/lib/hooks/use-integrations'
-import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS, type EventFilterValues } from '@/lib/utils/validation'
-import { ActionConfig } from '@/components/triggers/action-config'
+import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS } from '@/lib/utils/validation'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
-import { useState } from 'react'
 import { toast } from 'sonner'
 
 // CRM type options with labels
@@ -215,6 +213,8 @@ export default function NewTriggerPage() {
     option => !option.requiresConnection || connectedCRMs[option.value as keyof typeof connectedCRMs]
   )
 
+  // Note: CRM actions are now configured on the Agent, not the Trigger
+
   const {
     register,
     handleSubmit,
@@ -227,24 +227,12 @@ export default function NewTriggerPage() {
       type: 'webhook',
       first_message_delay_minutes: 1,
       agent_id: '',
-      validate_whatsapp_number: false,
     },
   })
-
-  const validateWhatsAppNumber = watch('validate_whatsapp_number')
 
   const selectedType = watch('type')
   const selectedEvent = watch('trigger_event')
   const eventFilters = watch('event_filters')
-
-  // Actions state
-  const [actions, setActions] = useState<Array<{
-    id: string
-    crm_type: TriggerType
-    action: string
-    fields: Record<string, unknown>
-    enabled: boolean
-  }>>([])
 
   // Get available events for the selected CRM type
   const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
@@ -303,16 +291,11 @@ export default function NewTriggerPage() {
 
   async function onSubmit(data: TriggerFormData) {
     try {
-      // Build external_config with trigger_event, event_filters, actions, and validation settings
+      // Build external_config with trigger_event and event_filters
+      // Note: CRM actions are now configured on the Agent based on conversation outcomes
       const external_config = {
         trigger_event: data.trigger_event,
         event_filters: data.event_filters,
-        validate_whatsapp_number: data.validate_whatsapp_number,
-        actions: actions.filter(a => a.enabled).map(a => ({
-          crm_type: a.crm_type as string,
-          action: a.action,
-          fields: a.fields as Record<string, string | number | boolean | null>,
-        })),
       }
 
       // Create trigger with external_config
@@ -651,33 +634,8 @@ export default function NewTriggerPage() {
                 Zeit zwischen Trigger und erster Nachricht (0 = sofort)
               </p>
             </div>
-
-            <div className="flex items-start gap-3 pt-2">
-              <Checkbox
-                id="validate_whatsapp_number"
-                checked={validateWhatsAppNumber}
-                onCheckedChange={(checked) => setValue('validate_whatsapp_number', !!checked)}
-              />
-              <div className="space-y-1">
-                <Label htmlFor="validate_whatsapp_number" className="cursor-pointer">
-                  WhatsApp-Nummer validieren
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Prüft vor dem Senden, ob die Telefonnummer bei WhatsApp registriert ist
-                </p>
-              </div>
-            </div>
           </CardContent>
         </Card>
-
-        {/* Actions Configuration */}
-        <ActionConfig
-          actions={actions}
-          onChange={setActions}
-          connectedCRMs={connectedCRMs}
-          triggerType={selectedType || 'webhook'}
-          triggerEvent={selectedEvent}
-        />
 
         <div className="flex justify-end gap-4">
           <Link href="/triggers">

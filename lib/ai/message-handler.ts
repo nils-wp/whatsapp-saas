@@ -342,6 +342,7 @@ export async function startNewConversation(options: {
     }
 
     // 3. Erstelle neue Conversation
+    // Store trigger_data for CRM variable access later
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .insert({
@@ -352,6 +353,7 @@ export async function startNewConversation(options: {
         contact_phone: options.phone,
         contact_name: options.contactName,
         external_lead_id: options.externalLeadId,
+        trigger_data: options.triggerData || {},
         status: 'active',
         current_script_step: 1,
       })

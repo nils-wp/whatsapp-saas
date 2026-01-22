@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useEffect } from 'react'
+import { use } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
@@ -17,7 +17,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { WebhookGenerator } from '@/components/triggers/webhook-generator'
-import { ActionConfig } from '@/components/triggers/action-config'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
@@ -253,40 +252,13 @@ export default function EditTriggerPage({
       first_message_delay_minutes: Math.round(trigger.first_message_delay_seconds / 60),
       trigger_event: (trigger.external_config as { trigger_event?: string })?.trigger_event || '',
       event_filters: ((trigger.external_config as { event_filters?: Record<string, string | string[]> })?.event_filters || {}) as Record<string, string | string[]>,
-      validate_whatsapp_number: (trigger.external_config as { validate_whatsapp_number?: boolean })?.validate_whatsapp_number || false,
     } : undefined,
   })
 
   const selectedType = watch('type')
   const selectedEvent = watch('trigger_event')
   const eventFilters = watch('event_filters')
-  const validateWhatsAppNumber = watch('validate_whatsapp_number')
   const isActive = trigger?.is_active ?? true
-
-  // Actions state - initialize from trigger data
-  const [actions, setActions] = useState<Array<{
-    id: string
-    crm_type: TriggerType
-    action: string
-    fields: Record<string, unknown>
-    enabled: boolean
-  }>>([])
-
-  // Load actions from trigger when it loads
-  useEffect(() => {
-    if (trigger?.external_config) {
-      const config = trigger.external_config as { actions?: Array<{ crm_type: string; action: string; fields: Record<string, unknown> }> }
-      if (config.actions && Array.isArray(config.actions)) {
-        setActions(config.actions.map((a, i) => ({
-          id: `action-${i}`,
-          crm_type: a.crm_type as TriggerType,
-          action: a.action,
-          fields: a.fields || {},
-          enabled: true,
-        })))
-      }
-    }
-  }, [trigger])
 
   // Get available events for the selected CRM type
   const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
@@ -345,16 +317,11 @@ export default function EditTriggerPage({
 
   const onSubmit: SubmitHandler<TriggerFormData> = async (data) => {
     try {
-      // Build external_config with trigger_event, event_filters, actions, and validation settings
+      // Build external_config with trigger_event and event_filters only
+      // Actions are configured on the Agent, not the Trigger
       const external_config = {
         trigger_event: data.trigger_event,
         event_filters: data.event_filters,
-        validate_whatsapp_number: data.validate_whatsapp_number,
-        actions: actions.filter(a => a.enabled).map(a => ({
-          crm_type: a.crm_type as string,
-          action: a.action,
-          fields: a.fields as Record<string, string | number | boolean | null>,
-        })),
       }
 
       await updateTrigger.mutateAsync({
@@ -717,33 +684,8 @@ export default function EditTriggerPage({
                   Zeit zwischen Trigger und erster Nachricht (0 = sofort)
                 </p>
               </div>
-
-              <div className="flex items-start gap-3 pt-2">
-                <Checkbox
-                  id="validate_whatsapp_number"
-                  checked={validateWhatsAppNumber}
-                  onCheckedChange={(checked) => setValue('validate_whatsapp_number', !!checked)}
-                />
-                <div className="space-y-1">
-                  <Label htmlFor="validate_whatsapp_number" className="cursor-pointer">
-                    WhatsApp-Nummer validieren
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Prüft vor dem Senden, ob die Telefonnummer bei WhatsApp registriert ist
-                  </p>
-                </div>
-              </div>
             </CardContent>
           </Card>
-
-          {/* Actions Configuration */}
-          <ActionConfig
-            actions={actions}
-            onChange={setActions}
-            connectedCRMs={connectedCRMs}
-            triggerType={selectedType || 'webhook'}
-            triggerEvent={selectedEvent}
-          />
         </TabsContent>
 
         <TabsContent value="webhook">
