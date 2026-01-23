@@ -10,84 +10,110 @@ function getSupabase() {
 
 /**
  * Fetch profile picture URL from Evolution API
+ * Tries multiple number formats
  */
 async function fetchProfilePicture(
   evolutionUrl: string,
   evolutionKey: string,
   instanceName: string,
-  phone: string
+  phone: string,
+  originalRemoteJid?: string
 ): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `${evolutionUrl}/chat/fetchProfilePictureUrl/${instanceName}`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': evolutionKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ number: phone }),
-      }
-    )
+  // Try multiple number formats
+  const numbersToTry = [phone]
 
-    if (response.ok) {
-      const data = await response.json()
-      const url = data.profilePictureUrl || data.picture || data.url || data.profilePicUrl || null
-      if (url) {
-        console.log(`[Sync] Got profile picture for ${phone}:`, url.substring(0, 60))
-      }
-      return url
-    } else {
-      console.log(`[Sync] Profile picture fetch failed for ${phone}: ${response.status}`)
-    }
-  } catch (error) {
-    console.log(`[Sync] Profile picture fetch error for ${phone}:`, error)
+  // If we have the original LID JID, also try that
+  if (originalRemoteJid && originalRemoteJid.includes('@lid')) {
+    numbersToTry.push(originalRemoteJid.split('@')[0])
   }
+
+  for (const number of numbersToTry) {
+    try {
+      const response = await fetch(
+        `${evolutionUrl}/chat/fetchProfilePictureUrl/${instanceName}`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': evolutionKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ number }),
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const url = data.profilePictureUrl || data.picture || data.url || data.profilePicUrl || null
+        if (url) {
+          console.log(`[Sync] Got profile picture for ${number}:`, url.substring(0, 60))
+          return url
+        }
+      }
+    } catch (error) {
+      console.log(`[Sync] Profile picture fetch error for ${number}:`, error)
+    }
+  }
+
   return null
 }
 
 /**
  * Fetch contact info (name) from Evolution API
+ * Tries multiple JID formats to find the contact
  */
 async function fetchContactInfo(
   evolutionUrl: string,
   evolutionKey: string,
   instanceName: string,
-  phone: string
+  phone: string,
+  originalRemoteJid?: string
 ): Promise<{ name: string | null; profilePicture: string | null }> {
-  try {
-    // Try to get contact info
-    const response = await fetch(
-      `${evolutionUrl}/chat/findContacts/${instanceName}`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': evolutionKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          where: {
-            id: `${phone}@s.whatsapp.net`
-          }
-        }),
-      }
-    )
+  // Try multiple JID formats
+  const jidsToTry = [
+    `${phone}@s.whatsapp.net`,
+    `${phone}@c.us`,
+  ]
 
-    if (response.ok) {
-      const data = await response.json()
-      const contacts = Array.isArray(data) ? data : (data.contacts || [])
-      const contact = contacts[0]
-
-      if (contact) {
-        const name = contact.pushName || contact.name || contact.notify || null
-        const pic = contact.profilePictureUrl || contact.imgUrl || contact.profilePicUrl || null
-        console.log(`[Sync] Contact info for ${phone}: name="${name}", hasPic=${!!pic}`)
-        return { name, profilePicture: pic }
-      }
-    }
-  } catch (error) {
-    console.log(`[Sync] Contact info fetch error:`, error)
+  // If we have the original LID JID, also try that
+  if (originalRemoteJid && originalRemoteJid.includes('@lid')) {
+    jidsToTry.unshift(originalRemoteJid) // Try LID first
   }
+
+  for (const jid of jidsToTry) {
+    try {
+      const response = await fetch(
+        `${evolutionUrl}/chat/findContacts/${instanceName}`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': evolutionKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            where: { id: jid }
+          }),
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const contacts = Array.isArray(data) ? data : (data.contacts || [])
+        const contact = contacts[0]
+
+        if (contact) {
+          const name = contact.pushName || contact.name || contact.notify || null
+          const pic = contact.profilePictureUrl || contact.imgUrl || contact.profilePicUrl || null
+          if (name || pic) {
+            console.log(`[Sync] Contact info for ${jid}: name="${name}", hasPic=${!!pic}`)
+            return { name, profilePicture: pic }
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`[Sync] Contact info fetch error for ${jid}:`, error)
+    }
+  }
+
   return { name: null, profilePicture: null }
 }
 
@@ -286,118 +312,29 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. If still no phone, try extracting from remoteJid (for @s.whatsapp.net/@c.us)
-      if (!phone && remoteJid.includes('@') && !remoteJid.includes('@lid')) {
+      // 3. If still no phone, try extracting from remoteJid
+      if (!phone && remoteJid.includes('@')) {
         phone = remoteJid.split('@')[0]
       }
 
-      // 4. If still no phone, check if remoteJid/id looks like a phone number (only digits)
-      if (!phone && /^\d{8,15}$/.test(remoteJid)) {
+      // 4. If still no phone, use remoteJid directly
+      if (!phone) {
         phone = remoteJid
       }
 
       // Clean phone number - remove non-digits
       phone = phone.replace(/\D/g, '')
 
-      // For LID contacts without phone, try multiple resolution methods
-      if ((!phone || phone.length < 8) && remoteJid.includes('@lid')) {
-        console.log(`[Sync] Trying to resolve LID: ${remoteJid}`)
-
-        // Method 0: Check pre-built LID->Phone mapping
-        if (lidToPhoneMap.has(remoteJid)) {
-          phone = lidToPhoneMap.get(remoteJid)!
-          console.log(`[Sync] Resolved LID via pre-built mapping: ${remoteJid} -> ${phone}`)
-        }
-
-        // Method 1: Try findContacts API (if Method 0 didn't work)
-        if (!phone || phone.length < 8) try {
-          const contactResponse = await fetch(
-            `${evolutionUrl}/chat/findContacts/${account.instance_name}`,
-            {
-              method: 'POST',
-              headers: {
-                'apikey': evolutionKey,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                where: { id: remoteJid }
-              }),
-            }
-          )
-          if (contactResponse.ok) {
-            const contactData = await contactResponse.json()
-            console.log(`[Sync] Contact API response for ${remoteJid}:`, JSON.stringify(contactData).substring(0, 300))
-            const contacts = Array.isArray(contactData) ? contactData : (contactData.contacts || [])
-            const contact = contacts[0]
-            if (contact) {
-              const resolvedPhone = contact.id?.replace?.('@s.whatsapp.net', '') ||
-                                    contact.number ||
-                                    contact.phone ||
-                                    ''
-              if (resolvedPhone && /^\d{8,15}$/.test(resolvedPhone.replace(/\D/g, ''))) {
-                phone = resolvedPhone.replace(/\D/g, '')
-                console.log(`[Sync] Resolved LID via contacts: ${remoteJid} -> ${phone}`)
-              }
-            }
-          }
-        } catch (err) {
-          console.log(`[Sync] Contact lookup failed for ${remoteJid}:`, err)
-        }
-
-        // Method 2: If still no phone, try fetching messages to find sender's phone
-        if (!phone || phone.length < 8) {
-          try {
-            const messagesResponse = await fetch(
-              `${evolutionUrl}/chat/findMessages/${account.instance_name}`,
-              {
-                method: 'POST',
-                headers: {
-                  'apikey': evolutionKey,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  where: { key: { remoteJid } },
-                  limit: 5,
-                }),
-              }
-            )
-            if (messagesResponse.ok) {
-              const messagesData = await messagesResponse.json()
-              const messages = messagesData.messages || messagesData || []
-              console.log(`[Sync] Found ${messages.length} messages for LID chat`)
-
-              for (const msg of messages) {
-                // Check if message has participant field with phone
-                const participant = msg.key?.participant || msg.participant
-                if (participant && participant.includes('@s.whatsapp.net')) {
-                  const extractedPhone = participant.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-                  if (extractedPhone.length >= 8 && extractedPhone.length <= 15) {
-                    phone = extractedPhone
-                    console.log(`[Sync] Resolved LID via message participant: ${remoteJid} -> ${phone}`)
-                    break
-                  }
-                }
-                // Also check remoteJid in message if different from chat remoteJid
-                const msgRemoteJid = msg.key?.remoteJid
-                if (msgRemoteJid && msgRemoteJid.includes('@s.whatsapp.net')) {
-                  const extractedPhone = msgRemoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-                  if (extractedPhone.length >= 8 && extractedPhone.length <= 15) {
-                    phone = extractedPhone
-                    console.log(`[Sync] Resolved LID via message remoteJid: ${remoteJid} -> ${phone}`)
-                    break
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.log(`[Sync] Message lookup failed for ${remoteJid}:`, err)
-          }
-        }
+      // Skip if completely empty
+      if (!phone) {
+        skippedReasons.push(`Empty phone: ${remoteJid}`)
+        skipped++
+        continue
       }
 
-      // Skip if still no valid phone
-      if (!phone || phone.length < 8) {
-        skippedReasons.push(`No valid phone found: ${remoteJid} -> "${phone}"`)
+      // Skip obvious invalid entries like "0"
+      if (phone === '0') {
+        skippedReasons.push(`Invalid phone "0": ${remoteJid}`)
         skipped++
         continue
       }
@@ -405,6 +342,7 @@ export async function POST(request: Request) {
       // Fetch contact info (name + picture) from Evolution API
       let finalContactName = contactName
       let profilePictureUrl: string | null = null
+      const isLidContact = remoteJid.includes('@lid')
 
       // If no name from chat object, try to fetch from contacts API
       if (!finalContactName) {
@@ -412,7 +350,8 @@ export async function POST(request: Request) {
           evolutionUrl,
           evolutionKey,
           account.instance_name,
-          phone
+          phone,
+          isLidContact ? remoteJid : undefined
         )
         finalContactName = contactInfo.name
         profilePictureUrl = contactInfo.profilePicture
@@ -424,7 +363,8 @@ export async function POST(request: Request) {
           evolutionUrl,
           evolutionKey,
           account.instance_name,
-          phone
+          phone,
+          isLidContact ? remoteJid : undefined
         )
       }
 

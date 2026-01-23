@@ -171,13 +171,33 @@ function getCountryCodeLength(digits: string): number {
 }
 
 /**
+ * Check if a number appears to be a WhatsApp LID (Linked Device ID)
+ * LID numbers are typically 15+ digits and not real phone numbers
+ */
+export function isLidNumber(digits: string): boolean {
+  // LID numbers are typically 15 digits and don't follow normal phone patterns
+  // Real phone numbers are usually 10-14 digits (including country code)
+  return digits.length >= 15
+}
+
+/**
  * Format a phone number for display with country code and proper spacing
  * @param phone - The phone number (with or without +)
- * @returns Formatted phone number like "+49 123 456 7890"
+ * @returns Formatted phone number like "+49 123 456 7890" or just the ID for LID contacts
  */
 export function formatPhoneNumber(phone: string): string {
   // Get only digits
   const digits = phone.replace(/\D/g, '')
+
+  // Check if this is a LID number (15+ digits) - don't try to format as phone
+  if (isLidNumber(digits)) {
+    // For LID numbers, just show a shortened version or return as-is
+    // Format: first 4 ... last 4 digits
+    if (digits.length > 10) {
+      return `ID: ${digits.slice(0, 4)}...${digits.slice(-4)}`
+    }
+    return `ID: ${digits}`
+  }
 
   if (digits.length < 8) {
     return phone.startsWith('+') ? phone : `+${digits}`
