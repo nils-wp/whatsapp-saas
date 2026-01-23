@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 
     for (const chat of chats) {
       // Log full chat object for first few to debug
-      if (synced + skipped < 3) {
+      if (synced + skipped < 5) {
         console.log('Full chat object:', JSON.stringify(chat, null, 2))
       }
 
@@ -205,44 +205,88 @@ export async function POST(request: Request) {
       let phone = ''
       const contactName = chat.name || chat.pushName || chat.contact?.name || null
 
-      // If remoteJid contains @, extract phone from it
-      if (remoteJid.includes('@')) {
-        // Skip groups and broadcasts
-        if (remoteJid.includes('@g.us')) {
-          skippedReasons.push(`Group: ${remoteJid}`)
-          skipped++
-          continue
-        }
-        if (remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
-          skippedReasons.push(`Broadcast/Status: ${remoteJid}`)
-          skipped++
-          continue
-        }
-        // Skip @lid format - these are WhatsApp internal IDs, not real phone numbers
-        if (remoteJid.includes('@lid')) {
-          skippedReasons.push(`LID format (not a phone): ${remoteJid}`)
-          skipped++
-          continue
-        }
+      // Skip groups and broadcasts first
+      if (remoteJid.includes('@g.us')) {
+        skippedReasons.push(`Group: ${remoteJid}`)
+        skipped++
+        continue
+      }
+      if (remoteJid.includes('@broadcast') || remoteJid.includes('status@')) {
+        skippedReasons.push(`Broadcast/Status: ${remoteJid}`)
+        skipped++
+        continue
+      }
 
-        // Handle individual chats: @s.whatsapp.net, @c.us
+      // Try to extract phone from multiple sources (including for @lid chats)
+      // 1. Check direct phone fields first
+      phone = chat.phone || chat.number || chat.contact?.phone || chat.participant || ''
+
+      // 2. If @lid format and no phone yet, check for phone in nested structures
+      if (remoteJid.includes('@lid') && !phone) {
+        // Some Evolution versions store phone in different places for LID chats
+        phone = chat.contact?.number ||
+                chat.contact?.id?.replace?.('@s.whatsapp.net', '') ||
+                chat.lid?.phone ||
+                chat.phoneNumber ||
+                ''
+        if (phone) {
+          console.log(`[Sync] Found phone for LID chat: ${phone}`)
+        }
+      }
+
+      // 3. If still no phone, try extracting from remoteJid (for @s.whatsapp.net/@c.us)
+      if (!phone && remoteJid.includes('@') && !remoteJid.includes('@lid')) {
         phone = remoteJid.split('@')[0]
-      } else {
-        // Try other fields for phone number
-        phone = chat.phone || chat.number || chat.contact?.phone || chat.participant || ''
+      }
 
-        // If still no phone, check if remoteJid/id looks like a phone number (only digits)
-        if (!phone && /^\d{8,15}$/.test(remoteJid)) {
-          phone = remoteJid
-        }
+      // 4. If still no phone, check if remoteJid/id looks like a phone number (only digits)
+      if (!phone && /^\d{8,15}$/.test(remoteJid)) {
+        phone = remoteJid
       }
 
       // Clean phone number - remove non-digits
       phone = phone.replace(/\D/g, '')
 
-      // Skip if no valid phone
+      // For LID contacts without phone, try to resolve via Evolution API contacts
+      if ((!phone || phone.length < 8) && remoteJid.includes('@lid')) {
+        try {
+          const contactResponse = await fetch(
+            `${evolutionUrl}/chat/findContacts/${account.instance_name}`,
+            {
+              method: 'POST',
+              headers: {
+                'apikey': evolutionKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                where: { id: remoteJid }
+              }),
+            }
+          )
+          if (contactResponse.ok) {
+            const contactData = await contactResponse.json()
+            const contacts = Array.isArray(contactData) ? contactData : (contactData.contacts || [])
+            const contact = contacts[0]
+            if (contact) {
+              // Try to get phone from contact response
+              const resolvedPhone = contact.id?.replace?.('@s.whatsapp.net', '') ||
+                                    contact.number ||
+                                    contact.phone ||
+                                    ''
+              if (resolvedPhone && /^\d{8,15}$/.test(resolvedPhone.replace(/\D/g, ''))) {
+                phone = resolvedPhone.replace(/\D/g, '')
+                console.log(`[Sync] Resolved LID to phone: ${remoteJid} -> ${phone}`)
+              }
+            }
+          }
+        } catch (err) {
+          console.log(`[Sync] Failed to resolve LID contact: ${remoteJid}`, err)
+        }
+      }
+
+      // Skip if still no valid phone
       if (!phone || phone.length < 8) {
-        skippedReasons.push(`Invalid phone: ${remoteJid} -> "${phone}"`)
+        skippedReasons.push(`No valid phone found: ${remoteJid} -> "${phone}"`)
         skipped++
         continue
       }
