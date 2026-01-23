@@ -247,8 +247,11 @@ export async function POST(request: Request) {
       // Clean phone number - remove non-digits
       phone = phone.replace(/\D/g, '')
 
-      // For LID contacts without phone, try to resolve via Evolution API contacts
+      // For LID contacts without phone, try multiple resolution methods
       if ((!phone || phone.length < 8) && remoteJid.includes('@lid')) {
+        console.log(`[Sync] Trying to resolve LID: ${remoteJid}`)
+
+        // Method 1: Try findContacts API
         try {
           const contactResponse = await fetch(
             `${evolutionUrl}/chat/findContacts/${account.instance_name}`,
@@ -265,22 +268,72 @@ export async function POST(request: Request) {
           )
           if (contactResponse.ok) {
             const contactData = await contactResponse.json()
+            console.log(`[Sync] Contact API response for ${remoteJid}:`, JSON.stringify(contactData).substring(0, 300))
             const contacts = Array.isArray(contactData) ? contactData : (contactData.contacts || [])
             const contact = contacts[0]
             if (contact) {
-              // Try to get phone from contact response
               const resolvedPhone = contact.id?.replace?.('@s.whatsapp.net', '') ||
                                     contact.number ||
                                     contact.phone ||
                                     ''
               if (resolvedPhone && /^\d{8,15}$/.test(resolvedPhone.replace(/\D/g, ''))) {
                 phone = resolvedPhone.replace(/\D/g, '')
-                console.log(`[Sync] Resolved LID to phone: ${remoteJid} -> ${phone}`)
+                console.log(`[Sync] Resolved LID via contacts: ${remoteJid} -> ${phone}`)
               }
             }
           }
         } catch (err) {
-          console.log(`[Sync] Failed to resolve LID contact: ${remoteJid}`, err)
+          console.log(`[Sync] Contact lookup failed for ${remoteJid}:`, err)
+        }
+
+        // Method 2: If still no phone, try fetching messages to find sender's phone
+        if (!phone || phone.length < 8) {
+          try {
+            const messagesResponse = await fetch(
+              `${evolutionUrl}/chat/findMessages/${account.instance_name}`,
+              {
+                method: 'POST',
+                headers: {
+                  'apikey': evolutionKey,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  where: { key: { remoteJid } },
+                  limit: 5,
+                }),
+              }
+            )
+            if (messagesResponse.ok) {
+              const messagesData = await messagesResponse.json()
+              const messages = messagesData.messages || messagesData || []
+              console.log(`[Sync] Found ${messages.length} messages for LID chat`)
+
+              for (const msg of messages) {
+                // Check if message has participant field with phone
+                const participant = msg.key?.participant || msg.participant
+                if (participant && participant.includes('@s.whatsapp.net')) {
+                  const extractedPhone = participant.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+                  if (extractedPhone.length >= 8 && extractedPhone.length <= 15) {
+                    phone = extractedPhone
+                    console.log(`[Sync] Resolved LID via message participant: ${remoteJid} -> ${phone}`)
+                    break
+                  }
+                }
+                // Also check remoteJid in message if different from chat remoteJid
+                const msgRemoteJid = msg.key?.remoteJid
+                if (msgRemoteJid && msgRemoteJid.includes('@s.whatsapp.net')) {
+                  const extractedPhone = msgRemoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+                  if (extractedPhone.length >= 8 && extractedPhone.length <= 15) {
+                    phone = extractedPhone
+                    console.log(`[Sync] Resolved LID via message remoteJid: ${remoteJid} -> ${phone}`)
+                    break
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.log(`[Sync] Message lookup failed for ${remoteJid}:`, err)
+          }
         }
       }
 
