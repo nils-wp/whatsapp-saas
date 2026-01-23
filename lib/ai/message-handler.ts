@@ -6,7 +6,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { processIncomingMessage, generateFirstMessage, generateSuggestedResponse } from './agent-processor'
 import { checkWorkingHours, getNextBusinessDay8AM } from './working-hours'
-import { sendTextMessage } from '@/lib/evolution/client'
+import { sendTextMessage, getProfilePicture } from '@/lib/evolution/client'
 import { logMessageToCRM, updateCRMStatus } from '@/lib/integrations/crm-sync'
 
 function getSupabase() {
@@ -364,6 +364,10 @@ export async function startNewConversation(options: {
       return { success: false, error: 'Failed to create conversation' }
     }
 
+    // 3.5 Fetch profile picture asynchronously (non-blocking)
+    fetchAndUpdateProfilePicture(supabase, conversation.id, instanceName, options.phone)
+      .catch(err => console.error('Profile picture fetch error:', err))
+
     // 4. Generiere erste Nachricht
     // If agent exists, use generateFirstMessage (with script steps)
     // Otherwise, use the trigger's first_message directly with variable substitution
@@ -440,6 +444,39 @@ export async function startNewConversation(options: {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     }
+  }
+}
+
+/**
+ * Fetch and update profile picture for a conversation
+ * Non-blocking - runs in background
+ */
+async function fetchAndUpdateProfilePicture(
+  supabase: ReturnType<typeof getSupabase>,
+  conversationId: string,
+  instanceName: string,
+  phone: string
+): Promise<void> {
+  try {
+    const result = await getProfilePicture(instanceName, phone)
+
+    if (result.success && result.data) {
+      const profileUrl = (result.data as { profilePictureUrl?: string; picture?: string; url?: string })
+        .profilePictureUrl ||
+        (result.data as { picture?: string }).picture ||
+        (result.data as { url?: string }).url
+
+      if (profileUrl) {
+        await supabase
+          .from('conversations')
+          .update({ profile_picture_url: profileUrl })
+          .eq('id', conversationId)
+
+        console.log(`[Profile] Updated profile picture for conversation ${conversationId}`)
+      }
+    }
+  } catch (error) {
+    console.error(`[Profile] Failed to fetch profile picture for ${phone}:`, error)
   }
 }
 
