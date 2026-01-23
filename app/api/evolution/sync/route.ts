@@ -445,25 +445,37 @@ export async function POST(request: Request) {
 
         if (messagesResponse.ok) {
           const messagesData = await messagesResponse.json()
-          const messages = messagesData.messages || messagesData || []
+          const messages = Array.isArray(messagesData) ? messagesData : (messagesData.messages || [])
 
-          // Try to extract pushName from incoming messages if we don't have a name yet
+          // ALWAYS try to extract pushName from incoming messages (especially for LID contacts)
           let extractedPushName: string | null = null
-          if (!finalContactName) {
-            for (const msg of messages) {
-              const isFromMe = msg.key?.fromMe || false
-              if (!isFromMe && msg.pushName) {
-                extractedPushName = msg.pushName
-                console.log('Found pushName in message:', extractedPushName)
-                break
-              }
+          for (const msg of messages) {
+            const isFromMe = msg.key?.fromMe || false
+            if (!isFromMe && msg.pushName) {
+              extractedPushName = msg.pushName
+              console.log(`[Sync] Found pushName in message: "${extractedPushName}"`)
+              break
             }
+          }
 
-            // Update conversation with extracted name
-            if (extractedPushName && conversationId) {
+          // Update conversation with extracted name if we found one
+          // This is especially important for LID contacts where we couldn't get a name from the API
+          if (extractedPushName && conversationId) {
+            // Check if conversation needs update (no name yet)
+            const { data: convCheck } = await supabase
+              .from('conversations')
+              .select('contact_name, contact_push_name')
+              .eq('id', conversationId)
+              .single()
+
+            if (convCheck && !convCheck.contact_name && !convCheck.contact_push_name) {
+              console.log(`[Sync] Updating conversation with pushName: "${extractedPushName}"`)
               await supabase
                 .from('conversations')
-                .update({ contact_name: extractedPushName })
+                .update({
+                  contact_name: extractedPushName,
+                  contact_push_name: extractedPushName
+                })
                 .eq('id', conversationId)
               finalContactName = extractedPushName
             }
