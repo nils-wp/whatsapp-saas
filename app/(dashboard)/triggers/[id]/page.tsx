@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { WebhookGenerator } from '@/components/triggers/webhook-generator'
+import { TriggerTest } from '@/components/triggers/trigger-test'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
@@ -688,10 +689,16 @@ export default function EditTriggerPage({
           </Card>
         </TabsContent>
 
-        <TabsContent value="webhook">
+        <TabsContent value="webhook" className="space-y-6">
           <WebhookGenerator
             webhookId={trigger.webhook_id}
             webhookSecret={trigger.webhook_secret}
+          />
+          <TriggerTest
+            webhookId={trigger.webhook_id}
+            webhookSecret={trigger.webhook_secret}
+            triggerType={trigger.type as TriggerType}
+            firstMessage={watch('first_message') || trigger.first_message}
           />
         </TabsContent>
 

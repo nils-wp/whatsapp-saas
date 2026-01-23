@@ -281,6 +281,7 @@ export interface Database {
           contact_phone: string
           contact_name: string | null
           contact_push_name: string | null
+          profile_picture_url: string | null
           external_lead_id: string | null
           trigger_data: Json
           status: string
@@ -304,6 +305,7 @@ export interface Database {
           contact_phone: string
           contact_name?: string | null
           contact_push_name?: string | null
+          profile_picture_url?: string | null
           external_lead_id?: string | null
           trigger_data?: Json
           status?: string
@@ -327,6 +329,7 @@ export interface Database {
           contact_phone?: string
           contact_name?: string | null
           contact_push_name?: string | null
+          profile_picture_url?: string | null
           external_lead_id?: string | null
           trigger_data?: Json
           status?: string
