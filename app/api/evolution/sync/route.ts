@@ -179,7 +179,59 @@ export async function POST(request: Request) {
       else if (rid.includes('@s.whatsapp.net') || rid.includes('@c.us')) preIndividual++
       else preOther++
     }
-    console.log(`Pre-analysis: ${preGroups} groups, ${preIndividual} individual, ${preLid} LID (skipped), ${preOther} other`)
+    console.log(`Pre-analysis: ${preGroups} groups, ${preIndividual} individual, ${preLid} LID, ${preOther} other`)
+
+    // Build LID -> Phone mapping by fetching all contacts first
+    const lidToPhoneMap = new Map<string, string>()
+    if (preLid > 0) {
+      console.log('[Sync] Fetching all contacts to build LID->Phone mapping...')
+      try {
+        const allContactsResponse = await fetch(
+          `${evolutionUrl}/chat/findContacts/${account.instance_name}`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': evolutionKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}), // Empty query = all contacts
+          }
+        )
+        if (allContactsResponse.ok) {
+          const allContactsData = await allContactsResponse.json()
+          const allContacts = Array.isArray(allContactsData) ? allContactsData : (allContactsData.contacts || [])
+          console.log(`[Sync] Found ${allContacts.length} total contacts`)
+
+          // Log first few contacts for debugging
+          for (let i = 0; i < Math.min(3, allContacts.length); i++) {
+            console.log(`[Sync] Contact ${i}:`, JSON.stringify(allContacts[i], null, 2))
+          }
+
+          // Build mapping from any ID format to phone
+          for (const contact of allContacts) {
+            const id = contact.id || contact.remoteJid || ''
+            const phone = id.includes('@s.whatsapp.net')
+              ? id.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+              : (contact.number || contact.phone || '').replace(/\D/g, '')
+
+            if (phone && phone.length >= 8 && phone.length <= 15) {
+              // Store under multiple possible keys
+              if (contact.lid) lidToPhoneMap.set(contact.lid, phone)
+              if (contact.lidJid) lidToPhoneMap.set(contact.lidJid, phone)
+              // Also check if there's a lid field anywhere
+              const lidMatch = JSON.stringify(contact).match(/"lid[^"]*":\s*"([^"]+@lid)"/i)
+              if (lidMatch) lidToPhoneMap.set(lidMatch[1], phone)
+            }
+          }
+          console.log(`[Sync] Built LID->Phone mapping with ${lidToPhoneMap.size} entries`)
+          if (lidToPhoneMap.size > 0) {
+            console.log('[Sync] Sample mappings:', Array.from(lidToPhoneMap.entries()).slice(0, 3))
+          }
+        }
+      } catch (err) {
+        console.error('[Sync] Failed to fetch contacts for LID mapping:', err)
+      }
+    }
 
     // Get default agent for this tenant
     const { data: defaultAgent } = await supabase
@@ -251,8 +303,14 @@ export async function POST(request: Request) {
       if ((!phone || phone.length < 8) && remoteJid.includes('@lid')) {
         console.log(`[Sync] Trying to resolve LID: ${remoteJid}`)
 
-        // Method 1: Try findContacts API
-        try {
+        // Method 0: Check pre-built LID->Phone mapping
+        if (lidToPhoneMap.has(remoteJid)) {
+          phone = lidToPhoneMap.get(remoteJid)!
+          console.log(`[Sync] Resolved LID via pre-built mapping: ${remoteJid} -> ${phone}`)
+        }
+
+        // Method 1: Try findContacts API (if Method 0 didn't work)
+        if (!phone || phone.length < 8) try {
           const contactResponse = await fetch(
             `${evolutionUrl}/chat/findContacts/${account.instance_name}`,
             {
