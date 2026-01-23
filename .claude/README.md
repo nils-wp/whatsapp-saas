@@ -75,6 +75,16 @@ Für komplexere Aufgaben gibt es spezialisierte Agents:
 3. Frage: "Der Build schlägt fehl, wie debugge ich das?"
 ```
 
+## Workflow-Skills
+
+Für wiederkehrende Aufgaben:
+
+| Skill | Beschreibung |
+|-------|--------------|
+| `/commit` | Git Commit mit standardisiertem Format |
+| `/test-sync` | Evolution API Sync testen |
+| `/debug-webhook` | CRM Webhook Triggers debuggen |
+
 ## Struktur
 
 ```
@@ -88,9 +98,13 @@ Für komplexere Aufgaben gibt es spezialisierte Agents:
 │   ├── pipedrive.md            # Pipedrive API
 │   ├── monday.md               # Monday.com API
 │   ├── hubspot.md              # HubSpot API
+│   ├── salesforce.md           # Salesforce API
 │   ├── nextjs.md               # Next.js
 │   ├── coolify.md              # Coolify
 │   ├── github.md               # GitHub
+│   ├── commit.md               # Commit Workflow
+│   ├── test-sync.md            # Sync Testing
+│   ├── debug-webhook.md        # Webhook Debugging
 │   ├── agent-messaging.md      # Messaging Agent
 │   ├── agent-ai.md             # AI Agent
 │   ├── agent-crm.md            # CRM Agent
@@ -115,3 +129,21 @@ Für komplexere Aufgaben gibt es spezialisierte Agents:
 - Kombiniere Skills für komplexe Aufgaben
 - Nutze spezialisierte Agents für ihre Fachgebiete
 - Halte Skills aktuell wenn sich APIs ändern
+- Nenne konkrete Tools explizit (z.B. "nutze git bisect")
+- Nutze Planning Mode für größere Refactorings
+
+## Globale Einstellungen
+
+In `~/.claude/settings.json` sind konfiguriert:
+- `cleanupPeriodDays: 99999` - Session-History wird nicht gelöscht
+- Security Hook blockiert gefährliche Befehle (rm -rf, force push, etc.)
+
+## Multi-Agent Workflow
+
+Für komplexe Aufgaben können mehrere Agents koordiniert werden:
+
+1. **Research Phase**: `/agent-database` oder `/agent-crm` für Analyse
+2. **Planning Phase**: Planning Mode aktivieren, Plan erstellen
+3. **Implementation**: Spezialisierte Agents für Code-Änderungen
+4. **Verification**: `/test-sync` oder manuelle Tests
+5. **Commit**: `/commit` für sauberen Commit
