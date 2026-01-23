@@ -5,6 +5,7 @@ import { formatDistanceToNow, type Locale } from 'date-fns'
 import { de, es, fr, enUS } from 'date-fns/locale'
 import { MessageSquare, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatPhoneNumber, getContactInitials } from '@/lib/utils/phone'
 import { useTranslations, useLocale } from '@/providers/locale-provider'
 import type { Tables } from '@/types/database'
 
@@ -77,11 +78,11 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
               className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#252525] transition-colors"
             >
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold">
-                {conversation.contact_name?.[0] || conversation.contact_phone.slice(-2)}
+                {getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-white truncate">
-                  {conversation.contact_name || conversation.contact_phone}
+                  {conversation.contact_name || conversation.contact_push_name || formatPhoneNumber(conversation.contact_phone)}
                 </p>
                 <p className="text-sm text-gray-500">
                   {conversation.last_message_at
