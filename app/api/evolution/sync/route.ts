@@ -171,14 +171,15 @@ export async function POST(request: Request) {
     console.log(`Found ${chats.length} chats to sync`)
 
     // Pre-analyze chats
-    let preGroups = 0, preIndividual = 0, preOther = 0
+    let preGroups = 0, preIndividual = 0, preLid = 0, preOther = 0
     for (const c of chats) {
       const rid = c.remoteJid || c.id || c.jid || ''
       if (rid.includes('@g.us')) preGroups++
-      else if (rid.includes('@s.whatsapp.net') || rid.includes('@c.us') || rid.includes('@lid')) preIndividual++
+      else if (rid.includes('@lid')) preLid++
+      else if (rid.includes('@s.whatsapp.net') || rid.includes('@c.us')) preIndividual++
       else preOther++
     }
-    console.log(`Pre-analysis: ${preGroups} groups, ${preIndividual} individual, ${preOther} other`)
+    console.log(`Pre-analysis: ${preGroups} groups, ${preIndividual} individual, ${preLid} LID (skipped), ${preOther} other`)
 
     // Get default agent for this tenant
     const { data: defaultAgent } = await supabase
@@ -217,14 +218,15 @@ export async function POST(request: Request) {
           skipped++
           continue
         }
-        // Handle individual chats: @s.whatsapp.net, @c.us, @lid
-        phone = remoteJid.split('@')[0]
-
-        // For @lid format, the phone might be a different ID - try to use it anyway
+        // Skip @lid format - these are WhatsApp internal IDs, not real phone numbers
         if (remoteJid.includes('@lid')) {
-          // @lid is a new WhatsApp format - the number before @ is still usable
-          console.log('Processing @lid format:', remoteJid)
+          skippedReasons.push(`LID format (not a phone): ${remoteJid}`)
+          skipped++
+          continue
         }
+
+        // Handle individual chats: @s.whatsapp.net, @c.us
+        phone = remoteJid.split('@')[0]
       } else {
         // Try other fields for phone number
         phone = chat.phone || chat.number || chat.contact?.phone || chat.participant || ''
