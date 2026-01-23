@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { WebhookGenerator } from '@/components/triggers/webhook-generator'
 import { TriggerTest } from '@/components/triggers/trigger-test'
+import { CRMTriggerTest } from '@/components/triggers/crm-trigger-test'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
@@ -690,10 +691,19 @@ export default function EditTriggerPage({
         </TabsContent>
 
         <TabsContent value="webhook" className="space-y-6">
+          {/* CRM Connection Test - Test if CRM API works and show available variables */}
+          <CRMTriggerTest
+            triggerType={trigger.type as TriggerType}
+            firstMessage={watch('first_message') || trigger.first_message}
+          />
+
+          {/* Webhook URL and Secret */}
           <WebhookGenerator
             webhookId={trigger.webhook_id}
             webhookSecret={trigger.webhook_secret}
           />
+
+          {/* Webhook Trigger Test - Sends a real test request */}
           <TriggerTest
             webhookId={trigger.webhook_id}
             webhookSecret={trigger.webhook_secret}

@@ -15,6 +15,7 @@ import {
   Check,
   Plus,
   Building2,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/providers/locale-provider'
@@ -51,6 +52,7 @@ const navigation = [
   { key: 'triggers', href: '/triggers', icon: Zap },
   { key: 'phoneNumbers', href: '/accounts', icon: Phone },
   { key: 'integrations', href: '/integrations', icon: Plug },
+  { key: 'tools', href: '/tools', icon: Wrench },
   { key: 'templates', href: '/templates', icon: FileText },
   { key: 'settings', href: '/settings', icon: Settings },
 ]
