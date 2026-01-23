@@ -78,11 +78,14 @@ export async function POST(request: Request) {
           .single()
 
         if (escalatedConv) {
-          // Update contact name if missing
-          if (pushName && !escalatedConv.contact_name) {
+          // Update contact name and push_name if missing
+          if (pushName && (!escalatedConv.contact_name || !escalatedConv.contact_push_name)) {
+            const updates: Record<string, string> = {}
+            if (!escalatedConv.contact_name) updates.contact_name = pushName
+            if (!escalatedConv.contact_push_name) updates.contact_push_name = pushName
             await supabase
               .from('conversations')
-              .update({ contact_name: pushName })
+              .update(updates)
               .eq('id', escalatedConv.id)
           }
 
@@ -139,6 +142,7 @@ export async function POST(request: Request) {
             agent_id: defaultAgent?.id || null,
             contact_phone: phone,
             contact_name: pushName,
+            contact_push_name: pushName,
             status: 'active',
             current_script_step: 1,
           })
@@ -160,6 +164,7 @@ export async function POST(request: Request) {
       // Reaktiviere pausierte Conversations und aktualisiere Namen/Profilbild wenn nötig
       const needsUpdate = conversation.status === 'paused' ||
                           (pushName && !conversation.contact_name) ||
+                          (pushName && !conversation.contact_push_name) ||
                           !conversation.profile_picture_url
 
       if (needsUpdate) {
@@ -170,6 +175,10 @@ export async function POST(request: Request) {
         if (pushName && !conversation.contact_name) {
           updates.contact_name = pushName
           console.log('Updating contact name to:', pushName)
+        }
+        if (pushName && !conversation.contact_push_name) {
+          updates.contact_push_name = pushName
+          console.log('Updating contact_push_name to:', pushName)
         }
         if (Object.keys(updates).length > 0) {
           await supabase

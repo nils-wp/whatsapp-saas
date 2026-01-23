@@ -19,6 +19,7 @@ import { PageLoader } from '@/components/shared/loading-spinner'
 import { WebhookGenerator } from '@/components/triggers/webhook-generator'
 import { TriggerTest } from '@/components/triggers/trigger-test'
 import { CRMTriggerTest } from '@/components/triggers/crm-trigger-test'
+import { WebhookTestMode } from '@/components/triggers/webhook-test-mode'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useAgents } from '@/lib/hooks/use-agents'
@@ -691,6 +692,14 @@ export default function EditTriggerPage({
         </TabsContent>
 
         <TabsContent value="webhook" className="space-y-6">
+          {/* Webhook Test Mode - Listen for real CRM events (like n8n) */}
+          <WebhookTestMode
+            triggerId={trigger.id}
+            webhookId={trigger.webhook_id}
+            webhookSecret={trigger.webhook_secret}
+            triggerType={trigger.type}
+          />
+
           {/* CRM Connection Test - Test if CRM API works and show available variables */}
           <CRMTriggerTest
             triggerType={trigger.type as TriggerType}

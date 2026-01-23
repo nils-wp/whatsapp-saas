@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { startNewConversation } from '@/lib/ai/message-handler'
 import { EVENT_FILTERS, type TriggerType } from '@/lib/utils/validation'
+import { isInTestMode, storeTestEvent } from '@/app/api/triggers/[id]/test-mode/route'
 
 function getSupabase() {
   return createClient(
@@ -346,6 +347,52 @@ export async function POST(
     }
 
     const payload = await request.json()
+
+    // Check if trigger is in test mode - capture event instead of processing
+    if (isInTestMode(trigger.id)) {
+      // Extract variables that would be used
+      const extractedVariables: Record<string, string | null> = {
+        phone: payload.phone || null,
+        name: payload.name || null,
+        email: payload.email || null,
+        first_name: payload.first_name || (payload.current?.first_name as string) || null,
+        last_name: payload.last_name || (payload.current?.last_name as string) || null,
+        company: payload.company || (payload.current?.org_name as string) || null,
+      }
+
+      // Also extract from CRM-specific payloads
+      if (trigger.type === 'pipedrive') {
+        const current = payload.current as Record<string, unknown> | undefined
+        extractedVariables.phone = (current?.phone as string) || payload.phone || null
+        extractedVariables.name = (current?.name as string) || (current?.person_name as string) || null
+        extractedVariables.first_name = (current?.first_name as string) || null
+        extractedVariables.last_name = (current?.last_name as string) || null
+        extractedVariables.deal_title = (current?.title as string) || null
+        extractedVariables.deal_value = (current?.value as string)?.toString() || null
+        extractedVariables.stage_name = (current?.stage_id as string)?.toString() || null
+      } else if (trigger.type === 'hubspot') {
+        const properties = payload.properties as Record<string, unknown> | undefined
+        extractedVariables.phone = (properties?.phone as string) || payload.phone || null
+        extractedVariables.first_name = (properties?.firstname as string) || null
+        extractedVariables.last_name = (properties?.lastname as string) || null
+        extractedVariables.email = (properties?.email as string) || null
+        extractedVariables.company = (properties?.company as string) || null
+      } else if (trigger.type === 'monday') {
+        const event = payload.event as Record<string, unknown> | undefined
+        extractedVariables.item_name = (event?.pulseName as string) || null
+        extractedVariables.column_value = ((event?.value as Record<string, unknown>)?.text as string) || null
+      }
+
+      // Store the test event
+      storeTestEvent(trigger.id, payload, extractedVariables)
+
+      return NextResponse.json({
+        success: true,
+        testMode: true,
+        message: 'Test event captured successfully',
+        extractedVariables,
+      })
+    }
 
     // Check event filters from external_config
     const externalConfig = trigger.external_config as {

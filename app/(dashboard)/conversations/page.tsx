@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, Filter, Trash2 } from 'lucide-react'
+import { MessageSquare, Filter, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card } from '@/components/ui/card'
@@ -20,6 +20,7 @@ export default function ConversationsPage() {
   const [agentFilter, setAgentFilter] = useState<string>('all')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [showCleanupDialog, setShowCleanupDialog] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const t = useTranslations('conversations')
   const tCommon = useTranslations('common')
 
@@ -58,6 +59,25 @@ export default function ConversationsPage() {
     }
   }
 
+  async function handleSyncProfiles() {
+    setIsSyncing(true)
+    try {
+      const response = await fetch('/api/conversations/sync-profiles', {
+        method: 'POST',
+      })
+      const result = await response.json()
+      if (response.ok) {
+        toast.success(`Profilbilder aktualisiert: ${result.updated} von ${result.total}`)
+      } else {
+        toast.error(result.error || 'Sync fehlgeschlagen')
+      }
+    } catch {
+      toast.error('Fehler beim Synchronisieren')
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   if (isLoading) {
     return <PageLoader />
   }
@@ -71,16 +91,27 @@ export default function ConversationsPage() {
             {t('subtitle')}
           </p>
         </div>
-        {orphanedCount > 0 && (
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setShowCleanupDialog(true)}
-            className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            onClick={handleSyncProfiles}
+            disabled={isSyncing}
+            className="border-[#00a884]/50 text-[#00a884] hover:bg-[#00a884]/10 hover:text-[#00a884]"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
-            {t('cleanup')} ({orphanedCount} {t('orphaned')})
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Synchronisiere...' : 'Profile sync'}
           </Button>
-        )}
+          {orphanedCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowCleanupDialog(true)}
+              className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t('cleanup')} ({orphanedCount} {t('orphaned')})
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
