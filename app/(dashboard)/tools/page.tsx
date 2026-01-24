@@ -537,19 +537,19 @@ export default function ToolsPage() {
                     Kopieren
                   </Button>
                 </div>
-                <div className="p-4 overflow-x-auto">
+                <div className="p-4 overflow-x-auto border-b border-zinc-800">
                   <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
                     {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                   </pre>
                 </div>
-              </div>
 
-              <Alert className="bg-emerald-500/10 border-emerald-500/20">
-                <AlertTriangle className="h-4 w-4 text-emerald-500" />
-                <AlertDescription className="text-emerald-200">
-                  Dieser Endpunkt ist öffentlich (CORS enabled) und kann von jeder Domain aufgerufen werden.
-                </AlertDescription>
-              </Alert>
+                <div className="bg-zinc-900/50 p-4 flex items-start gap-3 text-xs text-zinc-400">
+                  <AlertTriangle className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <p>
+                    Dieser Endpunkt ist öffentlich (CORS enabled) und kann von jeder Domain aufgerufen werden.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
