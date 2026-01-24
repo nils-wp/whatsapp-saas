@@ -17,13 +17,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: member } = await supabase
+    const { data: member, error: memberError } = await supabase
       .from('tenant_members')
       .select('tenant_id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
+
+    if (memberError) {
+      console.error('Error fetching tenant member:', memberError)
+      return NextResponse.json({ error: 'Database error fetching tenant' }, { status: 500 })
+    }
 
     if (!member) {
+      console.error('No tenant member found for user:', user.id)
       return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
     }
 
