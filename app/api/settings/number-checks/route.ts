@@ -104,13 +104,15 @@ export async function POST(request: NextRequest) {
             .maybeSingle()
 
         if (memberError) {
-            console.error('[API] Error fetching tenant member:', memberError)
-            return NextResponse.json({ error: 'Database error fetching tenant', details: memberError.message }, { status: 500 })
+            const errorMsg = `Database error fetching tenant. ServiceRole: ${!!supabaseAdmin}. Details: ${memberError.message}`
+            console.error('[API]', errorMsg)
+            return NextResponse.json({ error: 'Database error', details: errorMsg }, { status: 500 })
         }
 
         if (!member) {
-            console.error('[API] No tenant member found for user:', user.id)
-            return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
+            const errorMsg = `No tenant member found for user: ${user.id}. ServiceRole: ${!!supabaseAdmin}`
+            console.error('[API]', errorMsg)
+            return NextResponse.json({ error: 'No tenant found', details: errorMsg }, { status: 404 })
         }
         console.log('[API] Tenant found:', member.tenant_id)
 

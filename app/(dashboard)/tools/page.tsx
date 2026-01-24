@@ -84,7 +84,7 @@ export default function ToolsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        toast.error(data.error || 'Fehler beim Erstellen')
+        toast.error(data.details || data.error || 'Fehler beim Erstellen')
         return
       }
 
