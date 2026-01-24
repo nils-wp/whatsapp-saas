@@ -490,9 +490,9 @@ export default function ToolsPage() {
       <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
         <DialogContent className="max-w-2xl bg-[#1a1a1a] text-white border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Integration Guide</DialogTitle>
+            <DialogTitle>Integration in bestehenden Formular-Code</DialogTitle>
             <DialogDescription>
-              Füge diesen Code in dein Formular oder Funnel-Builder ein (z.B. als Custom HTML/JS), um eine Nummer zu validieren.
+              Nutze diese Funktion in deinem bestehenden Skript, um die Nummer vor dem Absenden zu prüfen.
             </DialogDescription>
           </DialogHeader>
 
@@ -500,34 +500,32 @@ export default function ToolsPage() {
             <div className="space-y-4">
               <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 font-mono text-sm overflow-x-auto">
                 <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-800">
-                  <span className="text-zinc-500">JavaScript (Fetch Example)</span>
+                  <span className="text-zinc-500">JavaScript Helper Function</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs hover:text-white"
                     onClick={() => {
                       const code = `
-const validateNumber = async (phone) => {
+// Füge diese Funktion in dein Skript ein
+async function checkWhatsApp(phone) {
   try {
-    const response = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
+    const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
     });
-    
-    const data = await response.json();
-    
-    if (data.exists) {
-      console.log('Valid WhatsApp Number', data.formatted);
-      return true;
-    } else {
-      console.log('Not on WhatsApp');
-      return false;
-    }
-  } catch (error) {
-    console.error('Check failed', error);
+    const data = await res.json();
+    return data.exists; // true = Nummer hat WhatsApp
+  } catch (e) {
+    console.error('Check failed', e);
+    return true; // Im Zweifel erlauben
   }
-};`
+}
+
+// Beispiel Aufruf:
+// const hasWhatsApp = await checkWhatsApp(userPhoneNumber);
+// if (!hasWhatsApp) alert("Kein WhatsApp!");`
                       navigator.clipboard.writeText(code.trim())
                       toast.success('Code kopiert')
                     }}
@@ -537,27 +535,24 @@ const validateNumber = async (phone) => {
                   </Button>
                 </div>
                 <pre className="text-emerald-400">
-                  {`const validateNumber = async (phone) => {
+                  {`// Füge diese Funktion in dein Skript ein
+async function checkWhatsApp(phone) {
   try {
-    const response = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
+    const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
     });
-    
-    const data = await response.json();
-    
-    if (data.exists) {
-      console.log('Valid WhatsApp Number', data.formatted);
-      return true;
-    } else {
-      console.log('Not on WhatsApp');
-      return false;
-    }
-  } catch (error) {
-    console.error('Check failed', error);
+    const data = await res.json();
+    return data.exists; // true = Nummer hat WhatsApp
+  } catch (e) {
+    console.error('Check failed', e);
+    return true; // Im Zweifel erlauben
   }
-};`}
+}
+
+// Beispiel Aufruf:
+// const hasWhatsApp = await checkWhatsApp("+4912345678");`}
                 </pre>
               </div>
 
