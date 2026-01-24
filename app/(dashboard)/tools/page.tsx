@@ -27,6 +27,27 @@ interface CheckResult {
   error?: string
 }
 
+const generateSnippet = (slug: string, origin: string = '') => {
+  return `// Füge diese Funktion in dein Skript ein
+async function checkWhatsApp(phone) {
+  try {
+    const res = await fetch('${origin}/api/tools/check/${slug}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    return data.exists; // true = Nummer hat WhatsApp
+  } catch (e) {
+    console.error('Check failed', e);
+    return true; // Im Zweifel erlauben
+  }
+}
+
+// Beispiel Aufruf:
+// const hasWhatsApp = await checkWhatsApp("+4912345678");`
+}
+
 export default function ToolsPage() {
   const [phone, setPhone] = useState('')
   const [accountId, setAccountId] = useState<string>('')
@@ -506,26 +527,9 @@ export default function ToolsPage() {
                     size="sm"
                     className="h-6 text-xs hover:text-white hover:bg-zinc-800"
                     onClick={() => {
-                      const code = `// Füge diese Funktion in dein Skript ein
-async function checkWhatsApp(phone) {
-  try {
-    const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    return data.exists; // true = Nummer hat WhatsApp
-  } catch (e) {
-    console.error('Check failed', e);
-    return true; // Im Zweifel erlauben
-  }
-}
-
-// Beispiel Aufruf:
-// const hasWhatsApp = await checkWhatsApp(userPhoneNumber);
-// if (!hasWhatsApp) alert("Kein WhatsApp!");`
-                      navigator.clipboard.writeText(code.trim())
+                      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                      const code = generateSnippet(selectedConfig.slug, origin)
+                      navigator.clipboard.writeText(code)
                       toast.success('Code kopiert')
                     }}
                   >
@@ -535,24 +539,7 @@ async function checkWhatsApp(phone) {
                 </div>
                 <div className="p-4 overflow-x-auto">
                   <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
-                    {`// Füge diese Funktion in dein Skript ein
-async function checkWhatsApp(phone) {
-  try {
-    const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    return data.exists; // true = Nummer hat WhatsApp
-  } catch (e) {
-    console.error('Check failed', e);
-    return true; // Im Zweifel erlauben
-  }
-}
-
-// Beispiel Aufruf:
-// const hasWhatsApp = await checkWhatsApp("+4912345678");`}
+                    {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                   </pre>
                 </div>
               </div>
