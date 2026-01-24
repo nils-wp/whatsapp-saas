@@ -77,8 +77,16 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
               href={`/conversations/${conversation.id}`}
               className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#252525] transition-colors"
             >
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold">
-                {getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)}
+              <div className="relative h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
+                {conversation.profile_picture_url ? (
+                  <img
+                    src={conversation.profile_picture_url}
+                    alt={conversation.contact_name || conversation.contact_phone}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-white truncate">
