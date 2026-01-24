@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
             .from('tenant_members')
             .select('tenant_id')
             .eq('user_id', user.id)
+            .limit(1)
             .maybeSingle()
 
         if (memberError) {
