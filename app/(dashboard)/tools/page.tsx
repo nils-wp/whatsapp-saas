@@ -535,7 +535,8 @@ async function checkWhatsApp(phone) {
                   </Button>
                 </div>
                 <pre className="text-emerald-400">
-                  {`// Füge diese Funktion in dein Skript ein
+                  {`
+// Füge diese Funktion in dein Skript ein
 async function checkWhatsApp(phone) {
   try {
     const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
@@ -552,7 +553,7 @@ async function checkWhatsApp(phone) {
 }
 
 // Beispiel Aufruf:
-// const hasWhatsApp = await checkWhatsApp("+4912345678");`}
+// const hasWhatsApp = await checkWhatsApp("+4912345678");`.trim()}
                 </pre>
               </div>
 
