@@ -431,11 +431,7 @@ export default function ToolsPage() {
                           ? 'Hat WhatsApp'
                           : 'Kein WhatsApp'}
                       </p>
-                      {result.jid && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          JID: {result.jid}
-                        </p>
-                      )}
+
                     </div>
                   </div>
                 )}
