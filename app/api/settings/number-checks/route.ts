@@ -81,38 +81,27 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    console.log('[API] Check Number Config POST started')
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
+            console.log('[API] Unauthorized')
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        let member
-        let memberError
+        const client = supabaseAdmin || supabase
+        const isServiceRole = !!supabaseAdmin
+        console.log(`[API] Using ${isServiceRole ? 'Service Role' : 'User'} Client`)
 
-        if (supabaseAdmin) {
-            // Use Admin client for lookup to avoid RLS recursion
-            console.log('[API] Using Service Role for tenant lookup')
-            const result = await supabaseAdmin
-                .from('tenant_members')
-                .select('tenant_id')
-                .eq('user_id', user.id)
-                .maybeSingle()
-            member = result.data
-            memberError = result.error
-        } else {
-            // Fallback to user client
-            console.log('[API] Service Role Key missing, using User Client for tenant lookup')
-            const result = await supabase
-                .from('tenant_members')
-                .select('tenant_id')
-                .eq('user_id', user.id)
-                .maybeSingle()
-            member = result.data
-            memberError = result.error
-        }
+        // 1. Get Tenant Member
+        console.log('[API] Fetching tenant member...')
+        const { data: member, error: memberError } = await client
+            .from('tenant_members')
+            .select('tenant_id')
+            .eq('user_id', user.id)
+            .maybeSingle()
 
         if (memberError) {
             console.error('[API] Error fetching tenant member:', memberError)
@@ -123,44 +112,61 @@ export async function POST(request: NextRequest) {
             console.error('[API] No tenant member found for user:', user.id)
             return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
         }
+        console.log('[API] Tenant found:', member.tenant_id)
 
+        // 2. Parse Body
         const json = await request.json()
         const body = createSchema.parse(json)
+        console.log('[API] Body parsed:', body)
 
-        // Check slug uniqueness
-        const { data: existing } = await supabase
+        // 3. Check Slug Uniqueness
+        console.log('[API] Checking slug uniqueness...')
+        const { data: existing, error: slugError } = await client
             .from('number_check_configs')
             .select('id')
             .eq('slug', body.slug)
-            .single()
+            .maybeSingle()
+
+        if (slugError) {
+            console.error('[API] Error checking slug:', slugError)
+            return NextResponse.json({ error: 'Database error checking slug', details: slugError.message }, { status: 500 })
+        }
 
         if (existing) {
+            console.log('[API] Slug already exists')
             return NextResponse.json(
                 { error: 'Dieser URL-Slug ist bereits vergeben' },
                 { status: 400 }
             )
         }
 
-        const { data: config, error } = await supabase
+        // 4. Insert Config
+        console.log('[API] Inserting config...')
+        const { data: config, error: insertError } = await client
             .from('number_check_configs')
             .insert({
                 tenant_id: member.tenant_id,
                 name: body.name,
                 slug: body.slug,
                 whatsapp_account_id: body.whatsapp_account_id || null,
-                allowed_origins: ['*'], // Default to all
+                allowed_origins: ['*'],
             })
             .select()
             .single()
 
-        if (error) throw error
+        if (insertError) {
+            console.error('[API] Error inserting config:', insertError)
+            return NextResponse.json({ error: 'Database error inserting config', details: insertError.message }, { status: 500 })
+        }
 
+        console.log('[API] Success!')
         return NextResponse.json(config)
+
     } catch (error) {
+        console.error('[API] Uncaught error:', error)
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: (error as any).errors }, { status: 400 })
         }
-        console.error('Error creating check:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
     }
 }
