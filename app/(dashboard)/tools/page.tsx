@@ -518,31 +518,27 @@ export default function ToolsPage() {
           </DialogHeader>
 
           {selectedConfig && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-zinc-800 bg-[#0d0d0d] overflow-hidden">
-                <div className="flex justify-between items-center px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-                  <span className="text-xs font-mono text-zinc-500">helper.js</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs hover:text-white hover:bg-zinc-800"
-                    onClick={() => {
-                      const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                      const code = generateSnippet(selectedConfig.slug, origin)
-                      navigator.clipboard.writeText(code)
-                      toast.success('Code kopiert')
-                    }}
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    Kopieren
-                  </Button>
-                </div>
-                <div className="p-4 overflow-x-auto border-b border-zinc-800">
+            <div className="space-y-0 border border-zinc-800 rounded-lg overflow-hidden bg-[#0d0d0d]">
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                  onClick={() => {
+                    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                    const code = generateSnippet(selectedConfig.slug, origin)
+                    navigator.clipboard.writeText(code)
+                    toast.success('Code kopiert')
+                  }}
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Kopieren
+                </Button>
+                <div className="p-4 pt-10 overflow-x-auto border-b border-zinc-800">
                   <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
                     {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                   </pre>
                 </div>
-
                 <div className="bg-zinc-900/50 p-4 flex items-start gap-3 text-xs text-zinc-400">
                   <AlertTriangle className="h-4 w-4 text-emerald-500 shrink-0" />
                   <p>
@@ -550,10 +546,9 @@ export default function ToolsPage() {
                   </p>
                 </div>
               </div>
-            </div>
           )}
-        </DialogContent>
+            </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
