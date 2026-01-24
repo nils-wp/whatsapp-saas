@@ -546,9 +546,10 @@ export default function ToolsPage() {
                   </p>
                 </div>
               </div>
+            </div>
           )}
-            </DialogContent>
+        </DialogContent>
       </Dialog>
-    </div >
+    </div>
   )
 }
