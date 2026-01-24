@@ -506,8 +506,7 @@ export default function ToolsPage() {
                     size="sm"
                     className="h-6 text-xs hover:text-white hover:bg-zinc-800"
                     onClick={() => {
-                      const code = `
-// Füge diese Funktion in dein Skript ein
+                      const code = `// Füge diese Funktion in dein Skript ein
 async function checkWhatsApp(phone) {
   try {
     const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
@@ -536,8 +535,7 @@ async function checkWhatsApp(phone) {
                 </div>
                 <div className="p-4 overflow-x-auto">
                   <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
-                    {`
-// Füge diese Funktion in dein Skript ein
+                    {`// Füge diese Funktion in dein Skript ein
 async function checkWhatsApp(phone) {
   try {
     const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
@@ -554,7 +552,7 @@ async function checkWhatsApp(phone) {
 }
 
 // Beispiel Aufruf:
-// const hasWhatsApp = await checkWhatsApp("+4912345678");`.trim()}
+// const hasWhatsApp = await checkWhatsApp("+4912345678");`}
                   </pre>
                 </div>
               </div>
