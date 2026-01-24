@@ -315,7 +315,7 @@ export default function ToolsPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => copyNumber(`${window.location.origin}/api/tools/check/${config.slug}`)}
+                        onClick={() => copyNumber(typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${config.slug}` : "")}
                         title="URL kopieren"
                       >
                         <Copy className="h-4 w-4" />
@@ -338,6 +338,7 @@ export default function ToolsPage() {
 
         {/* Manual Check */}
         <Card className="lg:col-span-2">
+          {/* ... Card Header ... */}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-blue-500" />
@@ -349,6 +350,7 @@ export default function ToolsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
+              {/* ... Inputs ... */}
               <div className="space-y-2 md:col-span-2">
                 <Label>Telefonnummer</Label>
                 <div className="flex gap-2">
@@ -452,7 +454,7 @@ export default function ToolsPage() {
               <div className="space-y-2">
                 {history.map((item, index) => (
                   <div
-                    key={`${item.phone}-${index}`}
+                    key={`${item.phone}-${index}-${Date.now()}`}
                     className="flex items-center justify-between p-3 bg-muted rounded-lg"
                   >
                     <div className="flex items-center gap-3">
