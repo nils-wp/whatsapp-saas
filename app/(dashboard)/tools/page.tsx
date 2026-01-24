@@ -77,7 +77,7 @@ export default function ToolsPage() {
         body: JSON.stringify({
           name: newConfigName,
           slug: newConfigSlug,
-          whatsapp_account_id: newConfigAccountId || undefined,
+          whatsapp_account_id: newConfigAccountId === 'auto' ? undefined : newConfigAccountId,
         }),
       })
 
@@ -132,7 +132,7 @@ export default function ToolsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: phone.trim(),
-          accountId: accountId || undefined,
+          accountId: accountId === 'auto' ? undefined : accountId,
         }),
       })
 
@@ -261,7 +261,7 @@ export default function ToolsPage() {
                           <SelectValue placeholder="Automatisch (erster verfügbarer)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Automatisch</SelectItem>
+                          <SelectItem value="auto">Automatisch</SelectItem>
                           {connectedAccounts.map((account) => (
                             <SelectItem key={account.id} value={account.id}>
                               {account.display_name || account.instance_name}
@@ -382,7 +382,7 @@ export default function ToolsPage() {
                       <SelectValue placeholder="Automatisch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Automatisch</SelectItem>
+                      <SelectItem value="auto">Automatisch</SelectItem>
                       {connectedAccounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.display_name || account.instance_name}
