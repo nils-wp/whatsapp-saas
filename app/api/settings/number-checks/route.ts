@@ -11,10 +11,16 @@ const createSchema = z.object({
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 // Admin client to bypass RLS recursion issues during tenant lookup
-const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Check if service role key exists
+const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// Admin client to bypass RLS (only if key is available)
+const supabaseAdmin = hasServiceRole
+    ? createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    : null
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,12 +31,27 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Use Admin client for lookup to avoid RLS recursion
-        const { data: member, error: memberError } = await supabaseAdmin
-            .from('tenant_members')
-            .select('tenant_id')
-            .eq('user_id', user.id)
-            .maybeSingle()
+        let member
+        let memberError
+
+        if (supabaseAdmin) {
+            const result = await supabaseAdmin
+                .from('tenant_members')
+                .select('tenant_id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            member = result.data
+            memberError = result.error
+        } else {
+            console.log('[API] Service Role Key missing in GET, using User Client')
+            const result = await supabase
+                .from('tenant_members')
+                .select('tenant_id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            member = result.data
+            memberError = result.error
+        }
 
         if (memberError) {
             console.error('[API] Error fetching tenant member:', memberError)
@@ -68,16 +89,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Use Admin client for lookup to avoid RLS recursion
-        const { data: member, error: memberError } = await supabaseAdmin
-            .from('tenant_members')
-            .select('tenant_id')
-            .eq('user_id', user.id)
-            .maybeSingle()
+        let member
+        let memberError
+
+        if (supabaseAdmin) {
+            // Use Admin client for lookup to avoid RLS recursion
+            console.log('[API] Using Service Role for tenant lookup')
+            const result = await supabaseAdmin
+                .from('tenant_members')
+                .select('tenant_id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            member = result.data
+            memberError = result.error
+        } else {
+            // Fallback to user client
+            console.log('[API] Service Role Key missing, using User Client for tenant lookup')
+            const result = await supabase
+                .from('tenant_members')
+                .select('tenant_id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            member = result.data
+            memberError = result.error
+        }
 
         if (memberError) {
             console.error('[API] Error fetching tenant member:', memberError)
-            return NextResponse.json({ error: 'Database error fetching tenant' }, { status: 500 })
+            return NextResponse.json({ error: 'Database error fetching tenant', details: memberError.message }, { status: 500 })
         }
 
         if (!member) {
