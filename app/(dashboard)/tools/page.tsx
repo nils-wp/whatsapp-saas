@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Phone, CheckCircle, XCircle, Loader2, Search, Copy, Check, Smartphone, Plus, Trash2, Globe, Link as LinkIcon, AlertTriangle } from 'lucide-react'
+import { Phone, CheckCircle, XCircle, Loader2, Search, Copy, Check, Smartphone, Plus, Trash2, Globe, Link as LinkIcon, AlertTriangle, Code } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,10 @@ export default function ToolsPage() {
   const [newConfigSlug, setNewConfigSlug] = useState('')
   const [newConfigAccountId, setNewConfigAccountId] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  // Code Integration Dialog
+  const [selectedConfig, setSelectedConfig] = useState<NumberCheckConfig | null>(null)
+  const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false)
 
   const { data: accounts } = useAccounts()
   const connectedAccounts = accounts?.filter(a => a.status === 'connected') || []
@@ -315,6 +319,17 @@ export default function ToolsPage() {
                       <Button
                         variant="outline"
                         size="icon"
+                        onClick={() => {
+                          setSelectedConfig(config)
+                          setIsCodeDialogOpen(true)
+                        }}
+                        title="Code Snippet anzeigen"
+                      >
+                        <Code className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
                         onClick={() => copyNumber(typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${config.slug}` : "")}
                         title="URL kopieren"
                       >
@@ -471,6 +486,91 @@ export default function ToolsPage() {
           </Card>
         )}
       </div>
+      {/* Code Integration Dialog */}
+      <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
+        <DialogContent className="max-w-2xl bg-[#1a1a1a] text-white border-zinc-800">
+          <DialogHeader>
+            <DialogTitle>Integration Guide</DialogTitle>
+            <DialogDescription>
+              Füge diesen Code in dein Formular oder Funnel-Builder ein (z.B. als Custom HTML/JS), um eine Nummer zu validieren.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedConfig && (
+            <div className="space-y-4">
+              <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 font-mono text-sm overflow-x-auto">
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-800">
+                  <span className="text-zinc-500">JavaScript (Fetch Example)</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs hover:text-white"
+                    onClick={() => {
+                      const code = `
+const validateNumber = async (phone) => {
+  try {
+    const response = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    
+    const data = await response.json();
+    
+    if (data.exists) {
+      console.log('Valid WhatsApp Number', data.formatted);
+      return true;
+    } else {
+      console.log('Not on WhatsApp');
+      return false;
+    }
+  } catch (error) {
+    console.error('Check failed', error);
+  }
+};`
+                      navigator.clipboard.writeText(code.trim())
+                      toast.success('Code kopiert')
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Kopieren
+                  </Button>
+                </div>
+                <pre className="text-emerald-400">
+                  {`const validateNumber = async (phone) => {
+  try {
+    const response = await fetch('${typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/${selectedConfig.slug}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    
+    const data = await response.json();
+    
+    if (data.exists) {
+      console.log('Valid WhatsApp Number', data.formatted);
+      return true;
+    } else {
+      console.log('Not on WhatsApp');
+      return false;
+    }
+  } catch (error) {
+    console.error('Check failed', error);
+  }
+};`}
+                </pre>
+              </div>
+
+              <Alert className="bg-emerald-500/10 border-emerald-500/20">
+                <AlertTriangle className="h-4 w-4 text-emerald-500" />
+                <AlertDescription className="text-emerald-200">
+                  Dieser Endpunkt ist öffentlich (CORS enabled) und kann von jeder Domain aufgerufen werden.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
