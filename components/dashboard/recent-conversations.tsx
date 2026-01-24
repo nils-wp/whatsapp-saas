@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { formatDistanceToNow, type Locale } from 'date-fns'
 import { de, es, fr, enUS } from 'date-fns/locale'
-import { MessageSquare, ArrowRight } from 'lucide-react'
+import { MessageSquare, ArrowRight, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPhoneNumber, getContactInitials } from '@/lib/utils/phone'
 import { useTranslations, useLocale } from '@/providers/locale-provider'
@@ -77,7 +77,7 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
               href={`/conversations/${conversation.id}`}
               className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#252525] transition-colors"
             >
-              <div className="relative h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
+              <div className="relative h-10 w-10 rounded-full bg-[#6b7280] flex items-center justify-center text-white overflow-hidden">
                 {conversation.profile_picture_url ? (
                   <img
                     src={conversation.profile_picture_url}
@@ -85,7 +85,7 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)
+                  <User className="h-6 w-6 text-white" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -95,9 +95,9 @@ export function RecentConversations({ conversations }: RecentConversationsProps)
                 <p className="text-sm text-gray-500">
                   {conversation.last_message_at
                     ? formatDistanceToNow(new Date(conversation.last_message_at), {
-                        addSuffix: true,
-                        locale: dateLocale,
-                      })
+                      addSuffix: true,
+                      locale: dateLocale,
+                    })
                     : tConv('noMessages')}
                 </p>
               </div>
