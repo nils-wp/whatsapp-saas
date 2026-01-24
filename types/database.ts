@@ -583,6 +583,41 @@ export interface Database {
           updated_at?: string
         }
       }
+      number_check_configs: {
+        Row: {
+          id: string
+          tenant_id: string
+          whatsapp_account_id: string | null
+          name: string
+          slug: string
+          is_active: boolean
+          allowed_origins: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          whatsapp_account_id?: string | null
+          name: string
+          slug: string
+          is_active?: boolean
+          allowed_origins?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          whatsapp_account_id?: string | null
+          name?: string
+          slug?: string
+          is_active?: boolean
+          allowed_origins?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

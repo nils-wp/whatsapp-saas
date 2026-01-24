@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Phone, CheckCircle, XCircle, Loader2, Search, Copy, Check, Smartphone } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Phone, CheckCircle, XCircle, Loader2, Search, Copy, Check, Smartphone, Plus, Trash2, Globe, Link as LinkIcon, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +9,14 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { toast } from 'sonner'
+import type { Tables } from '@/types/database'
+
+type NumberCheckConfig = Tables<'number_check_configs'> & {
+  whatsapp_account?: { instance_name: string; display_name: string | null } | null
+}
 
 interface CheckResult {
   success: boolean
@@ -29,8 +35,90 @@ export default function ToolsPage() {
   const [copied, setCopied] = useState(false)
   const [history, setHistory] = useState<CheckResult[]>([])
 
+  // Config Management States
+  const [configs, setConfigs] = useState<NumberCheckConfig[]>([])
+  const [isConfigsLoading, setIsConfigsLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
+  const [newConfigName, setNewConfigName] = useState('')
+  const [newConfigSlug, setNewConfigSlug] = useState('')
+  const [newConfigAccountId, setNewConfigAccountId] = useState('')
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
   const { data: accounts } = useAccounts()
   const connectedAccounts = accounts?.filter(a => a.status === 'connected') || []
+
+  // Load configs on mount
+  useEffect(() => {
+    fetchConfigs()
+  }, [])
+
+  async function fetchConfigs() {
+    try {
+      const response = await fetch('/api/settings/number-checks')
+      if (response.ok) {
+        const data = await response.json()
+        setConfigs(data)
+      }
+    } catch (error) {
+      console.error('Failed to load configs', error)
+    } finally {
+      setIsConfigsLoading(false)
+    }
+  }
+
+  async function createConfig() {
+    if (!newConfigName || !newConfigSlug) return
+
+    setIsCreating(true)
+    try {
+      const response = await fetch('/api/settings/number-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newConfigName,
+          slug: newConfigSlug,
+          whatsapp_account_id: newConfigAccountId || undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.error || 'Fehler beim Erstellen')
+        return
+      }
+
+      toast.success('Widget erstellt')
+      setConfigs([data, ...configs])
+      setIsDialogOpen(false)
+      setNewConfigName('')
+      setNewConfigSlug('')
+      setNewConfigAccountId('')
+    } catch (error) {
+      toast.error('Verbindungsfehler')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  async function deleteConfig(id: string) {
+    if (!confirm('Wirklich löschen? Der Webhook wird nicht mehr funktionieren.')) return
+
+    try {
+      const response = await fetch(`/api/settings/number-checks/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setConfigs(configs.filter(c => c.id !== id))
+        toast.success('Gelöscht')
+      } else {
+        toast.error('Konnte nicht gelöscht werden')
+      }
+    } catch (error) {
+      toast.error('Fehler beim Löschen')
+    }
+  }
 
   async function checkNumber() {
     if (!phone.trim()) return
@@ -90,9 +178,7 @@ export default function ToolsPage() {
 
   function copyNumber(number: string) {
     navigator.clipboard.writeText(number)
-    setCopied(true)
-    toast.success('Nummer kopiert')
-    setTimeout(() => setCopied(false), 2000)
+    toast.success('Kopiert')
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -101,8 +187,15 @@ export default function ToolsPage() {
     }
   }
 
+  // Auto-generate slug from name
+  useEffect(() => {
+    if (newConfigName && !newConfigSlug) {
+      setNewConfigSlug(newConfigName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+    }
+  }, [newConfigName])
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-white">Tools</h1>
         <p className="text-gray-400">
@@ -111,15 +204,147 @@ export default function ToolsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* WhatsApp Number Check */}
+        {/* Config Management */}
+        <Card className="lg:col-span-2 border-emerald-500/20 bg-emerald-500/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-emerald-500">
+                  <Globe className="h-5 w-5" />
+                  Öffentliche Nummer-Checks
+                </CardTitle>
+                <CardDescription>
+                  Erstelle öffentliche Webhooks um Telefonnummern in deinen Funnels zu prüfen (CORS enabled)
+                </CardDescription>
+              </div>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Neues Widget
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Neues Number Check Widget</DialogTitle>
+                    <DialogDescription>
+                      Erstellt einen öffentlichen Endpunkt zur Validierung von Nummern via API.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Name (z.B. "VSL Funnel")</Label>
+                      <Input
+                        value={newConfigName}
+                        onChange={(e) => setNewConfigName(e.target.value)}
+                        placeholder="Mein Funnel Name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>URL Slug</Label>
+                      <div className="flex items-center">
+                        <span className="bg-muted px-3 py-2 rounded-l-md border border-r-0 text-muted-foreground text-sm">
+                          .../api/tools/check/
+                        </span>
+                        <Input
+                          value={newConfigSlug}
+                          onChange={(e) => setNewConfigSlug(e.target.value)}
+                          placeholder="mein-funnel"
+                          className="rounded-l-none font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Verwendeter WhatsApp Account</Label>
+                      <Select value={newConfigAccountId} onValueChange={setNewConfigAccountId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Automatisch (erster verfügbarer)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Automatisch</SelectItem>
+                          {connectedAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.display_name || account.instance_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Abbrechen</Button>
+                    <Button onClick={createConfig} disabled={isCreating || !newConfigName || !newConfigSlug}>
+                      {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Erstellen
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isConfigsLoading ? (
+              <div className="text-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : configs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                Du hast noch keine öffentlichen Checks erstellt.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {configs.map((config) => (
+                  <div key={config.id} className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-white">{config.name}</h4>
+                        {config.whatsapp_account && (
+                          <Badge variant="outline" className="text-xs">
+                            {config.whatsapp_account.display_name || config.whatsapp_account.instance_name}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-400 font-mono">
+                        <LinkIcon className="h-3 w-3" />
+                        <span className="truncate max-w-[300px] md:max-w-[500px]">
+                          {typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${config.slug}` : `/api/tools/check/${config.slug}`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyNumber(`${window.location.origin}/api/tools/check/${config.slug}`)}
+                        title="URL kopieren"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                        onClick={() => deleteConfig(config.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Manual Check */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5 text-green-500" />
-              WhatsApp Nummern-Check
+              <Smartphone className="h-5 w-5 text-blue-500" />
+              Manueller Nummern-Check
             </CardTitle>
             <CardDescription>
-              Prüfe ob eine Telefonnummer bei WhatsApp registriert ist
+              Prüfe eine einzelne Nummer direkt hier im Dashboard
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -131,7 +356,7 @@ export default function ToolsPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="+49 123 456789 oder 0049123456789"
+                    placeholder="+49 123 456789"
                     className="flex-1"
                   />
                   <Button
@@ -145,20 +370,17 @@ export default function ToolsPage() {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Mit Ländervorwahl eingeben (z.B. +49 für Deutschland, +43 für Österreich)
-                </p>
               </div>
 
               {connectedAccounts.length > 1 && (
                 <div className="space-y-2">
-                  <Label>WhatsApp Account</Label>
+                  <Label>Verwendeter Account</Label>
                   <Select value={accountId} onValueChange={setAccountId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Automatisch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Automatisch (erster verfügbarer)</SelectItem>
+                      <SelectItem value="">Automatisch</SelectItem>
                       {connectedAccounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.display_name || account.instance_name}
@@ -216,19 +438,6 @@ export default function ToolsPage() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* No connected account warning */}
-            {connectedAccounts.length === 0 && (
-              <Alert>
-                <Phone className="h-4 w-4" />
-                <AlertDescription>
-                  Du benötigst einen verbundenen WhatsApp Account um Nummern zu prüfen.
-                  <a href="/accounts" className="underline ml-1">
-                    Account verbinden →
-                  </a>
-                </AlertDescription>
-              </Alert>
             )}
           </CardContent>
         </Card>
