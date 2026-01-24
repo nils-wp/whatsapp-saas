@@ -8,6 +8,14 @@ const createSchema = z.object({
     whatsapp_account_id: z.string().uuid().optional(),
 })
 
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+// Admin client to bypass RLS recursion issues during tenant lookup
+const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient()
@@ -17,11 +25,17 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { data: member } = await supabase
+        // Use Admin client for lookup to avoid RLS recursion
+        const { data: member, error: memberError } = await supabaseAdmin
             .from('tenant_members')
             .select('tenant_id')
             .eq('user_id', user.id)
-            .single()
+            .maybeSingle()
+
+        if (memberError) {
+            console.error('[API] Error fetching tenant member:', memberError)
+            return NextResponse.json({ error: 'Database error fetching tenant' }, { status: 500 })
+        }
 
         if (!member) {
             return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
@@ -54,7 +68,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { data: member, error: memberError } = await supabase
+        // Use Admin client for lookup to avoid RLS recursion
+        const { data: member, error: memberError } = await supabaseAdmin
             .from('tenant_members')
             .select('tenant_id')
             .eq('user_id', user.id)
@@ -62,7 +77,7 @@ export async function POST(request: NextRequest) {
 
         if (memberError) {
             console.error('[API] Error fetching tenant member:', memberError)
-            return NextResponse.json({ error: 'Database error' }, { status: 500 })
+            return NextResponse.json({ error: 'Database error fetching tenant' }, { status: 500 })
         }
 
         if (!member) {
