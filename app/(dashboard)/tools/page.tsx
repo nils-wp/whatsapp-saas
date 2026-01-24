@@ -498,13 +498,13 @@ export default function ToolsPage() {
 
           {selectedConfig && (
             <div className="space-y-4">
-              <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 font-mono text-sm overflow-x-auto">
-                <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-800">
-                  <span className="text-zinc-500">JavaScript Helper Function</span>
+              <div className="rounded-lg border border-zinc-800 bg-[#0d0d0d] overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
+                  <span className="text-xs font-mono text-zinc-500">helper.js</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs hover:text-white"
+                    className="h-6 text-xs hover:text-white hover:bg-zinc-800"
                     onClick={() => {
                       const code = `
 // Füge diese Funktion in dein Skript ein
@@ -534,8 +534,9 @@ async function checkWhatsApp(phone) {
                     Kopieren
                   </Button>
                 </div>
-                <pre className="text-emerald-400">
-                  {`
+                <div className="p-4 overflow-x-auto">
+                  <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
+                    {`
 // Füge diese Funktion in dein Skript ein
 async function checkWhatsApp(phone) {
   try {
@@ -554,7 +555,8 @@ async function checkWhatsApp(phone) {
 
 // Beispiel Aufruf:
 // const hasWhatsApp = await checkWhatsApp("+4912345678");`.trim()}
-                </pre>
+                  </pre>
+                </div>
               </div>
 
               <Alert className="bg-emerald-500/10 border-emerald-500/20">
