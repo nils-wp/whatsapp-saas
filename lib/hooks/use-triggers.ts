@@ -61,26 +61,28 @@ export function useTrigger(id: string) {
 
 export function useCreateTrigger() {
   const queryClient = useQueryClient()
-  const { currentTenant, user } = useTenant()
-  const supabase = createClient()
+  const { currentTenant } = useTenant()
 
   return useMutation({
     mutationFn: async (data: Omit<InsertTrigger, 'tenant_id'>): Promise<Trigger> => {
       if (!currentTenant) throw new Error('No tenant')
 
-      const { data: trigger, error } = await supabase
-        .from('triggers')
-        .insert({
+      // Use API route for automatic CRM webhook registration
+      const response = await fetch('/api/triggers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           ...data,
           tenant_id: currentTenant.id,
-          created_by: user?.id,
-          updated_by: user?.id,
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (error) throw error
-      if (!trigger) throw new Error('Failed to create trigger')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create trigger')
+      }
+
+      const trigger = await response.json()
       return trigger as Trigger
     },
     onSuccess: () => {
@@ -118,16 +120,18 @@ export function useUpdateTrigger() {
 
 export function useDeleteTrigger() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('triggers')
-        .delete()
-        .eq('id', id)
+      // Use API route to properly cleanup CRM webhooks
+      const response = await fetch(`/api/triggers?id=${id}`, {
+        method: 'DELETE',
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete trigger')
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['triggers'] })

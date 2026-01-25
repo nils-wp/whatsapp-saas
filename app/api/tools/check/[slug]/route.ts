@@ -3,11 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { checkWhatsAppNumbers } from '@/lib/evolution/client'
 import { formatPhoneNumber } from '@/lib/utils/phone'
 
-// Create admin client for public access (bypassing RLS)
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Create admin client lazily to avoid build-time env access
+function getSupabaseAdmin() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+}
 
 /**
  * OPTIONS Handler for CORS preflight
@@ -48,6 +50,7 @@ export async function POST(
         }
 
         // 1. Find config by slug
+        const supabaseAdmin = getSupabaseAdmin()
         const { data: config } = await supabaseAdmin
             .from('number_check_configs')
             .select('*, whatsapp_accounts(instance_name, status)')

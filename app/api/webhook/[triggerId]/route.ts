@@ -349,7 +349,7 @@ export async function POST(
     const payload = await request.json()
 
     // Check if trigger is in test mode - capture event instead of processing
-    if (isInTestMode(trigger.id)) {
+    if (await isInTestMode(trigger.id)) {
       // Extract variables that would be used
       const extractedVariables: Record<string, string | null> = {
         phone: payload.phone || null,
@@ -383,8 +383,15 @@ export async function POST(
         extractedVariables.column_value = ((event?.value as Record<string, unknown>)?.text as string) || null
       }
 
-      // Store the test event
-      storeTestEvent(trigger.id, payload, extractedVariables)
+      // Store the test event in database
+      await storeTestEvent(
+        trigger.id,
+        trigger.tenant_id,
+        trigger.type || 'webhook',
+        'webhook',
+        payload,
+        extractedVariables
+      )
 
       return NextResponse.json({
         success: true,

@@ -342,6 +342,12 @@ export async function startNewConversation(options: {
     }
 
     // 3. Erstelle neue Conversation
+    // Extract first_name and last_name from trigger_data if provided by CRM
+    const triggerData = options.triggerData || {}
+    const crmFirstName = triggerData.first_name as string | undefined
+    const crmLastName = triggerData.last_name as string | undefined
+    const crmContactId = triggerData.crm_record_id as string | undefined
+
     // Store trigger_data for CRM variable access later
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
@@ -352,8 +358,11 @@ export async function startNewConversation(options: {
         trigger_id: trigger.id,
         contact_phone: options.phone,
         contact_name: options.contactName,
+        contact_first_name: crmFirstName || null,
+        contact_last_name: crmLastName || null,
+        crm_contact_id: crmContactId || null,
         external_lead_id: options.externalLeadId,
-        trigger_data: options.triggerData || {},
+        trigger_data: triggerData,
         status: 'active',
         current_script_step: 1,
       })

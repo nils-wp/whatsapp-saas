@@ -229,6 +229,14 @@ export interface Database {
           total_triggered: number
           total_conversations: number
           total_bookings: number
+          trigger_event: string | null
+          crm_webhook_id: string | null
+          crm_webhook_status: 'pending' | 'active' | 'failed' | 'not_supported' | null
+          crm_webhook_error: string | null
+          crm_webhook_registered_at: string | null
+          polling_enabled: boolean
+          last_polled_at: string | null
+          polling_cursor: string | null
           created_at: string
           updated_at: string
         }
@@ -248,6 +256,14 @@ export interface Database {
           total_triggered?: number
           total_conversations?: number
           total_bookings?: number
+          trigger_event?: string | null
+          crm_webhook_id?: string | null
+          crm_webhook_status?: 'pending' | 'active' | 'failed' | 'not_supported' | null
+          crm_webhook_error?: string | null
+          crm_webhook_registered_at?: string | null
+          polling_enabled?: boolean
+          last_polled_at?: string | null
+          polling_cursor?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -267,6 +283,14 @@ export interface Database {
           total_triggered?: number
           total_conversations?: number
           total_bookings?: number
+          trigger_event?: string | null
+          crm_webhook_id?: string | null
+          crm_webhook_status?: 'pending' | 'active' | 'failed' | 'not_supported' | null
+          crm_webhook_error?: string | null
+          crm_webhook_registered_at?: string | null
+          polling_enabled?: boolean
+          last_polled_at?: string | null
+          polling_cursor?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -281,8 +305,11 @@ export interface Database {
           contact_phone: string
           contact_name: string | null
           contact_push_name: string | null
+          contact_first_name: string | null
+          contact_last_name: string | null
           profile_picture_url: string | null
           external_lead_id: string | null
+          crm_contact_id: string | null
           trigger_data: Json
           status: string
           current_script_step: number
@@ -305,8 +332,11 @@ export interface Database {
           contact_phone: string
           contact_name?: string | null
           contact_push_name?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
           profile_picture_url?: string | null
           external_lead_id?: string | null
+          crm_contact_id?: string | null
           trigger_data?: Json
           status?: string
           current_script_step?: number
@@ -329,8 +359,11 @@ export interface Database {
           contact_phone?: string
           contact_name?: string | null
           contact_push_name?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
           profile_picture_url?: string | null
           external_lead_id?: string | null
+          crm_contact_id?: string | null
           trigger_data?: Json
           status?: string
           current_script_step?: number
@@ -616,6 +649,47 @@ export interface Database {
           allowed_origins?: string[]
           created_at?: string
           updated_at?: string
+        }
+      }
+      crm_webhook_events: {
+        Row: {
+          id: string
+          trigger_id: string
+          tenant_id: string
+          crm_type: string
+          event_type: string
+          raw_payload: Json
+          extracted_data: Json | null
+          is_test_event: boolean
+          processed_at: string | null
+          error_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          trigger_id: string
+          tenant_id: string
+          crm_type: string
+          event_type: string
+          raw_payload: Json
+          extracted_data?: Json | null
+          is_test_event?: boolean
+          processed_at?: string | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          trigger_id?: string
+          tenant_id?: string
+          crm_type?: string
+          event_type?: string
+          raw_payload?: Json
+          extracted_data?: Json | null
+          is_test_event?: boolean
+          processed_at?: string | null
+          error_message?: string | null
+          created_at?: string
         }
       }
     }
