@@ -509,7 +509,7 @@ export default function ToolsPage() {
       </div>
       {/* Code Integration Dialog */}
       <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
-        <DialogContent className="max-w-6xl bg-[#1a1a1a] text-white border-zinc-800">
+        <DialogContent className="sm:max-w-6xl max-w-[95vw] bg-[#1a1a1a] text-white border-zinc-800">
           <DialogHeader>
             <DialogTitle>Integration in bestehenden Formular-Code</DialogTitle>
             <DialogDescription>
