@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Save, X } from 'lucide-react'
+import { ArrowLeft, Save, X, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, RefreshCw, Zap } from 'lucide-react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -15,10 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { WebhookGenerator } from '@/components/triggers/webhook-generator'
 import { TriggerTest } from '@/components/triggers/trigger-test'
-import { CRMTriggerTest } from '@/components/triggers/crm-trigger-test'
 import { WebhookTestMode } from '@/components/triggers/webhook-test-mode'
 import { useTrigger, useUpdateTrigger } from '@/lib/hooks/use-triggers'
 import { useAccounts } from '@/lib/hooks/use-accounts'
@@ -39,6 +39,23 @@ import {
   EVENT_FILTERS,
 } from '@/lib/utils/validation'
 import { toast } from 'sonner'
+
+// CRM-Kategorien für unterschiedliche Behandlung
+const NATIVE_WEBHOOK_CRMS: TriggerType[] = ['pipedrive', 'monday']
+const POLLING_CRMS: TriggerType[] = ['hubspot', 'close', 'activecampaign']
+const ALL_CRM_TYPES: TriggerType[] = [...NATIVE_WEBHOOK_CRMS, ...POLLING_CRMS]
+
+function getCRMDisplayName(type: TriggerType): string {
+  const names: Record<TriggerType, string> = {
+    webhook: 'Webhook',
+    close: 'Close CRM',
+    activecampaign: 'ActiveCampaign',
+    pipedrive: 'Pipedrive',
+    hubspot: 'HubSpot',
+    monday: 'Monday.com',
+  }
+  return names[type] || type
+}
 
 // CRM type options with labels
 const CRM_OPTIONS: Array<{ value: TriggerType; label: string; requiresConnection: boolean }> = [
@@ -408,7 +425,9 @@ export default function EditTriggerPage({
       <Tabs defaultValue="settings">
         <TabsList>
           <TabsTrigger value="settings">Einstellungen</TabsTrigger>
-          <TabsTrigger value="webhook">Webhook</TabsTrigger>
+          <TabsTrigger value="webhook">
+            {selectedType === 'webhook' ? 'Webhook' : 'Integration & Test'}
+          </TabsTrigger>
           <TabsTrigger value="stats">Statistiken</TabsTrigger>
         </TabsList>
 
@@ -692,33 +711,206 @@ export default function EditTriggerPage({
         </TabsContent>
 
         <TabsContent value="webhook" className="space-y-6">
-          {/* Webhook Test Mode - Listen for real CRM events (like n8n) */}
-          <WebhookTestMode
-            triggerId={trigger.id}
-            webhookId={trigger.webhook_id}
-            webhookSecret={trigger.webhook_secret}
-            triggerType={trigger.type}
-          />
+          {/* ===== CRM TRIGGER MIT NATIVEN WEBHOOKS (Pipedrive, Monday) ===== */}
+          {NATIVE_WEBHOOK_CRMS.includes(selectedType) && (
+            <>
+              {/* Status-Karte für native Webhooks */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Native Webhook-Integration
+                  </CardTitle>
+                  <CardDescription>
+                    Der Webhook wurde automatisch bei {getCRMDisplayName(selectedType)} registriert
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Webhook Status */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {(trigger as { crm_webhook_status?: string }).crm_webhook_status === 'active' ? (
+                        <>
+                          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                            <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-green-600 dark:text-green-400">Webhook aktiv</p>
+                            <p className="text-sm text-muted-foreground">
+                              Events werden in Echtzeit empfangen
+                            </p>
+                          </div>
+                        </>
+                      ) : (trigger as { crm_webhook_status?: string }).crm_webhook_status === 'failed' ? (
+                        <>
+                          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+                            <WifiOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-red-600 dark:text-red-400">Webhook-Fehler</p>
+                            <p className="text-sm text-muted-foreground">
+                              {(trigger as { crm_webhook_error?: string }).crm_webhook_error || 'Registrierung fehlgeschlagen'}
+                            </p>
+                          </div>
+                        </>
+                      ) : (trigger as { crm_webhook_status?: string }).crm_webhook_status === 'pending' ? (
+                        <>
+                          <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                            <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-yellow-600 dark:text-yellow-400">Wird registriert...</p>
+                            <p className="text-sm text-muted-foreground">
+                              Webhook wird bei {getCRMDisplayName(selectedType)} eingerichtet
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="p-2 bg-muted rounded-full">
+                            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Nicht konfiguriert</p>
+                            <p className="text-sm text-muted-foreground">
+                              Webhook muss noch registriert werden
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {(trigger as { crm_webhook_id?: string }).crm_webhook_id && (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        ID: {(trigger as { crm_webhook_id?: string }).crm_webhook_id}
+                      </Badge>
+                    )}
+                  </div>
 
-          {/* CRM Connection Test - Test if CRM API works and show available variables */}
-          <CRMTriggerTest
-            triggerType={trigger.type as TriggerType}
-            firstMessage={watch('first_message') || trigger.first_message}
-          />
+                  {/* Info */}
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertTitle>Automatische Konfiguration</AlertTitle>
+                    <AlertDescription>
+                      Der Webhook wurde automatisch bei {getCRMDisplayName(selectedType)} registriert.
+                      Sie m&uuml;ssen keine URLs kopieren oder manuell konfigurieren.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
 
-          {/* Webhook URL and Secret */}
-          <WebhookGenerator
-            webhookId={trigger.webhook_id}
-            webhookSecret={trigger.webhook_secret}
-          />
+              {/* Test Mode für native Webhooks */}
+              <WebhookTestMode
+                triggerId={trigger.id}
+                webhookId={trigger.webhook_id}
+                webhookSecret={trigger.webhook_secret}
+                triggerType={trigger.type}
+              />
+            </>
+          )}
 
-          {/* Webhook Trigger Test - Sends a real test request */}
-          <TriggerTest
-            webhookId={trigger.webhook_id}
-            webhookSecret={trigger.webhook_secret}
-            triggerType={trigger.type as TriggerType}
-            firstMessage={watch('first_message') || trigger.first_message}
-          />
+          {/* ===== CRM TRIGGER MIT POLLING (HubSpot, Close, ActiveCampaign) ===== */}
+          {POLLING_CRMS.includes(selectedType) && (
+            <>
+              {/* Status-Karte für Polling */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5" />
+                    API-Polling Integration
+                  </CardTitle>
+                  <CardDescription>
+                    Events werden automatisch über die {getCRMDisplayName(selectedType)} API abgefragt
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Polling Status */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {(trigger as { polling_enabled?: boolean }).polling_enabled !== false ? (
+                        <>
+                          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                            <RefreshCw className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-green-600 dark:text-green-400">Polling aktiv</p>
+                            <p className="text-sm text-muted-foreground">
+                              Events werden alle 30-60 Sekunden abgefragt
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="p-2 bg-muted rounded-full">
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Polling inaktiv</p>
+                            <p className="text-sm text-muted-foreground">
+                              Trigger muss aktiviert werden
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {(trigger as { last_polled_at?: string }).last_polled_at && (
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Letzte Abfrage</p>
+                        <p className="text-sm font-mono">
+                          {new Date((trigger as { last_polled_at: string }).last_polled_at).toLocaleTimeString('de-DE')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertTitle>Automatisches Event-Polling</AlertTitle>
+                    <AlertDescription>
+                      Da {getCRMDisplayName(selectedType)} keine nativen Webhooks unterst&uuml;tzt, werden
+                      Events automatisch &uuml;ber die API abgefragt. Dies geschieht alle 30-60 Sekunden -
+                      keine manuelle Konfiguration erforderlich.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Test Mode für Polling CRMs */}
+              <WebhookTestMode
+                triggerId={trigger.id}
+                webhookId={trigger.webhook_id}
+                webhookSecret={trigger.webhook_secret}
+                triggerType={trigger.type}
+              />
+            </>
+          )}
+
+          {/* ===== GENERISCHER WEBHOOK (kein CRM) ===== */}
+          {selectedType === 'webhook' && (
+            <>
+              {/* Webhook Test Mode - Listen for real events */}
+              <WebhookTestMode
+                triggerId={trigger.id}
+                webhookId={trigger.webhook_id}
+                webhookSecret={trigger.webhook_secret}
+                triggerType={trigger.type}
+              />
+
+              {/* Webhook URL and Secret - nur für generische Webhooks */}
+              <WebhookGenerator
+                webhookId={trigger.webhook_id}
+                webhookSecret={trigger.webhook_secret}
+              />
+
+              {/* Webhook Trigger Test - manueller Test */}
+              <TriggerTest
+                webhookId={trigger.webhook_id}
+                webhookSecret={trigger.webhook_secret}
+                triggerType={trigger.type as TriggerType}
+                firstMessage={watch('first_message') || trigger.first_message}
+              />
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="stats">
