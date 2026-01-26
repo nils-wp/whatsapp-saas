@@ -43,6 +43,9 @@ export function WebhookTestMode({
 
   const webhookUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhook/${webhookId}`
 
+  // Check if this is a CRM trigger (not generic webhook)
+  const isCRMTrigger = ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'].includes(triggerType)
+
   // Poll for test events
   const pollTestMode = useCallback(async () => {
     try {
@@ -56,19 +59,47 @@ export function WebhookTestMode({
     }
   }, [triggerId])
 
+  // Trigger manual polling for CRMs that don't have native webhooks
+  const triggerManualPoll = useCallback(async () => {
+    if (!isCRMTrigger) return
+
+    try {
+      await fetch(`/api/triggers/${triggerId}/poll-now`, {
+        method: 'POST',
+      })
+    } catch (error) {
+      console.error('Manual poll error:', error)
+    }
+  }, [triggerId, isCRMTrigger])
+
   // Start polling when test mode is active
   useEffect(() => {
     if (!testState?.testMode) return
 
+    // For polling CRMs (Close, HubSpot, ActiveCampaign), also trigger manual poll
+    const pollingCRMs = ['close', 'hubspot', 'activecampaign']
+    const needsManualPoll = pollingCRMs.includes(triggerType)
+
     const interval = setInterval(async () => {
+      // First trigger manual poll for CRMs without native webhooks
+      if (needsManualPoll) {
+        await triggerManualPoll()
+      }
+
+      // Then check for events
       const data = await pollTestMode()
       if (data?.hasEvent) {
-        toast.success('Webhook Event empfangen!')
+        toast.success('Event empfangen!')
       }
     }, 1000) // Poll every 1 second
 
+    // Also trigger immediate poll on start
+    if (needsManualPoll) {
+      triggerManualPoll()
+    }
+
     return () => clearInterval(interval)
-  }, [testState?.testMode, pollTestMode])
+  }, [testState?.testMode, pollTestMode, triggerManualPoll, triggerType])
 
   async function startTestMode() {
     setIsLoading(true)
@@ -149,9 +180,6 @@ export function WebhookTestMode({
     }
     return names[type] || type
   }
-
-  // Check if this is a CRM trigger (not generic webhook)
-  const isCRMTrigger = ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'].includes(triggerType)
 
   return (
     <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
