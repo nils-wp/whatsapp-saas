@@ -90,6 +90,8 @@ export function WebhookTestMode({
       const data = await pollTestMode()
       if (data?.hasEvent) {
         toast.success('Event empfangen!')
+        // Automatically stop test mode after first event
+        stopTestMode()
       }
     }, 1000) // Poll every 1 second
 
@@ -327,11 +329,11 @@ export function WebhookTestMode({
                 {Object.entries(testState.event.extractedVariables).filter(
                   ([, value]) => value !== null && value !== ''
                 ).length === 0 && (
-                  <div className="px-3 py-4 text-center text-gray-400">
-                    <AlertCircle className="h-5 w-5 mx-auto mb-2" />
-                    <p>Keine Variablen extrahiert. Überprüfe das Payload-Format.</p>
-                  </div>
-                )}
+                    <div className="px-3 py-4 text-center text-gray-400">
+                      <AlertCircle className="h-5 w-5 mx-auto mb-2" />
+                      <p>Keine Variablen extrahiert. Überprüfe das Payload-Format.</p>
+                    </div>
+                  )}
               </div>
             </div>
 
