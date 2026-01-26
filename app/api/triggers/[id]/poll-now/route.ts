@@ -102,10 +102,18 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Determine last poll time (default: 5 minutes ago for test mode)
-    const lastPolledAt = trigger.last_polled_at
+    // Determine last poll time
+    // For test mode, if last_polled_at is missing or very old, use Now
+    let lastPolledAt = trigger.last_polled_at
       ? new Date(trigger.last_polled_at)
-      : new Date(Date.now() - 5 * 60 * 1000)
+      : new Date()
+
+    // If test mode JUST started and last_polled_at is older than 30 seconds ago,
+    // it might be a legacy value. Re-anchor to now.
+    const testModeStartedAt = testModeUntil ? new Date(new Date(testModeUntil).getTime() - 5 * 60 * 1000) : new Date()
+    if (lastPolledAt < testModeStartedAt) {
+      lastPolledAt = testModeStartedAt
+    }
 
     // Get trigger event
     const triggerEvent = (trigger.trigger_event || externalConfig.trigger_event || 'created') as string

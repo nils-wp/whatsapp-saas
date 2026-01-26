@@ -43,7 +43,7 @@ export async function POST(
     // Get trigger and verify ownership
     const { data: trigger } = await supabase
       .from('triggers')
-      .select('id, tenant_id, webhook_id, webhook_secret')
+      .select('id, tenant_id, webhook_id, webhook_secret, external_config, type')
       .eq('id', id)
       .eq('tenant_id', member.tenant_id)
       .single()

@@ -180,7 +180,7 @@ export async function pollHubSpotEvents(
     const filterGroups: Array<{ filters: Array<{ propertyName: string; operator: string; value: string }> }> = [{
       filters: [{
         propertyName: triggerEvent.includes('created') ? 'createdate' : 'hs_lastmodifieddate',
-        operator: 'GTE',
+        operator: 'GT',
         value: lastPolledAt.getTime().toString(),
       }]
     }]
@@ -264,9 +264,9 @@ export async function pollCloseEvents(
     const queryParams = new URLSearchParams()
 
     if (triggerEvent.includes('created')) {
-      queryParams.set('date_created__gte', dateFilter)
+      queryParams.set('date_created__gt', dateFilter)
     } else {
-      queryParams.set('date_updated__gte', dateFilter)
+      queryParams.set('date_updated__gt', dateFilter)
     }
 
     queryParams.set('_limit', '50')
@@ -343,7 +343,7 @@ export async function pollActiveCampaignEvents(
 
     if (triggerEvent.includes('deal') || triggerEvent.includes('stage')) {
       endpoint = '/api/3/deals'
-      queryParams.set('filters[updated_timestamp][gte]', dateFilter)
+      queryParams.set('filters[updated_timestamp][gt]', dateFilter)
 
       if (filters?.stage) {
         queryParams.set('filters[stage]', filters.stage)
