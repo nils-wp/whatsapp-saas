@@ -65,7 +65,7 @@ export function WebhookTestMode({
       if (data?.hasEvent) {
         toast.success('Webhook Event empfangen!')
       }
-    }, 2000) // Poll every 2 seconds
+    }, 1000) // Poll every 1 second
 
     return () => clearInterval(interval)
   }, [testState?.testMode, pollTestMode])
@@ -150,6 +150,9 @@ export function WebhookTestMode({
     return names[type] || type
   }
 
+  // Check if this is a CRM trigger (not generic webhook)
+  const isCRMTrigger = ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'].includes(triggerType)
+
   return (
     <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
       <CardHeader>
@@ -175,42 +178,44 @@ export function WebhookTestMode({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Webhook URL and Secret */}
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm text-gray-400 mb-1 block">Webhook URL</label>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-[#0d0d0d] text-[#00a884] px-3 py-2 rounded text-sm font-mono overflow-x-auto">
-                {webhookUrl}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(webhookUrl, 'webhook')}
-                className="shrink-0"
-              >
-                {copiedWebhook ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
+        {/* Webhook URL and Secret - Only for generic webhooks, not CRM triggers */}
+        {!isCRMTrigger && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Webhook URL</label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-[#0d0d0d] text-[#00a884] px-3 py-2 rounded text-sm font-mono overflow-x-auto">
+                  {webhookUrl}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+                  className="shrink-0"
+                >
+                  {copiedWebhook ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="text-sm text-gray-400 mb-1 block">Webhook Secret (X-Webhook-Secret Header)</label>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-[#0d0d0d] text-yellow-500 px-3 py-2 rounded text-sm font-mono">
-                {webhookSecret}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(webhookSecret, 'secret')}
-                className="shrink-0"
-              >
-                {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">Webhook Secret (X-Webhook-Secret Header)</label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-[#0d0d0d] text-yellow-500 px-3 py-2 rounded text-sm font-mono">
+                  {webhookSecret}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(webhookSecret, 'secret')}
+                  className="shrink-0"
+                >
+                  {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Test Mode Controls */}
         <div className="flex items-center gap-3 pt-2">
@@ -319,13 +324,22 @@ export function WebhookTestMode({
             "bg-blue-500/5 border-blue-500/20"
           )}>
             <h4 className="text-sm font-medium text-blue-400 mb-2">So funktioniert es</h4>
-            <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
-              <li>Konfiguriere den Webhook in {getCrmName(triggerType)} mit der URL und dem Secret oben</li>
-              <li>Klicke auf &quot;Test Mode starten&quot;</li>
-              <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus (z.B. neuer Deal erstellt)</li>
-              <li>Die empfangenen Daten und Variablen werden hier angezeigt</li>
-              <li>Kopiere die Variablen für deine erste Nachricht</li>
-            </ol>
+            {isCRMTrigger ? (
+              <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+                <li>Klicke auf &quot;Test Mode starten&quot;</li>
+                <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus (z.B. neuer Deal erstellt)</li>
+                <li>Die empfangenen Daten und Variablen werden hier automatisch angezeigt</li>
+                <li>Kopiere die Variablen für deine erste Nachricht</li>
+              </ol>
+            ) : (
+              <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+                <li>Konfiguriere den Webhook in {getCrmName(triggerType)} mit der URL und dem Secret oben</li>
+                <li>Klicke auf &quot;Test Mode starten&quot;</li>
+                <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus (z.B. neuer Deal erstellt)</li>
+                <li>Die empfangenen Daten und Variablen werden hier angezeigt</li>
+                <li>Kopiere die Variablen für deine erste Nachricht</li>
+              </ol>
+            )}
           </div>
         )}
       </CardContent>

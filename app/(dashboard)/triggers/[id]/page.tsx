@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Save, X, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, RefreshCw, Zap } from 'lucide-react'
+import { ArrowLeft, Save, X, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, Zap } from 'lucide-react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,6 @@ import { toast } from 'sonner'
 // CRM-Kategorien für unterschiedliche Behandlung
 const NATIVE_WEBHOOK_CRMS: TriggerType[] = ['pipedrive', 'monday']
 const POLLING_CRMS: TriggerType[] = ['hubspot', 'close', 'activecampaign']
-const ALL_CRM_TYPES: TriggerType[] = [...NATIVE_WEBHOOK_CRMS, ...POLLING_CRMS]
 
 function getCRMDisplayName(type: TriggerType): string {
   const names: Record<TriggerType, string> = {
@@ -810,79 +809,12 @@ export default function EditTriggerPage({
 
           {/* ===== CRM TRIGGER MIT POLLING (HubSpot, Close, ActiveCampaign) ===== */}
           {POLLING_CRMS.includes(selectedType) && (
-            <>
-              {/* Status-Karte für Polling */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <RefreshCw className="h-5 w-5" />
-                    API-Polling Integration
-                  </CardTitle>
-                  <CardDescription>
-                    Events werden automatisch über die {getCRMDisplayName(selectedType)} API abgefragt
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Polling Status */}
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {(trigger as { polling_enabled?: boolean }).polling_enabled !== false ? (
-                        <>
-                          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                            <RefreshCw className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-green-600 dark:text-green-400">Polling aktiv</p>
-                            <p className="text-sm text-muted-foreground">
-                              Events werden alle 30-60 Sekunden abgefragt
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="p-2 bg-muted rounded-full">
-                            <Clock className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Polling inaktiv</p>
-                            <p className="text-sm text-muted-foreground">
-                              Trigger muss aktiviert werden
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {(trigger as { last_polled_at?: string }).last_polled_at && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Letzte Abfrage</p>
-                        <p className="text-sm font-mono">
-                          {new Date((trigger as { last_polled_at: string }).last_polled_at).toLocaleTimeString('de-DE')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Automatisches Event-Polling</AlertTitle>
-                    <AlertDescription>
-                      Da {getCRMDisplayName(selectedType)} keine nativen Webhooks unterst&uuml;tzt, werden
-                      Events automatisch &uuml;ber die API abgefragt. Dies geschieht alle 30-60 Sekunden -
-                      keine manuelle Konfiguration erforderlich.
-                    </AlertDescription>
-                  </Alert>
-                </CardContent>
-              </Card>
-
-              {/* Test Mode für Polling CRMs */}
-              <WebhookTestMode
-                triggerId={trigger.id}
-                webhookId={trigger.webhook_id}
-                webhookSecret={trigger.webhook_secret}
-                triggerType={trigger.type}
-              />
-            </>
+            <WebhookTestMode
+              triggerId={trigger.id}
+              webhookId={trigger.webhook_id}
+              webhookSecret={trigger.webhook_secret}
+              triggerType={trigger.type}
+            />
           )}
 
           {/* ===== GENERISCHER WEBHOOK (kein CRM) ===== */}

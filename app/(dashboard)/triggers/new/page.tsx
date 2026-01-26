@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, AlertCircle, Zap } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -18,14 +18,8 @@ import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPip
 import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS } from '@/lib/utils/validation'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
-
-// CRMs with native webhook support (automatic registration)
-const NATIVE_WEBHOOK_CRMS: TriggerType[] = ['pipedrive', 'monday']
-// CRMs that use polling (no webhook setup needed)
-const POLLING_CRMS: TriggerType[] = ['hubspot', 'close', 'activecampaign']
 
 // CRM type options with labels
 const CRM_OPTIONS: Array<{ value: TriggerType; label: string; requiresConnection: boolean }> = [
@@ -425,28 +419,6 @@ export default function NewTriggerPage() {
               </div>
             )}
 
-            {/* Auto-Registration Info for CRM Triggers */}
-            {NATIVE_WEBHOOK_CRMS.includes(selectedType as TriggerType) && (
-              <Alert className="border-emerald-500/50 bg-emerald-500/10">
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
-                <AlertTitle className="text-emerald-400">Automatische Webhook-Registrierung</AlertTitle>
-                <AlertDescription className="text-muted-foreground">
-                  Der Webhook wird automatisch bei {CRM_OPTIONS.find(c => c.value === selectedType)?.label} registriert.
-                  Keine manuelle Konfiguration nötig.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {POLLING_CRMS.includes(selectedType as TriggerType) && (
-              <Alert className="border-blue-500/50 bg-blue-500/10">
-                <Zap className="h-4 w-4 text-blue-500" />
-                <AlertTitle className="text-blue-400">Automatisches Polling</AlertTitle>
-                <AlertDescription className="text-muted-foreground">
-                  Events werden automatisch alle 30-60 Sekunden von {CRM_OPTIONS.find(c => c.value === selectedType)?.label} abgerufen.
-                  Keine manuelle Webhook-Konfiguration nötig.
-                </AlertDescription>
-              </Alert>
-            )}
 
             {/* Event-specific filters */}
             {filterConfig && filterConfig.filters.length > 0 && (
