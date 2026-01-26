@@ -61,12 +61,14 @@ export async function POST(
       // Start test mode - store expiry in external_config
       const expiryTime = Date.now() + TEST_MODE_DURATION_MS
 
-      // Update trigger with test mode flag and set last_polled_at to now
+      // Update trigger with test mode flag and set start time
+      const now = new Date().toISOString()
       await serviceSupabase.from('triggers').update({
-        last_polled_at: new Date().toISOString(),
+        last_polled_at: now,
         external_config: {
           ...((trigger as Record<string, unknown>).external_config as Record<string, unknown> || {}),
           test_mode_until: new Date(expiryTime).toISOString(),
+          test_started_at: now,
         }
       }).eq('id', trigger.id)
 

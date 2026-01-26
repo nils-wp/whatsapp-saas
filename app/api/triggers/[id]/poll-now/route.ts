@@ -103,16 +103,17 @@ export async function POST(
     }
 
     // Determine last poll time
-    // For test mode, if last_polled_at is missing or very old, use Now
+    // For test mode, we use the recorded test_started_at to be absolutely sure
+    const testStartedAtStr = externalConfig.test_started_at as string | undefined
+    const testStartedAt = testStartedAtStr ? new Date(testStartedAtStr) : null
+
     let lastPolledAt = trigger.last_polled_at
       ? new Date(trigger.last_polled_at)
       : new Date()
 
-    // If test mode JUST started and last_polled_at is older than 30 seconds ago,
-    // it might be a legacy value. Re-anchor to now.
-    const testModeStartedAt = testModeUntil ? new Date(new Date(testModeUntil).getTime() - 5 * 60 * 1000) : new Date()
-    if (lastPolledAt < testModeStartedAt) {
-      lastPolledAt = testModeStartedAt
+    // Safety: If testing and we have a start time, ensure we don't look back before it
+    if (testStartedAt && lastPolledAt < testStartedAt) {
+      lastPolledAt = testStartedAt
     }
 
     // Get trigger event
@@ -122,6 +123,7 @@ export async function POST(
     console.log(`[Poll Now] Polling ${crmType} for trigger ${id}`, {
       triggerEvent,
       lastPolledAt: lastPolledAt.toISOString(),
+      testStartedAt: testStartedAt?.toISOString(),
     })
 
     // Poll for events
@@ -141,10 +143,17 @@ export async function POST(
       }, { status: 500 })
     }
 
-    console.log(`[Poll Now] Found ${pollResult.events.length} events`)
+    console.log(`[Poll Now] Found ${pollResult.events.length} potential events`)
 
-    // Store events as test events
+    // Store events as test events - with STRICT manual filter
+    let savedCount = 0
     for (const event of pollResult.events) {
+      // DEFINITIVE FILTER: Skip anything that happened before or AT the exact start time
+      if (testStartedAt && event.timestamp <= testStartedAt) {
+        console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} <= ${testStartedAt.toISOString()})`)
+        continue
+      }
+
       const contact = extractContactFromEvent(event)
 
       await serviceSupabase.from('crm_webhook_events').insert({
@@ -156,6 +165,7 @@ export async function POST(
         extracted_data: contact,
         is_test_event: true,
       })
+      savedCount++
     }
 
     // Update last_polled_at
