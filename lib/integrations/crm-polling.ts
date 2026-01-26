@@ -39,6 +39,63 @@ export interface PollingResult {
   error?: string
 }
 
+/**
+ * Defensively check if a record matches trigger filters
+ * This is a "fail-safe" for when CRM API filtering is imperfect or keys mismatch
+ */
+export function matchesFilters(
+  crm: CRMType,
+  event: string,
+  record: any,
+  filters?: Record<string, string | string[]>
+): boolean {
+  if (!filters || Object.keys(filters).length === 0) return true
+
+  try {
+    switch (crm) {
+      case 'close': {
+        // lead_status_changed or lead_created
+        const statusValue = filters.target_status || filters.lead_status || filters.status_id
+        if (statusValue) {
+          // Close lead status can be status_id or status_label (the frontend often saves label)
+          const recordStatus = record.status_label || record.status_id
+          if (recordStatus !== statusValue) return false
+        }
+
+        const pipelineValue = filters.pipeline || filters.pipeline_id
+        if (pipelineValue && record.pipeline_id !== pipelineValue) return false
+
+        break
+      }
+
+      case 'hubspot': {
+        const props = record.properties || record
+        const stageValue = filters.target_stage || filters.stage
+        if (stageValue && props.dealstage !== stageValue) return false
+
+        const pipelineValue = filters.pipeline
+        if (pipelineValue && props.pipeline !== pipelineValue) return false
+
+        break
+      }
+
+      case 'activecampaign': {
+        const stageValue = filters.target_stage || filters.stage
+        if (stageValue && record.stage !== stageValue) return false
+
+        const pipelineValue = filters.pipeline_id || filters.pipeline
+        if (pipelineValue && record.pipeline !== pipelineValue) return false
+
+        break
+      }
+    }
+    return true
+  } catch (error) {
+    console.error(`[Filtering] Error matching filters for ${crm}:`, error)
+    return true // Fallback to including it if filter check fails
+  }
+}
+
 // ===========================================
 // Pipedrive Polling
 // Verwendet GET /recents API
@@ -186,11 +243,21 @@ export async function pollHubSpotEvents(
     }]
 
     // Add stage filter if specified
-    if (triggerEvent === 'deal_stage_changed' && filters?.stage) {
+    const stageValue = filters?.stage || filters?.target_stage
+    if (triggerEvent === 'deal_stage_changed' && stageValue) {
       filterGroups[0].filters.push({
         propertyName: 'dealstage',
         operator: 'EQ',
-        value: filters.stage,
+        value: stageValue,
+      })
+    }
+
+    const pipelineValue = filters?.pipeline
+    if (pipelineValue) {
+      filterGroups[0].filters.push({
+        propertyName: 'pipeline',
+        operator: 'EQ',
+        value: pipelineValue,
       })
     }
 
@@ -220,6 +287,8 @@ export async function pollHubSpotEvents(
     const events: CRMEvent[] = []
 
     for (const record of result.results || []) {
+      if (!matchesFilters('hubspot', triggerEvent, record, filters)) continue
+
       const props = record.properties
 
       events.push({
@@ -273,8 +342,15 @@ export async function pollCloseEvents(
     queryParams.set('_order_by', '-date_updated')
 
     // Add status filter if specified
-    if (filters?.status_id) {
-      queryParams.set('status_id', filters.status_id)
+    // Map various potential filter keys from frontend
+    const statusValue = filters?.status_id || filters?.target_status || filters?.lead_status
+    if (statusValue) {
+      queryParams.set('status_id', statusValue)
+    }
+
+    const pipelineValue = filters?.pipeline_id || filters?.pipeline
+    if (pipelineValue) {
+      queryParams.set('pipeline_id', pipelineValue)
     }
 
     const response = await fetch(
@@ -295,6 +371,8 @@ export async function pollCloseEvents(
     const events: CRMEvent[] = []
 
     for (const lead of result.data || []) {
+      if (!matchesFilters('close', triggerEvent, lead, filters)) continue
+
       // Get primary contact
       const contact = lead.contacts?.[0]
       const phone = contact?.phones?.[0]?.phone || null
@@ -345,15 +423,18 @@ export async function pollActiveCampaignEvents(
       endpoint = '/api/3/deals'
       queryParams.set('filters[updated_timestamp][gt]', dateFilter)
 
-      if (filters?.stage) {
-        queryParams.set('filters[stage]', filters.stage)
+      if (filters?.stage || filters?.target_stage) {
+        queryParams.set('filters[stage]', (filters.stage || filters.target_stage) as string)
+      }
+      if (filters?.pipeline_id) {
+        queryParams.set('filters[pipeline]', filters.pipeline_id as string)
       }
     } else {
       endpoint = '/api/3/contacts'
-      queryParams.set('filters[updated_after]', dateFilter)
+      queryParams.set('filters[updated_after][gt]', dateFilter)
 
-      if (filters?.list) {
-        queryParams.set('listid', filters.list)
+      if (filters?.list || filters?.list_id) {
+        queryParams.set('listid', (filters.list || filters.list_id) as string)
       }
     }
 
@@ -380,6 +461,8 @@ export async function pollActiveCampaignEvents(
     const records = result.contacts || result.deals || []
 
     for (const record of records) {
+      if (!matchesFilters('activecampaign', triggerEvent, record, filters)) continue
+
       events.push({
         id: `activecampaign_${record.id}_${Date.now()}`,
         crm: 'activecampaign',
