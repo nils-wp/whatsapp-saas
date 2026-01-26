@@ -143,7 +143,7 @@ export function WebhookTestMode({
       const data = await response.json()
 
       if (response.ok && data.success) {
-        setTestState(null)
+        setTestState(prev => prev ? { ...prev, testMode: false } : null)
         toast.success('Test Mode beendet')
       } else {
         toast.error(data.error || 'Konnte Test Mode nicht beenden')

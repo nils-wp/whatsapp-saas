@@ -102,12 +102,7 @@ export async function POST(
         external_config: restConfig
       }).eq('id', trigger.id)
 
-      // Clear test events
-      await serviceSupabase.from('crm_webhook_events')
-        .delete()
-        .eq('trigger_id', trigger.id)
-        .eq('is_test_event', true)
-
+      // We DON'T clear test events here anymore so they persist in UI
       return NextResponse.json({
         success: true,
         testMode: false,
@@ -176,12 +171,7 @@ export async function GET(
     const expiry = testModeUntil ? new Date(testModeUntil).getTime() : 0
     const isTestModeActive = expiry > Date.now()
 
-    if (!isTestModeActive) {
-      return NextResponse.json({
-        testMode: false,
-        hasEvent: false,
-      })
-    }
+    // We continue even if not active to return the last captured event
 
     // Check for test events in database
     const { data: testEvents } = await serviceSupabase
@@ -195,9 +185,9 @@ export async function GET(
     const latestEvent = testEvents?.[0]
 
     return NextResponse.json({
-      testMode: true,
-      expiresAt: new Date(expiry).toISOString(),
-      remainingSeconds: Math.round((expiry - Date.now()) / 1000),
+      testMode: isTestModeActive,
+      expiresAt: expiry > 0 ? new Date(expiry).toISOString() : null,
+      remainingSeconds: expiry > 0 ? Math.max(0, Math.round((expiry - Date.now()) / 1000)) : 0,
       hasEvent: !!latestEvent,
       event: latestEvent ? {
         timestamp: new Date(latestEvent.created_at).getTime(),
