@@ -64,6 +64,17 @@ export function WebhookTestMode({
     }
   }, [triggerId])
 
+  // Initial fetch on mount to restore state (important for tab switching)
+  useEffect(() => {
+    pollTestMode().then(data => {
+      if (data?.event?.extractedVariables) {
+        const phone = data.event.extractedVariables.phone || data.event.extractedVariables.whatsapp_phone
+        if (phone && !testPhone) setTestPhone(phone)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Trigger manual polling for CRMs that don't have native webhooks
   const triggerManualPoll = useCallback(async () => {
     if (!isCRMTrigger) return
