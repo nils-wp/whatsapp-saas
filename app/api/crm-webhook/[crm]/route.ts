@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { extractContactFromPayload, type CRMType } from '@/lib/integrations/crm-polling'
+import { extractContactFromPayload, matchesFilters, type CRMType } from '@/lib/integrations/crm-polling'
 import { startNewConversation } from '@/lib/ai/message-handler'
 
 function getSupabase() {
@@ -35,7 +35,19 @@ export async function POST(
   const crmType = crm as CRMType
 
   try {
-    const payload = await request.json()
+    const contentType = request.headers.get('content-type') || ''
+    let payload: Record<string, any>
+
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await request.formData()
+      payload = {}
+      formData.forEach((value, key) => {
+        payload[key] = value
+      })
+    } else {
+      payload = await request.json()
+    }
+
     const url = new URL(request.url)
     const triggerId = url.searchParams.get('triggerId')
 
@@ -152,14 +164,19 @@ export async function POST(
 
     // Check event filters
     const externalConfig = (trigger.external_config as Record<string, unknown>) || {}
-    const filters = (externalConfig.event_filters || {}) as Record<string, string>
+    // Match filters
+    const filters = (trigger.event_filters as Record<string, string | string[]>) || {}
+    const event = extractEventType(crmType, payload) || trigger.trigger_event as string
 
-    if (!matchesFilters(payload, filters)) {
-      console.log(`[CRM Webhook] Event filtered out for trigger ${trigger.id}`)
+    if (!matchesFilters(crmType, event, payload, filters)) {
+      console.log(`[CRM Webhook] Payload does not match filters for ${crmType}`, {
+        triggerId: trigger.id,
+        filters,
+      })
       return NextResponse.json({
-        success: true,
-        filtered: true,
-        message: 'Event does not match filters',
+        message: 'Payload does not match filters',
+        crmType,
+        triggerId: trigger.id,
       })
     }
 
@@ -278,65 +295,27 @@ function extractEventType(crm: CRMType, payload: Record<string, unknown>): strin
   switch (crm) {
     case 'pipedrive':
       return (payload.meta as Record<string, unknown>)?.action as string ||
-             (payload.event as string) || null
+        (payload.event as string) || null
 
     case 'hubspot':
       return (payload.subscriptionType as string) ||
-             (payload.eventType as string) || null
+        (payload.eventType as string) || null
 
     case 'monday':
       return (payload.event as Record<string, unknown>)?.type as string ||
-             (payload.type as string) || null
+        (payload.type as string) || null
 
     case 'close':
       return (payload.event as string) ||
-             (payload.type as string) || null
+        (payload.type as string) || null
 
     case 'activecampaign':
       return (payload.type as string) ||
-             (payload.action as string) || null
+        (payload.action as string) || null
 
     default:
       return null
   }
-}
-
-/**
- * Check if payload matches trigger filters
- */
-function matchesFilters(
-  payload: Record<string, unknown>,
-  filters: Record<string, string>
-): boolean {
-  if (!filters || Object.keys(filters).length === 0) {
-    return true
-  }
-
-  for (const [path, expectedValue] of Object.entries(filters)) {
-    const actualValue = getNestedValue(payload, path)
-
-    if (actualValue === undefined || actualValue === null) {
-      continue
-    }
-
-    if (String(actualValue) !== String(expectedValue)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-/**
- * Get nested value from object using dot notation
- */
-function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce((current: unknown, key) => {
-    if (current && typeof current === 'object') {
-      return (current as Record<string, unknown>)[key]
-    }
-    return undefined
-  }, obj)
 }
 
 /**

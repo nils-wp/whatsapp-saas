@@ -79,16 +79,57 @@ export function matchesFilters(
         break
       }
 
-      case 'activecampaign': {
-        const stageValue = filters.target_stage || filters.stage
-        if (stageValue && record.stage !== stageValue) return false
+      case 'pipedrive': {
+        const stageValue = filters.stage_id || filters.stage || filters.target_stage || filters.target_stage_id
+        const recordStage = record.current?.stage_id || record.stage_id || record.stage
+        if (stageValue && String(recordStage) !== String(stageValue)) return false
 
         const pipelineValue = filters.pipeline_id || filters.pipeline
-        if (pipelineValue && record.pipeline !== pipelineValue) return false
+        const recordPipeline = record.current?.pipeline_id || record.pipeline_id || record.pipeline
+        if (pipelineValue && String(recordPipeline) !== String(pipelineValue)) return false
+
+        break
+      }
+
+      case 'monday': {
+        const groupId = filters.group_id || filters.group || filters.target_group_id
+        const recordGroup = record.event?.destGroupId || record.group?.id || record.group
+        if (groupId && String(recordGroup) !== String(groupId)) return false
+
+        break
+      }
+
+      case 'activecampaign': {
+        const stageValue = filters.target_stage || filters.stage
+        if (stageValue && String(record.stage || record.stageid) !== String(stageValue)) return false
+
+        const pipelineValue = filters.pipeline_id || filters.pipeline
+        if (pipelineValue && String(record.pipeline || record.pipelineid) !== String(pipelineValue)) return false
 
         break
       }
     }
+
+    // Standard fallback: check filters against record using common payload paths if possible
+    // This replicates the logic from the webhook route for consistency
+    for (const [key, expectedValue] of Object.entries(filters)) {
+      // Skip if already handled by CRM-specific logic above
+      if (['target_status', 'lead_status', 'status_id', 'target_stage', 'stage', 'stage_id', 'pipeline_id', 'pipeline', 'group_id', 'group', 'target_group_id'].includes(key)) {
+        continue
+      }
+
+      const actualValue = getNestedValue(record, key)
+      if (actualValue === undefined || actualValue === null) continue
+
+      if (String(actualValue) !== String(expectedValue)) {
+        // Special case: if actual is a comma-separated list
+        if (String(actualValue).includes(',') && String(actualValue).split(',').map(s => s.trim()).includes(String(expectedValue))) {
+          continue
+        }
+        return false
+      }
+    }
+
     return true
   } catch (error) {
     console.error(`[Filtering] Error matching filters for ${crm}:`, error)
@@ -436,6 +477,12 @@ export async function pollActiveCampaignEvents(
       if (filters?.list || filters?.list_id) {
         queryParams.set('listid', (filters.list || filters.list_id) as string)
       }
+
+      // Add tag filter if specified (only for tag events)
+      const tagValue = filters?.tag_name || filters?.tag
+      if (tagValue && triggerEvent.includes('tag')) {
+        queryParams.set('filters[tagid]', tagValue as string)
+      }
     }
 
     queryParams.set('limit', '50')
@@ -710,29 +757,31 @@ export function extractContactFromPayload(
 ): ExtractedContact {
   switch (crm) {
     case 'pipedrive': {
-      const current = payload.current as Record<string, unknown> | undefined
-      const phone = (current?.phone as Array<{ value: string }>)?.[0]?.value || null
-      const firstName = (current?.first_name as string) || null
-      const lastName = (current?.last_name as string) || null
+      // Pipedrive usually sends data in 'current', but fall back to the root payload
+      const data = (payload.current as Record<string, unknown>) || payload
+      const phone = (data.phone as Array<{ value: string }>)?.[0]?.value || (data.phone as string) || null
+      const firstName = (data.first_name as string) || (data.firstname as string) || null
+      const lastName = (data.last_name as string) || (data.lastname as string) || null
       return {
         phone,
         firstName,
         lastName,
-        fullName: (current?.name as string) || [firstName, lastName].filter(Boolean).join(' ') || null,
-        email: (current?.email as Array<{ value: string }>)?.[0]?.value || null,
-        externalId: String(current?.id || ''),
+        fullName: (data.name as string) || [firstName, lastName].filter(Boolean).join(' ') || null,
+        email: (data.email as Array<{ value: string }>)?.[0]?.value || (data.email as string) || null,
+        externalId: String(data.id || payload.id || ''),
       }
     }
 
     case 'hubspot': {
-      const props = payload.properties as Record<string, string> | undefined
+      // HubSpot usually sends 'properties', but fallback to root
+      const props = (payload.properties as Record<string, any>) || payload
       return {
-        phone: props?.phone || null,
-        firstName: props?.firstname || null,
-        lastName: props?.lastname || null,
-        fullName: [props?.firstname, props?.lastname].filter(Boolean).join(' ') || null,
-        email: props?.email || null,
-        externalId: String(payload.objectId || ''),
+        phone: props.phone || props.mobilephone || null,
+        firstName: props.firstname || null,
+        lastName: props.lastname || null,
+        fullName: [props.firstname, props.lastname].filter(Boolean).join(' ') || null,
+        email: props.email || null,
+        externalId: String(payload.objectId || payload.id || ''),
       }
     }
 
@@ -775,14 +824,23 @@ export function extractContactFromPayload(
     }
 
     case 'activecampaign': {
-      const contact = payload.contact as Record<string, string> | undefined || payload
+      // AC can send data as nested contact object or flattened contact[field] keys
+      const contact = payload.contact as Record<string, any> | undefined
+
+      const getVal = (key: string) => {
+        if (contact && contact[key]) return String(contact[key])
+        if (payload[`contact[${key}]` || `contact_${key}`]) return String(payload[`contact[${key}]`] || payload[`contact_${key}`])
+        if (payload[key]) return String(payload[key])
+        return null
+      }
+
       return {
-        phone: (contact as Record<string, string>).phone || null,
-        firstName: (contact as Record<string, string>).firstName || null,
-        lastName: (contact as Record<string, string>).lastName || null,
-        fullName: [(contact as Record<string, string>).firstName, (contact as Record<string, string>).lastName].filter(Boolean).join(' ') || null,
-        email: (contact as Record<string, string>).email || null,
-        externalId: String((contact as Record<string, string>).id || ''),
+        phone: getVal('phone'),
+        firstName: getVal('firstName') || getVal('first_name'),
+        lastName: getVal('lastName') || getVal('last_name'),
+        fullName: [getVal('firstName') || getVal('first_name'), getVal('lastName') || getVal('last_name')].filter(Boolean).join(' ') || null,
+        email: getVal('email'),
+        externalId: String(getVal('id') || ''),
       }
     }
 
@@ -796,4 +854,16 @@ export function extractContactFromPayload(
         externalId: '',
       }
   }
+}
+/**
+ * Get nested value from object using dot notation
+ */
+export function getNestedValue(obj: any, path: string): any {
+  if (!path || !obj) return undefined
+  return path.split('.').reduce((current, key) => {
+    if (current && typeof current === 'object') {
+      return (current as any)[key]
+    }
+    return undefined
+  }, obj)
 }
