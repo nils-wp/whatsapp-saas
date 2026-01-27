@@ -77,29 +77,63 @@ export async function POST(
             ? finalMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
             : [finalMessage]
 
-        // 4. Create/Upsert conversation once
-        const { data: conversation, error: convError } = await supabase
+        // 4. Find existing active conversation or create new one
+        // Search for existing active conversation for this phone/tenant
+        const { data: existingConv } = await supabase
             .from('conversations')
-            .upsert({
-                tenant_id: trigger.tenant_id,
-                whatsapp_account_id: trigger.whatsapp_account_id,
-                contact_phone: test_phone,
-                contact_name: `Test: ${contactName}`,
-                status: 'active',
-                agent_id: trigger.agent_id,
-                trigger_id: trigger.id,
-                trigger_data: trigger_data,
-                last_message_at: new Date().toISOString(),
-            }, {
-                onConflict: 'tenant_id,contact_phone,status',
-                ignoreDuplicates: false
-            })
-            .select()
+            .select('*')
+            .eq('tenant_id', trigger.tenant_id)
+            .eq('contact_phone', test_phone)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
             .single()
 
-        if (convError) {
-            console.error('Failed to create/update test conversation:', convError)
-            return NextResponse.json({ error: 'Failed to create test conversation' }, { status: 500 })
+        let conversation
+        if (existingConv) {
+            // Update existing conversation
+            const { data: updated, error: updateError } = await supabase
+                .from('conversations')
+                .update({
+                    contact_name: `Test: ${contactName}`,
+                    last_message_at: new Date().toISOString(),
+                    trigger_id: trigger.id,
+                    trigger_data: trigger_data,
+                    agent_id: trigger.agent_id || null,
+                })
+                .eq('id', existingConv.id)
+                .select()
+                .single()
+
+            if (updateError) {
+                console.error('Failed to update test conversation:', updateError)
+                return NextResponse.json({ error: 'Failed to update test conversation' }, { status: 500 })
+            }
+            conversation = updated
+        } else {
+            // Create new conversation
+            const { data: inserted, error: insertError } = await supabase
+                .from('conversations')
+                .insert({
+                    tenant_id: trigger.tenant_id,
+                    whatsapp_account_id: trigger.whatsapp_account_id,
+                    contact_phone: test_phone,
+                    contact_name: `Test: ${contactName}`,
+                    status: 'active',
+                    agent_id: trigger.agent_id || null,
+                    trigger_id: trigger.id,
+                    trigger_data: trigger_data,
+                    last_message_at: new Date().toISOString(),
+                    current_script_step: 1,
+                })
+                .select()
+                .single()
+
+            if (insertError) {
+                console.error('Failed to create test conversation:', insertError)
+                return NextResponse.json({ error: 'Failed to create test conversation' }, { status: 500 })
+            }
+            conversation = inserted
         }
 
         let firstMessageId: string | null = null
