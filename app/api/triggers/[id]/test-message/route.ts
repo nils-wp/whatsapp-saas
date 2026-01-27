@@ -69,7 +69,13 @@ export async function POST(
         }
 
         // 3. Send via Evolution API (handling sequences)
-        const messageParts = finalMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+        const externalConfig = (trigger.external_config as Record<string, unknown>) || {}
+        const firstMessageType = externalConfig.first_message_type || 'single'
+        const sequenceDelaySeconds = Number(externalConfig.sequence_delay) || 2
+
+        const messageParts = firstMessageType === 'sequence'
+            ? finalMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+            : [finalMessage]
 
         // 4. Create/Upsert conversation once
         const { data: conversation, error: convError } = await supabase
@@ -105,7 +111,7 @@ export async function POST(
 
             // Delay between messages in sequence
             if (i > 0) {
-                await new Promise(resolve => setTimeout(resolve, 2000))
+                await new Promise(resolve => setTimeout(resolve, sequenceDelaySeconds * 1000))
             }
 
             const sendResult = await sendTextMessage(instanceName, test_phone, partContent)

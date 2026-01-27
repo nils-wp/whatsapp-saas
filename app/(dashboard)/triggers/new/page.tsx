@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
+import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,6 @@ import { useIntegrations, useCloseStatuses, usePipedrivePipelines, useHubSpotPip
 import { triggerSchema, type TriggerFormData, type TriggerType, CRM_EVENTS, EVENT_FILTERS } from '@/lib/utils/validation'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { X } from 'lucide-react'
 import { toast } from 'sonner'
 
 // CRM type options with labels
@@ -220,19 +219,28 @@ export default function NewTriggerPage() {
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<TriggerFormData>({
     resolver: zodResolver(triggerSchema),
     defaultValues: {
-      type: 'webhook',
       first_message_delay_minutes: 1,
       agent_id: '',
+      sequence_delay: 2,
+      first_message_type: 'single',
+      first_message_parts: [{ content: '' }],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'first_message_parts',
   })
 
   const selectedType = watch('type')
   const selectedEvent = watch('trigger_event')
   const eventFilters = watch('event_filters')
+  const firstMessageType = watch('first_message_type')
 
   // Get available events for the selected CRM type
   const availableEvents = selectedType ? CRM_EVENTS[selectedType] || [] : []
@@ -298,6 +306,11 @@ export default function NewTriggerPage() {
         event_filters: data.event_filters,
       }
 
+      // Build final first_message from parts if sequence
+      const first_message = data.first_message_type === 'sequence'
+        ? data.first_message_parts?.map(p => p.content).join('\n---\n')
+        : data.first_message;
+
       // Create trigger with external_config
       // Convert minutes to seconds for database storage
       const triggerData = {
@@ -306,9 +319,13 @@ export default function NewTriggerPage() {
         whatsapp_account_id: data.whatsapp_account_id,
         // Only include agent_id if selected (optional)
         agent_id: data.agent_id || null,
-        first_message: data.first_message,
+        first_message: first_message || '',
         first_message_delay_seconds: data.first_message_delay_minutes * 60,
-        external_config,
+        external_config: {
+          ...external_config,
+          sequence_delay: data.sequence_delay,
+          first_message_type: data.first_message_type,
+        },
       }
 
       const trigger = await createTrigger.mutateAsync(triggerData)
@@ -606,34 +623,123 @@ export default function NewTriggerPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="first_message">Nachricht *</Label>
-              <Textarea
-                id="first_message"
-                placeholder="Hey {{name}}, danke für dein Interesse! 👋"
-                rows={4}
-                {...register('first_message')}
-              />
-              {errors.first_message && (
-                <p className="text-sm text-destructive">{errors.first_message.message}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Tipp: Nutze <code className="text-[#00a884]">---</code> in einer neuen Zeile, um mehrere Nachrichten-Bubbles nacheinander zu senden.
-              </p>
-            </div>
+            <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label>Typ der Erstnachricht</Label>
+                <Select
+                  value={firstMessageType || 'single'}
+                  onValueChange={(value) => setValue('first_message_type', value as 'single' | 'sequence')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nachrichtentyp auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Einzelne Nachricht</SelectItem>
+                    <SelectItem value="sequence">Nachrichtensequenz (Bubbles)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="first_message_delay_minutes">Verzögerung (Minuten)</Label>
-              <Input
-                id="first_message_delay_minutes"
-                type="number"
-                min={0}
-                max={60}
-                {...register('first_message_delay_minutes', { valueAsNumber: true })}
-              />
-              <p className="text-xs text-muted-foreground">
-                Zeit zwischen Trigger und erster Nachricht (0 = sofort)
-              </p>
+              <div className="space-y-4">
+                <Label>Nachrichten-Bubbles</Label>
+                {firstMessageType === 'sequence' ? (
+                  <div className="space-y-4">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="flex flex-col items-center pt-3">
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold border-2 border-[#00a884]/20 group-hover:border-[#00a884]/40 transition-colors">
+                              {index + 1}
+                            </div>
+                            {index < fields.length - 1 && (
+                              <div className="w-0.5 h-full min-h-[40px] bg-muted/50 mt-2" />
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="relative">
+                              <Textarea
+                                {...register(`first_message_parts.${index}.content` as const)}
+                                rows={3}
+                                placeholder={`Bubble ${index + 1}...`}
+                                className="pr-12 resize-none bg-muted/30 focus:bg-background transition-colors"
+                              />
+                              {fields.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                  onClick={() => remove(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-dashed border-2 hover:border-[#00a884] hover:text-[#00a884] transition-all bg-muted/10"
+                      onClick={() => append({ content: '' })}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Weitere Bubble hinzufügen
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      {...register('first_message')}
+                      rows={4}
+                      placeholder="Hey {{name}}, danke für dein Interesse! 👋"
+                      className="bg-muted/30 focus:bg-background transition-colors"
+                    />
+                    {errors.first_message && (
+                      <p className="text-sm text-destructive">{errors.first_message.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Sende eine einzelne Nachricht als direkten Bubble.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {firstMessageType === 'sequence' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label htmlFor="sequence_delay">Verzögerung zwischen Bubbles (Sekunden)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="sequence_delay"
+                      type="number"
+                      min={1}
+                      max={30}
+                      className="w-24"
+                      {...register('sequence_delay', { valueAsNumber: true })}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Empfohlen: 2-5 Sekunden für einen natürlichen Look.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="first_message_delay_minutes">Verzögerung bis zur ersten Nachricht (Minuten)</Label>
+                <Input
+                  id="first_message_delay_minutes"
+                  type="number"
+                  min={0}
+                  max={60}
+                  {...register('first_message_delay_minutes', { valueAsNumber: true })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Zeit zwischen Trigger und der allerersten Nachricht (0 = sofort)
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

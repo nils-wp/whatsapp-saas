@@ -855,9 +855,15 @@ export const triggerSchema = z.object({
   whatsapp_account_id: z.string().uuid('Bitte wähle einen WhatsApp-Account'),
   // Agent is optional - triggers can work without an agent (just sends first message)
   agent_id: z.string().uuid('Bitte wähle einen Agent').optional().or(z.literal('')),
-  first_message: z.string().min(10, 'Erste Nachricht muss mindestens 10 Zeichen lang sein'),
+  first_message: z.string().min(1, 'Erste Nachricht ist erforderlich'),
   // Delay in minutes (0-60)
   first_message_delay_minutes: z.number().min(0).max(60),
+  // Delay between sequence bubbles in seconds (1-30)
+  sequence_delay: z.number().min(1).max(30).default(2).optional(),
+  // Type of first message
+  first_message_type: z.enum(['single', 'sequence']).default('single').optional(),
+  // For UI: multiple message bubbles
+  first_message_parts: z.array(z.object({ content: z.string() })).optional(),
 })
 
 export type LoginFormData = z.infer<typeof loginSchema>

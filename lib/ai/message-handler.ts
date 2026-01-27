@@ -415,8 +415,14 @@ export async function startNewConversation(options: {
     }
 
     // 6. Sende Nachrichten-Sequenz (Outreach - counts toward warm-up limit)
-    // Split by "---" on its own line (allowing for multiple dashes)
-    const messageParts = firstMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+    const externalConfig = (trigger.external_config as Record<string, unknown>) || {}
+    const firstMessageType = externalConfig.first_message_type || 'single'
+    const sequenceDelaySeconds = Number(externalConfig.sequence_delay) || 2
+
+    // Split by "---" on its own line (allowing for multiple dashes) only if type is sequence
+    const messageParts = firstMessageType === 'sequence'
+      ? firstMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+      : [firstMessage]
 
     for (let i = 0; i < messageParts.length; i++) {
       const partContent = messageParts[i].trim()
@@ -424,8 +430,8 @@ export async function startNewConversation(options: {
 
       // Delay between bubbles in a sequence (except for the very first message which already had its delay)
       if (i > 0) {
-        // Small "typing" delay for a natural feel
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Use configured sequence delay
+        await new Promise(resolve => setTimeout(resolve, sequenceDelaySeconds * 1000))
       }
 
       await saveAndSendMessage({

@@ -232,7 +232,10 @@ export async function GET(
         }
 
         // Handle message sequences for preview
-        if (messagePreview && messagePreview.includes('---')) {
+        const externalConfig = (fullTrigger.external_config as Record<string, unknown>) || {}
+        const firstMessageType = externalConfig.first_message_type || 'single'
+
+        if (messagePreview && firstMessageType === 'sequence' && messagePreview.includes('---')) {
           const parts = messagePreview.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
           if (parts.length > 1) {
             messagePreview = parts
