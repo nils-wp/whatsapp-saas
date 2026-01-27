@@ -5,7 +5,7 @@ import { sendTextMessage } from '@/lib/evolution/client'
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +13,7 @@ export async function POST(
     )
 
     try {
-        const { id } = params
+        const { id } = await params
         const { test_phone, trigger_data } = await req.json()
 
         if (!test_phone) {
