@@ -617,9 +617,6 @@ export default function NewTriggerPage() {
               {errors.first_message && (
                 <p className="text-sm text-destructive">{errors.first_message.message}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Verfügbare Variablen: {'{{name}}'}, {'{{email}}'}, {'{{phone}}'}
-              </p>
             </div>
 
             <div className="space-y-2">

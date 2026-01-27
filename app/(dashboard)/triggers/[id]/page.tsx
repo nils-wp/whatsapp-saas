@@ -249,8 +249,8 @@ export default function EditTriggerPage({
   // Filter available CRM options - include current type even if not connected
   const availableCRMOptions = CRM_OPTIONS.filter(
     option => !option.requiresConnection ||
-              connectedCRMs[option.value as keyof typeof connectedCRMs] ||
-              trigger?.type === option.value
+      connectedCRMs[option.value as keyof typeof connectedCRMs] ||
+      trigger?.type === option.value
   )
 
   const {
@@ -689,9 +689,6 @@ export default function EditTriggerPage({
                 {errors.first_message && (
                   <p className="text-sm text-destructive">{errors.first_message.message}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Verfügbare Variablen: {'{{name}}'}, {'{{email}}'}, {'{{phone}}'}
-                </p>
               </div>
               <div className="space-y-2">
                 <Label>Verzögerung (Minuten)</Label>
