@@ -6,8 +6,9 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { extractContactFromPayload, matchesFilters, type CRMType } from '@/lib/integrations/crm-polling'
+import { extractContactFromPayload, matchesFilters, getCRMApiConfig, type CRMType } from '@/lib/integrations/crm-polling'
 import { startNewConversation } from '@/lib/ai/message-handler'
+import * as ac from '@/lib/integrations/activecampaign'
 
 function getSupabase() {
   return createClient(
@@ -141,6 +142,48 @@ export async function POST(
       })
     }
 
+    // Fallback: If phone is missing, try to fetch from CRM API if we have an ID
+    if (!contact.phone && contact.externalId) {
+      console.log(`[CRM Webhook] Phone missing in ${crmType} payload, attempting to fetch from API for ID: ${contact.externalId}`)
+
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('integration_settings')
+        .eq('id', trigger.tenant_id)
+        .single()
+
+      if (tenant?.integration_settings) {
+        const config = getCRMApiConfig(crmType, tenant.integration_settings as any)
+
+        if (crmType === 'activecampaign' && config.apiUrl && config.apiKey) {
+          try {
+            const acContact = await ac.getContact(config as any, contact.externalId)
+            if (acContact?.phone) {
+              console.log(`[CRM Webhook] Successfully fetched phone from AC API: ${acContact.phone}`)
+              contact.phone = acContact.phone
+              // Update other fields if they were missing
+              if (!contact.firstName) contact.firstName = acContact.firstName || null
+              if (!contact.lastName) contact.lastName = acContact.lastName || null
+              contact.fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || contact.fullName
+            }
+
+            // Also fetch tags if this trigger depends on tags
+            const hasTagFilter = Object.keys(trigger.event_filters || {}).some(k => k.includes('tag'))
+            if (hasTagFilter) {
+              const acTags = await ac.getContactTags(config as any, contact.externalId)
+              if (acTags.length > 0) {
+                // Attach tags to payload so matchesFilters can see them
+                (payload as any).tags = acTags.map(t => t.id).join(',')
+                console.log(`[CRM Webhook] Fetched ${acTags.length} tags for AC contact matching`)
+              }
+            }
+          } catch (acError) {
+            console.error(`[CRM Webhook] Error fetching AC contact:`, acError)
+          }
+        }
+      }
+    }
+
     // Validate phone number
     if (!contact.phone) {
       // Store event but don't start conversation
@@ -152,7 +195,7 @@ export async function POST(
         raw_payload: payload,
         extracted_data: contact,
         is_test_event: false,
-        error_message: 'No phone number in payload',
+        error_message: 'No phone number in payload (and fallback failed)',
       })
 
       return NextResponse.json({

@@ -524,3 +524,66 @@ export async function getTags(
     return []
   }
 }
+
+/**
+ * Holt einen Kontakt nach ID
+ */
+export async function getContact(
+  config: ActiveCampaignConfig,
+  contactId: string
+): Promise<Contact | null> {
+  try {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/contacts/${contactId}`, {
+      headers: {
+        'Api-Token': config.apiKey,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const contact = data.contact
+
+    if (!contact) return null
+
+    return {
+      id: contact.id,
+      email: contact.email,
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      phone: contact.phone,
+      fields: {},
+    }
+  } catch (error) {
+    console.error('ActiveCampaign getContact error:', error)
+    return null
+  }
+}
+
+/**
+ * Holt alle Tags für einen Kontakt
+ */
+export async function getContactTags(
+  config: ActiveCampaignConfig,
+  contactId: string
+): Promise<Array<{ id: string; tag: string }>> {
+  try {
+    const response = await fetch(`${normalizeApiUrl(config.apiUrl)}/api/3/contacts/${contactId}/contactTags`, {
+      headers: {
+        'Api-Token': config.apiKey,
+      },
+    })
+
+    if (!response.ok) return []
+
+    const data = await response.json()
+    return data.contactTags?.map((ct: any) => ({
+      id: String(ct.tag),
+      tag: '',
+    })) || []
+  } catch (error) {
+    console.error('ActiveCampaign getContactTags error:', error)
+    return []
+  }
+}

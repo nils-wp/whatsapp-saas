@@ -33,6 +33,47 @@ export interface PollingConfig {
   phoneColumnId?: string
 }
 
+/**
+ * Get CRM API config from integration settings
+ */
+export function getCRMApiConfig(
+  crmType: CRMType,
+  integrations: Record<string, unknown>
+): PollingConfig {
+  switch (crmType) {
+    case 'pipedrive':
+      return {
+        apiToken: integrations.pipedrive_api_token as string | undefined,
+      }
+
+    case 'monday':
+      return {
+        apiToken: integrations.monday_api_token as string | undefined,
+        boardId: integrations.monday_board_id as string | undefined,
+        phoneColumnId: integrations.monday_phone_column_id as string | undefined,
+      }
+
+    case 'hubspot':
+      return {
+        accessToken: integrations.hubspot_access_token as string | undefined,
+      }
+
+    case 'close':
+      return {
+        apiKey: integrations.close_api_key as string | undefined,
+      }
+
+    case 'activecampaign':
+      return {
+        apiKey: integrations.activecampaign_api_key as string | undefined,
+        apiUrl: integrations.activecampaign_api_url as string | undefined,
+      }
+
+    default:
+      return {}
+  }
+}
+
 export interface PollingResult {
   events: CRMEvent[]
   newCursor?: string
@@ -105,6 +146,25 @@ export function matchesFilters(
 
         const pipelineValue = filters.pipeline_id || filters.pipeline
         if (pipelineValue && String(record.pipeline || record.pipelineid) !== String(pipelineValue)) return false
+
+        // Special handling for tags - they can be in various formats
+        const tagValue = filters.tag_name || filters.tag
+        if (tagValue) {
+          const recordTags = record.tags ||
+            record['contact[tags]'] ||
+            record.contact?.tags ||
+            record.tag_names ||
+            (Array.isArray(record.tags) ? record.tags.map((t: any) => t.id || t.tag || t).join(',') : null)
+
+          if (recordTags) {
+            const tagsString = String(recordTags)
+            if (!tagsString.includes(String(tagValue))) return false
+          } else if (event.includes('tag')) {
+            // If it's a tag event but no tags found in payload, it's safer to let it through
+            // but log that we couldn't verify
+            console.warn('[Filtering] AC tag filter found but no tags in record')
+          }
+        }
 
         break
       }
@@ -829,7 +889,10 @@ export function extractContactFromPayload(
 
       const getVal = (key: string) => {
         if (contact && contact[key]) return String(contact[key])
-        if (payload[`contact[${key}]` || `contact_${key}`]) return String(payload[`contact[${key}]`] || payload[`contact_${key}`])
+        const flatKey = `contact[${key}]`
+        if (payload[flatKey]) return String(payload[flatKey])
+        const underscoreKey = `contact_${key}`
+        if (payload[underscoreKey]) return String(payload[underscoreKey])
         if (payload[key]) return String(payload[key])
         return null
       }
