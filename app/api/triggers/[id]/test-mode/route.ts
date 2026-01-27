@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { substituteVariables, splitName, generateFirstMessage } from '@/lib/ai/agent-processor'
 
 // Test mode duration: 5 minutes
 const TEST_MODE_DURATION_MS = 5 * 60 * 1000
@@ -186,11 +187,53 @@ export async function GET(
 
     const latestEvent = testEvents?.[0]
 
+    // 5. Generate message preview if event exists
+    let messagePreview: string | null = null
+    if (latestEvent) {
+      // Get the full trigger data to access message template and agent
+      const { data: fullTrigger } = await serviceSupabase
+        .from('triggers')
+        .select('*, agents(*)')
+        .eq('id', id)
+        .single()
+
+      if (fullTrigger) {
+        const extractedData = latestEvent.extracted_data as Record<string, string | null>
+        const contactName = (extractedData?.contact_name || extractedData?.name || 'Test User') as string
+        const { firstName, lastName } = splitName(contactName)
+        const agent = fullTrigger.agents
+
+        if (agent) {
+          messagePreview = await generateFirstMessage(
+            agent,
+            contactName,
+            extractedData
+          )
+        } else {
+          const variables = {
+            name: contactName,
+            contact_name: contactName,
+            first_name: firstName,
+            last_name: lastName,
+            vorname: firstName,
+            nachname: lastName,
+            ...Object.fromEntries(
+              Object.entries(extractedData || {})
+                .filter(([, v]) => v !== undefined && v !== null)
+                .map(([k, v]) => [k, String(v)])
+            ),
+          }
+          messagePreview = substituteVariables(fullTrigger.first_message || '', variables)
+        }
+      }
+    }
+
     return NextResponse.json({
       testMode: isTestModeActive,
       expiresAt: expiry > 0 ? new Date(expiry).toISOString() : null,
       remainingSeconds: expiry > 0 ? Math.max(0, Math.round((expiry - Date.now()) / 1000)) : 0,
       hasEvent: !!latestEvent,
+      messagePreview,
       event: latestEvent ? {
         timestamp: new Date(latestEvent.created_at).getTime(),
         payload: latestEvent.raw_payload,

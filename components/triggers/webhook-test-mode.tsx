@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Play, Square, Copy, Check, Loader2, AlertCircle, Webhook, Clock } from 'lucide-react'
+import { Play, Square, Copy, Check, Loader2, AlertCircle, Webhook, Clock, Send, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +28,7 @@ interface TestModeState {
   expiresAt?: string
   remainingSeconds?: number
   hasEvent: boolean
+  messagePreview?: string | null
   event?: TestEvent | null
 }
 
@@ -40,6 +43,8 @@ export function WebhookTestMode({
   const [copiedWebhook, setCopiedWebhook] = useState(false)
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null)
+  const [testPhone, setTestPhone] = useState('')
+  const [isSendingTest, setIsSendingTest] = useState(false)
 
   const webhookUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhook/${webhookId}`
 
@@ -92,6 +97,10 @@ export function WebhookTestMode({
         toast.success('Event empfangen!')
         // Automatically stop test mode after first event
         stopTestMode()
+
+        // Pre-fill phone number if available in event data
+        const phone = data.event?.extractedVariables?.phone || data.event?.extractedVariables?.whatsapp_phone
+        if (phone) setTestPhone(phone)
       }
     }, 1000) // Poll every 1 second
 
@@ -169,6 +178,37 @@ export function WebhookTestMode({
       setTimeout(() => setCopiedVariable(null), 2000)
     }
     toast.success('Kopiert!')
+  }
+
+  async function sendTestMessage() {
+    if (!testPhone) {
+      toast.error('Bitte eine Telefonnummer eingeben')
+      return
+    }
+
+    setIsSendingTest(true)
+    try {
+      const response = await fetch(`/api/triggers/${triggerId}/test-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_phone: testPhone,
+          trigger_data: testState?.event?.extractedVariables
+        }),
+      })
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        toast.success('Test-Nachricht versendet!')
+      } else {
+        toast.error(data.error || 'Fehler beim Senden der Test-Nachricht')
+      }
+    } catch (error) {
+      console.error('Send test message error:', error)
+      toast.error('Fehler beim Senden der Test-Nachricht')
+    } finally {
+      setIsSendingTest(false)
+    }
   }
 
   const getCrmName = (type: string) => {
@@ -343,6 +383,60 @@ export function WebhookTestMode({
               <pre className="bg-[#0d0d0d] rounded-lg border border-[#2a2a2a] p-3 text-xs text-gray-300 overflow-x-auto max-h-60">
                 {JSON.stringify(testState.event.payload, null, 2)}
               </pre>
+            </div>
+
+            <Separator className="bg-[#2a2a2a]" />
+
+            {/* Message Preview & Sending */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-[#00a884]/10 rounded-md">
+                  <Send className="h-4 w-4 text-[#00a884]" />
+                </div>
+                <h4 className="text-sm font-medium text-white">Nachricht mittesten</h4>
+              </div>
+
+              {testState.messagePreview && (
+                <div className="bg-[#0d0d0d] rounded-lg border border-[#2a2a2a] overflow-hidden">
+                  <div className="px-3 py-2 bg-[#222] border-b border-[#2a2a2a] flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Vorschau der Erstnachricht</span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tl-none relative max-w-[90%] text-sm whitespace-pre-wrap">
+                      {testState.messagePreview}
+                      {/* Subtitle logic for WhatsApp bubble arrow */}
+                      <div className="absolute top-0 -left-2 w-0 h-0 border-t-[8px] border-t-[#005c4b] border-l-[8px] border-l-transparent" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 block">WhatsApp Nummer für den Test</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="z.B. 49151..."
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="bg-[#0d0d0d] border-[#2a2a2a] text-white h-9"
+                  />
+                  <Button
+                    onClick={sendTestMessage}
+                    disabled={isSendingTest || !testPhone}
+                    size="sm"
+                    className="bg-[#00a884] hover:bg-[#00a884]/90 text-white shrink-0"
+                  >
+                    {isSendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                    Senden
+                  </Button>
+                </div>
+                <p className="text-[10px] text-gray-500">
+                  Die Nachricht wird über den verknüpften WhatsApp-Account an diese Nummer gesendet.
+                </p>
+              </div>
             </div>
           </div>
         )}
