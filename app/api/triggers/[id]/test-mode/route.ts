@@ -73,12 +73,6 @@ export async function POST(
         }
       }).eq('id', trigger.id)
 
-      // Clear any previous test events
-      await serviceSupabase.from('crm_webhook_events')
-        .delete()
-        .eq('trigger_id', trigger.id)
-        .eq('is_test_event', true)
-
       // Determine webhook URL based on trigger type
       const isCRMTrigger = ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'].includes((trigger as Record<string, unknown>).type as string)
       const webhookUrl = isCRMTrigger
@@ -110,6 +104,17 @@ export async function POST(
         success: true,
         testMode: false,
         message: 'Test mode stopped.',
+      })
+    } else if (action === 'clear') {
+      // Manually clear all test events for this trigger
+      await serviceSupabase.from('crm_webhook_events')
+        .delete()
+        .eq('trigger_id', trigger.id)
+        .eq('is_test_event', true)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Test history cleared.',
       })
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

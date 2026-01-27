@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Play, Square, Copy, Check, Loader2, AlertCircle, Webhook, Clock, Send, Eye } from 'lucide-react'
+import { Play, Square, Copy, Check, Loader2, AlertCircle, Webhook, Clock, Send, Eye, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -211,6 +211,30 @@ export function WebhookTestMode({
     }
   }
 
+  async function clearHistory() {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/triggers/${triggerId}/test-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' }),
+      })
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setTestState(prev => prev ? { ...prev, hasEvent: false, event: null, messagePreview: null } : null)
+        toast.success('Test-Verlauf gelöscht')
+      } else {
+        toast.error(data.error || 'Konnte Verlauf nicht löschen')
+      }
+    } catch (error) {
+      console.error('Clear history error:', error)
+      toast.error('Fehler beim Löschen des Verlaufs')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const getCrmName = (type: string) => {
     const names: Record<string, string> = {
       pipedrive: 'Pipedrive',
@@ -334,9 +358,21 @@ export function WebhookTestMode({
         {/* Event Received */}
         {testState?.hasEvent && testState.event && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#00a884]">
-              <Check className="h-5 w-5" />
-              <span className="font-medium">Event erfolgreich empfangen!</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[#00a884]">
+                <Check className="h-5 w-5" />
+                <span className="font-medium">Event erfolgreich empfangen!</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearHistory}
+                disabled={isLoading}
+                className="text-gray-400 hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Verlauf löschen
+              </Button>
             </div>
 
             {/* Extracted Variables */}
