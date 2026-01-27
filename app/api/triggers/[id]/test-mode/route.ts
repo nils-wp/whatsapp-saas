@@ -193,7 +193,7 @@ export async function GET(
     const latestEvent = testEvents?.[0]
 
     // 5. Generate message preview if event exists
-    let messagePreview: string | null = null
+    let messagePreview: string | string[] | null = null
     if (latestEvent) {
       // Get the full trigger data to access message template and agent
       const { data: fullTrigger } = await serviceSupabase
@@ -229,6 +229,14 @@ export async function GET(
             ),
           }
           messagePreview = substituteVariables(fullTrigger.first_message || '', variables)
+        }
+
+        // Handle message sequences for preview
+        if (messagePreview && messagePreview.includes('---')) {
+          const parts = messagePreview.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+          if (parts.length > 1) {
+            messagePreview = parts
+          }
         }
       }
     }

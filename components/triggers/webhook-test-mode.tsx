@@ -28,7 +28,7 @@ interface TestModeState {
   expiresAt?: string
   remainingSeconds?: number
   hasEvent: boolean
-  messagePreview?: string | null
+  messagePreview?: string | string[] | null
   event?: TestEvent | null
 }
 
@@ -451,12 +451,20 @@ export function WebhookTestMode({
                       <span>Vorschau der Erstnachricht</span>
                     </div>
                   </div>
-                  <div className="p-4">
-                    <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tl-none relative max-w-[90%] text-sm whitespace-pre-wrap">
-                      {testState.messagePreview}
-                      {/* Subtitle logic for WhatsApp bubble arrow */}
-                      <div className="absolute top-0 -left-2 w-0 h-0 border-t-[8px] border-t-[#005c4b] border-l-[8px] border-l-transparent" />
-                    </div>
+                  <div className="p-4 space-y-3 bg-[#0d0d0d]">
+                    {Array.isArray(testState.messagePreview) ? (
+                      testState.messagePreview.map((part, index) => (
+                        <div key={index} className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tl-none relative max-w-[90%] text-sm whitespace-pre-wrap animate-in fade-in slide-in-from-left-2 duration-300">
+                          {part}
+                          <div className="absolute top-0 -left-2 w-0 h-0 border-t-[8px] border-t-[#005c4b] border-l-[8px] border-l-transparent" />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tl-none relative max-w-[90%] text-sm whitespace-pre-wrap">
+                        {testState.messagePreview}
+                        <div className="absolute top-0 -left-2 w-0 h-0 border-t-[8px] border-t-[#005c4b] border-l-[8px] border-l-transparent" />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

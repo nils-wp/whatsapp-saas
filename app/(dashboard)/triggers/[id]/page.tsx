@@ -689,6 +689,9 @@ export default function EditTriggerPage({
                 {errors.first_message && (
                   <p className="text-sm text-destructive">{errors.first_message.message}</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Tipp: Nutze <code className="text-[#00a884]">---</code> in einer neuen Zeile, um mehrere Nachrichten-Bubbles nacheinander zu senden.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Verzögerung (Minuten)</Label>

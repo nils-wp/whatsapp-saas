@@ -407,26 +407,40 @@ export async function startNewConversation(options: {
       firstMessage = substituteVariables(trigger.first_message, variables)
     }
 
-    // 5. Warte konfigurierte Verzögerung
+    // 5. Warte konfigurierte Verzögerung (für die allererste Nachricht)
     if (trigger.first_message_delay_seconds > 0) {
       await new Promise(resolve =>
         setTimeout(resolve, trigger.first_message_delay_seconds * 1000)
       )
     }
 
-    // 6. Sende erste Nachricht (Outreach - counts toward warm-up limit)
-    await saveAndSendMessage({
-      conversationId: conversation.id,
-      tenantId: options.tenantId,
-      instanceName,
-      phone: options.phone,
-      content: firstMessage,
-      senderType: agent ? 'agent' : 'human',
-      scriptStep: 1,
-      contactName: options.contactName,
-      agentName: agent?.agent_name || agent?.name || 'System',
-      isOutreach: true, // Only outreach messages count toward daily limit
-    })
+    // 6. Sende Nachrichten-Sequenz (Outreach - counts toward warm-up limit)
+    // Split by "---" on its own line (allowing for multiple dashes)
+    const messageParts = firstMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
+
+    for (let i = 0; i < messageParts.length; i++) {
+      const partContent = messageParts[i].trim()
+      if (!partContent) continue
+
+      // Delay between bubbles in a sequence (except for the very first message which already had its delay)
+      if (i > 0) {
+        // Small "typing" delay for a natural feel
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+
+      await saveAndSendMessage({
+        conversationId: conversation.id,
+        tenantId: options.tenantId,
+        instanceName,
+        phone: options.phone,
+        content: partContent,
+        senderType: agent ? 'agent' : 'human',
+        scriptStep: 1,
+        contactName: options.contactName,
+        agentName: agent?.agent_name || agent?.name || 'System',
+        isOutreach: true, // Counts toward daily limit
+      })
+    }
 
     // 7. Update CRM status to contacted
     updateCRMStatus({

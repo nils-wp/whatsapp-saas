@@ -68,15 +68,10 @@ export async function POST(
             finalMessage = substituteVariables(trigger.first_message, variables)
         }
 
-        // 3. Send via Evolution API
-        const sendResult = await sendTextMessage(instanceName, test_phone, finalMessage)
+        // 3. Send via Evolution API (handling sequences)
+        const messageParts = finalMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
 
-        if (!sendResult.success) {
-            return NextResponse.json({ error: `Failed to send message: ${sendResult.error}` }, { status: 500 })
-        }
-
-        // 4. Create a conversation and message record so it appears in the chat
-        // This makes the test "real" in the UI
+        // 4. Create/Upsert conversation once
         const { data: conversation, error: convError } = await supabase
             .from('conversations')
             .upsert({
@@ -98,25 +93,49 @@ export async function POST(
 
         if (convError) {
             console.error('Failed to create/update test conversation:', convError)
-        } else {
-            // Create message record
-            await supabase
-                .from('messages')
-                .insert({
-                    tenant_id: trigger.tenant_id,
-                    conversation_id: conversation.id,
-                    direction: 'outbound',
-                    sender_type: agent ? 'agent' : 'human',
-                    content: finalMessage,
-                    status: 'sent',
-                    whatsapp_message_id: (sendResult.data as any)?.key?.id,
-                })
+            return NextResponse.json({ error: 'Failed to create test conversation' }, { status: 500 })
+        }
+
+        let firstMessageId: string | null = null
+
+        // 5. Send each part
+        for (let i = 0; i < messageParts.length; i++) {
+            const partContent = messageParts[i].trim()
+            if (!partContent) continue
+
+            // Delay between messages in sequence
+            if (i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 2000))
+            }
+
+            const sendResult = await sendTextMessage(instanceName, test_phone, partContent)
+
+            if (sendResult.success) {
+                // Log each message part to the database
+                const { data: msg } = await supabase
+                    .from('messages')
+                    .insert({
+                        tenant_id: trigger.tenant_id,
+                        conversation_id: conversation.id,
+                        direction: 'outbound',
+                        sender_type: agent ? 'agent' : 'human',
+                        content: partContent,
+                        status: 'sent',
+                        whatsapp_message_id: (sendResult.data as any)?.key?.id,
+                    })
+                    .select()
+                    .single()
+
+                if (i === 0) firstMessageId = (sendResult.data as any)?.key?.id
+            } else {
+                return NextResponse.json({ error: `Failed to send part ${i + 1}: ${sendResult.error}` }, { status: 500 })
+            }
         }
 
         return NextResponse.json({
             success: true,
             message: finalMessage,
-            whatsapp_message_id: (sendResult.data as any)?.key?.id
+            whatsapp_message_id: firstMessageId
         })
 
     } catch (error) {
