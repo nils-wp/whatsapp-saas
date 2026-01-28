@@ -53,6 +53,7 @@ export async function POST(
       .single()
 
     if (!trigger) {
+      console.warn(`[Poll Now] Trigger ${id} not found for tenant ${member.tenant_id}`)
       return NextResponse.json({ error: 'Trigger not found' }, { status: 404 })
     }
 
@@ -125,14 +126,20 @@ export async function POST(
     // For test mode, we use the recorded test_started_at to be absolutely sure
     const testStartedAtStr = externalConfig.test_started_at as string | undefined
     const testStartedAt = testStartedAtStr ? new Date(testStartedAtStr) : null
+    const isValidTestStartedAt = testStartedAt && !isNaN(testStartedAt.getTime())
 
     let lastPolledAt = trigger.last_polled_at
       ? new Date(trigger.last_polled_at)
       : new Date()
 
+    // Safety check for lastPolledAt
+    if (isNaN(lastPolledAt.getTime())) {
+      lastPolledAt = new Date()
+    }
+
     // Safety: If testing and we have a start time, ensure we don't look back before it
-    if (testStartedAt && lastPolledAt < testStartedAt) {
-      lastPolledAt = testStartedAt
+    if (isValidTestStartedAt && lastPolledAt < testStartedAt!) {
+      lastPolledAt = testStartedAt!
     }
 
     // Get trigger event
@@ -142,7 +149,7 @@ export async function POST(
     console.log(`[Poll Now] Polling ${crmType} for trigger ${id}`, {
       triggerEvent,
       lastPolledAt: lastPolledAt.toISOString(),
-      testStartedAt: testStartedAt?.toISOString(),
+      testStartedAt: isValidTestStartedAt ? testStartedAt!.toISOString() : 'none',
     })
 
     // Poll for events
@@ -159,6 +166,7 @@ export async function POST(
       return NextResponse.json({
         success: false,
         error: pollResult.error,
+        message: `CRM Polling failed: ${pollResult.error}`
       }, { status: 500 })
     }
 
@@ -168,8 +176,8 @@ export async function POST(
     let savedCount = 0
     for (const event of pollResult.events) {
       // DEFINITIVE FILTER: Skip anything that happened before or AT the exact start time
-      if (testStartedAt && event.timestamp <= testStartedAt) {
-        console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} <= ${testStartedAt.toISOString()})`)
+      if (isValidTestStartedAt && event.timestamp <= testStartedAt!) {
+        console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} <= ${testStartedAt!.toISOString()})`)
         continue
       }
 
@@ -205,11 +213,12 @@ export async function POST(
       })),
     })
 
-  } catch (error) {
-    console.error('[Poll Now] Error:', error)
+  } catch (error: any) {
+    console.error('[Poll Now] Critical Exception:', error)
     return NextResponse.json({
       success: false,
-      error: String(error),
+      error: error.message || String(error),
+      stack: error.stack, // Include stack temporarily to find this elusive bug on production
     }, { status: 500 })
   }
 }

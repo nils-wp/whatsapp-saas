@@ -537,7 +537,8 @@ export async function pollActiveCampaignEvents(
       }
     } else {
       endpoint = '/api/3/contacts'
-      queryParams.set('filters[updated_after][gt]', dateFilter)
+      // ActiveCampaign v3 Contacts API uses 'filters[updated_after]' without [gt]
+      queryParams.set('filters[updated_after]', dateFilter)
 
       if (filters?.list || filters?.list_id) {
         queryParams.set('listid', (filters.list || filters.list_id) as string)
@@ -564,7 +565,9 @@ export async function pollActiveCampaignEvents(
     )
 
     if (!response.ok) {
-      return { events: [], error: `ActiveCampaign API error: ${response.status}` }
+      const errorBody = await response.text().catch(() => 'No error body')
+      console.error(`[Polling] ActiveCampaign API error ${response.status}: ${errorBody}`)
+      return { events: [], error: `ActiveCampaign API error: ${response.status} - ${errorBody.substring(0, 100)}` }
     }
 
     const result = await response.json()
