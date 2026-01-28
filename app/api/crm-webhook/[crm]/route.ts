@@ -152,45 +152,61 @@ export async function POST(
       })
     }
 
-    // Unified Fallback & Enrichment Logic
-    if (contact.externalId) {
-      const { data: tenant } = await supabase
+    // Enrichment & Fallback: Fetch contact from API if data is missing or we need tags
+    let integrations: Record<string, any> | null = null
+
+    // 1. Try tenant_integrations (primary for dashboard)
+    const { data: tiData } = await supabase
+      .from('tenant_integrations')
+      .select('*')
+      .eq('tenant_id', trigger.tenant_id)
+      .maybeSingle()
+
+    if (tiData) {
+      integrations = tiData
+    } else {
+      // 2. Fallback to tenants.integration_settings
+      const { data: tenantData } = await supabase
         .from('tenants')
         .select('integration_settings')
         .eq('id', trigger.tenant_id)
-        .single()
+        .maybeSingle()
 
-      if (tenant?.integration_settings) {
-        const config = getCRMApiConfig(crmType, tenant.integration_settings as any)
+      if (tenantData?.integration_settings) {
+        integrations = tenantData.integration_settings as Record<string, any>
+      }
+    }
 
-        if (crmType === 'activecampaign' && config.apiUrl && config.apiKey) {
-          try {
-            // 1. Fetch contact details if phone is missing
-            if (!contact.phone) {
-              console.log(`[CRM Webhook] Phone missing in AC payload, fetching from API for ID: ${contact.externalId}`)
-              const acContact = await ac.getContact(config as any, contact.externalId)
-              if (acContact?.phone) {
-                console.log(`[CRM Webhook] Successfully fetched phone from AC API: ${acContact.phone}`)
-                contact.phone = acContact.phone
-                if (!contact.firstName) contact.firstName = acContact.firstName || null
-                if (!contact.lastName) contact.lastName = acContact.lastName || null
-                contact.fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || contact.fullName
-              }
+    if (integrations) {
+      const config = getCRMApiConfig(crmType, integrations)
+
+      if (crmType === 'activecampaign' && config.apiUrl && config.apiKey) {
+        try {
+          // 1. Fetch contact details if phone is missing
+          if (!contact.phone) {
+            console.log(`[CRM Webhook] Phone missing in AC payload, fetching from API for ID: ${contact.externalId}`)
+            const acContact = await ac.getContact(config as any, contact.externalId)
+            if (acContact?.phone) {
+              console.log(`[CRM Webhook] Successfully fetched phone from AC API: ${acContact.phone}`)
+              contact.phone = acContact.phone
+              if (!contact.firstName) contact.firstName = acContact.firstName || null
+              if (!contact.lastName) contact.lastName = acContact.lastName || null
+              contact.fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || contact.fullName
             }
-
-            // 2. ALWAYS fetch tags if this trigger depends on tags, to ensure matching works against IDs
-            const hasTagFilter = Object.keys(trigger.event_filters || {}).some(k => k.includes('tag'))
-            if (hasTagFilter) {
-              const acTags = await ac.getContactTags(config as any, contact.externalId)
-              if (acTags.length > 0) {
-                // Attach tags to payload so matchesFilters can see them
-                (payload as any).tags = acTags.map(t => t.id).join(',')
-                console.log(`[CRM Webhook] Enrichment: Fetched ${acTags.length} tags for AC ID ${contact.externalId}`)
-              }
-            }
-          } catch (acError) {
-            console.error(`[CRM Webhook] Enrichment error for AC:`, acError)
           }
+
+          // 2. ALWAYS fetch tags if this trigger depends on tags, to ensure matching works against IDs
+          const hasTagFilter = Object.keys(trigger.event_filters || {}).some(k => k.includes('tag'))
+          if (hasTagFilter) {
+            const acTags = await ac.getContactTags(config as any, contact.externalId)
+            if (acTags.length > 0) {
+              // Attach tags to payload so matchesFilters can see them
+              (payload as any).tags = acTags.map(t => t.id).join(',')
+              console.log(`[CRM Webhook] Enrichment: Fetched ${acTags.length} tags for AC ID ${contact.externalId}`)
+            }
+          }
+        } catch (acError) {
+          console.error(`[CRM Webhook] Enrichment error for AC:`, acError)
         }
       }
     }

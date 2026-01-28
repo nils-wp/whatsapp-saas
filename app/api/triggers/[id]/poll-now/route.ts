@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { pollCRMEvents, extractContactFromEvent, type CRMType } from '@/lib/integrations/crm-polling'
+import { pollCRMEvents, extractContactFromEvent, getCRMApiConfig, type CRMType } from '@/lib/integrations/crm-polling'
 
 function getServiceSupabase() {
   return createServiceClient(
@@ -77,23 +77,42 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Get integration config
-    const { data: integrations } = await serviceSupabase
+    // Get integration config - try both tables
+    let integrations: Record<string, any> | null = null
+
+    // 1. Try tenant_integrations (primary for dashboard)
+    const { data: tiData } = await serviceSupabase
       .from('tenant_integrations')
       .select('*')
       .eq('tenant_id', member.tenant_id)
-      .single()
+      .maybeSingle()
+
+    if (tiData) {
+      integrations = tiData
+    } else {
+      // 2. Fallback to tenants.integration_settings
+      const { data: tenantData } = await serviceSupabase
+        .from('tenants')
+        .select('integration_settings')
+        .eq('id', member.tenant_id)
+        .maybeSingle()
+
+      if (tenantData?.integration_settings) {
+        integrations = tenantData.integration_settings as Record<string, any>
+      }
+    }
 
     if (!integrations) {
+      console.warn(`[Poll Now] No integration config found for tenant ${member.tenant_id}`)
       return NextResponse.json({
         success: false,
-        error: 'No integration config found',
+        error: 'No integration config found. Please connect your CRM first.',
       }, { status: 400 })
     }
 
     // Build polling config
     const crmType = trigger.type as CRMType
-    const pollingConfig = buildPollingConfig(crmType, integrations)
+    const pollingConfig = getCRMApiConfig(crmType, integrations)
 
     if (!pollingConfig) {
       return NextResponse.json({
@@ -195,30 +214,3 @@ export async function POST(
   }
 }
 
-/**
- * Build polling config from tenant integrations
- */
-function buildPollingConfig(
-  crmType: CRMType,
-  integrations: Record<string, unknown>
-): Record<string, string | undefined> | null {
-  switch (crmType) {
-    case 'hubspot':
-      if (!integrations.hubspot_access_token) return null
-      return { accessToken: integrations.hubspot_access_token as string }
-
-    case 'close':
-      if (!integrations.close_api_key) return null
-      return { apiKey: integrations.close_api_key as string }
-
-    case 'activecampaign':
-      if (!integrations.activecampaign_api_key || !integrations.activecampaign_api_url) return null
-      return {
-        apiKey: integrations.activecampaign_api_key as string,
-        apiUrl: integrations.activecampaign_api_url as string,
-      }
-
-    default:
-      return null
-  }
-}
