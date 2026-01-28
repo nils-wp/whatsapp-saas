@@ -365,7 +365,8 @@ export function getCRMCapabilities(crmType: CRMType): CRMCapabilities {
           'deal_created',
           'deal_updated',
           'deal_stage_changed',
-          'tag_added',
+          'contact_tag_added',
+          'contact_tag_removed',
         ],
         requiredConfig: ['apiKey', 'apiUrl'],
       }
@@ -434,7 +435,8 @@ export function getCRMTriggerEvents(crmType: CRMType): TriggerEventOption[] {
         { value: 'contact_updated', label: 'Contact Updated', description: 'Wenn ein Kontakt aktualisiert wird' },
         { value: 'deal_created', label: 'Deal Created', description: 'Wenn ein neuer Deal erstellt wird' },
         { value: 'deal_stage_changed', label: 'Deal Stage Changed', description: 'Wenn ein Deal die Stage wechselt' },
-        { value: 'tag_added', label: 'Tag Added', description: 'Wenn ein Tag hinzugefügt wird' },
+        { value: 'contact_tag_added', label: 'Tag Added', description: 'Wenn ein Tag hinzugefügt wird' },
+        { value: 'contact_tag_removed', label: 'Tag Removed', description: 'Wenn ein Tag entfernt wird' },
       ]
 
     default:
