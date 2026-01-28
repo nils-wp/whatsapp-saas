@@ -537,9 +537,9 @@ export async function pollActiveCampaignEvents(
     const isTagEvent = triggerEvent.includes('tag')
 
     if (isTagEvent) {
-      // Fetch all tags to map IDs to names
+      // Fetch tags to map IDs to names. limit=500 is often supported
       try {
-        const tagsResponse = await fetch(`${baseUrl}/api/3/tags?limit=100`, {
+        const tagsResponse = await fetch(`${baseUrl}/api/3/tags?limit=500`, {
           headers: { 'Api-Token': apiKey! }
         })
         if (tagsResponse.ok) {
@@ -605,17 +605,13 @@ export async function pollActiveCampaignEvents(
     let rawRecords = result.contacts || result.deals || result.contactTags || []
 
     // Debug info
-    const debugInfo = {
+    const debugInfo: any = {
       recordCount: rawRecords.length,
-      sampleRecords: rawRecords.slice(0, 2).map((r: any) => ({
-        id: r.id,
-        contact: r.contact,
-        tag: r.tag,
-        cdate: r.cdate,
-        email: r.email
-      })),
       endpoint,
-      apiStatus: response.status
+      apiStatus: response.status,
+      lastPolledAt: lastPolledAt.toISOString(),
+      adjustedLastPolledAt: adjustedLastPolledAt.toISOString(),
+      processingDetails: [] as string[]
     }
 
     // Process records
@@ -623,12 +619,20 @@ export async function pollActiveCampaignEvents(
       let recordId = record.id
       let eventTimestamp = new Date(record.updated_timestamp || record.udate || record.cdate || Date.now())
 
+      const logPrefix = `[Record ${recordId}]`
+      debugInfo.processingDetails.push(`${logPrefix} Processing started at ${eventTimestamp.toISOString()}`)
+
       if (isTagEvent && endpoint.includes('contactTags')) {
         recordId = record.contact
-        if (eventTimestamp <= adjustedLastPolledAt) continue
+
+        const isTooOld = eventTimestamp <= adjustedLastPolledAt
+        debugInfo.processingDetails.push(`${logPrefix} Tag assoc detected. Timestamp: ${eventTimestamp.toISOString()}. Too old? ${isTooOld}`)
+        if (isTooOld) continue
 
         // Map tag ID to name
         const tagName = tagMap[String(record.tag)]
+        debugInfo.processingDetails.push(`${logPrefix} Tag mapping: ID ${record.tag} -> ${tagName || 'NOT FOUND'}`)
+
         if (tagName) {
           record.tag_names = tagName
           record.tags = tagName // for matchesFilters
@@ -644,17 +648,22 @@ export async function pollActiveCampaignEvents(
             if (contactData.contact) {
               // Spread contact second so its fields (like id, phone, email) overwrite the association fields
               record = { ...record, ...contactData.contact }
+              debugInfo.processingDetails.push(`${logPrefix} Enrichment success. Email: ${record.email}`)
             }
           }
         } catch (e) {
           console.error(`[Polling] Failed to fetch contact ${recordId} for tag event:`, e)
+          debugInfo.processingDetails.push(`${logPrefix} Enrichment FAILED`)
           continue
         }
       }
 
       const contactId = record.id || recordId
 
-      if (!matchesFilters('activecampaign', triggerEvent, record, filters)) continue
+      const match = matchesFilters('activecampaign', triggerEvent, record, filters)
+      debugInfo.processingDetails.push(`${logPrefix} Filter match: ${match}. Filters: ${JSON.stringify(filters)}`)
+
+      if (!match) continue
 
       events.push({
         id: `activecampaign_${contactId}_${Date.now()}`,

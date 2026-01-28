@@ -176,9 +176,10 @@ export async function POST(
     // Store events as test events - with STRICT manual filter
     let savedCount = 0
     for (const event of pollResult.events) {
-      // DEFINITIVE FILTER: Skip anything that happened before or AT the exact start time
-      if (isValidTestStartedAt && event.timestamp <= testStartedAt!) {
-        console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} <= ${testStartedAt!.toISOString()})`)
+      // RELAXED FILTER: Allow events that happened just before start time (buffer for clock drift)
+      const buffer = 60000 // 60 seconds matching the lookback
+      if (isValidTestStartedAt && event.timestamp.getTime() < (testStartedAt!.getTime() - buffer)) {
+        console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} < ${new Date(testStartedAt!.getTime() - buffer).toISOString()})`)
         continue
       }
 
