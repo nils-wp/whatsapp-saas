@@ -155,14 +155,15 @@ export function matchesFilters(
             record['contact[tags]'] ||
             record.contact?.tags ||
             record.tag_names ||
+            record.tag ||
+            record.tagid ||
             (Array.isArray(record.tags) ? record.tags.map((t: any) => t.id || t.tag || t).join(',') : null)
 
           if (recordTags) {
             const tagsString = String(recordTags)
+            // Check if tagValue (which could be ID or name) is in the tags string
             if (!tagsString.includes(String(tagValue))) return false
           } else if (event.includes('tag')) {
-            // If it's a tag event but no tags found in payload, it's safer to let it through
-            // but log that we couldn't verify
             console.warn('[Filtering] AC tag filter found but no tags in record')
           }
         }
@@ -524,17 +525,36 @@ export async function pollActiveCampaignEvents(
     // Add a 10-second lookback buffer to handle API latency/clock drift
     const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - 10000)
 
-    // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS or ISO)
-    // Some versions of AC API prefer YYYY-MM-DD HH:MM:SS over ISO with T
+    // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS)
     const dateFilter = adjustedLastPolledAt.toISOString().replace('T', ' ').substring(0, 19)
 
     // Determine endpoint based on trigger event
     let endpoint: string
     const queryParams = new URLSearchParams()
 
+    // Cache tags if we need to filter by tag name
+    let tagMap: Record<string, string> = {}
+    const isTagEvent = triggerEvent.includes('tag')
+
+    if (isTagEvent) {
+      // Fetch all tags to map IDs to names
+      try {
+        const tagsResponse = await fetch(`${baseUrl}/api/3/tags?limit=100`, {
+          headers: { 'Api-Token': apiKey! }
+        })
+        if (tagsResponse.ok) {
+          const tagsData = await tagsResponse.json()
+          tagsData.tags?.forEach((t: any) => {
+            tagMap[String(t.id)] = t.tag
+          })
+        }
+      } catch (e) {
+        console.warn('[Polling] Failed to fetch tag metadata for mapping:', e)
+      }
+    }
+
     if (triggerEvent.includes('deal') || triggerEvent.includes('stage')) {
       endpoint = '/api/3/deals'
-      // Use adjusted date for deals too
       queryParams.set('filters[updated_timestamp][gt]', adjustedLastPolledAt.toISOString())
       queryParams.set('orders[udate]', 'DESC')
 
@@ -544,12 +564,11 @@ export async function pollActiveCampaignEvents(
       if (filters?.pipeline_id) {
         queryParams.set('filters[pipeline]', filters.pipeline_id as string)
       }
-    } else if (triggerEvent.includes('tag')) {
+    } else if (isTagEvent) {
       // For tag events, polling contacts is unreliable because tags don't always update 'udate'.
       // Instead, we poll the contactTags endpoint which specifically lists tag associations.
       endpoint = `/api/3/contactTags`
       queryParams.set('orders[cdate]', 'DESC') // Get newest ones first
-      // Note: contactTags doesn't support updated_after filter well, so we'll fetch newest and filter manually
     } else {
       endpoint = '/api/3/contacts'
       // ActiveCampaign v3 Contacts API uses 'filters[updated_after]' without [gt]
@@ -558,12 +577,6 @@ export async function pollActiveCampaignEvents(
 
       if (filters?.list || filters?.list_id) {
         queryParams.set('listid', (filters.list || filters.list_id) as string)
-      }
-
-      // Add tag filter if specified (only for tag events)
-      const tagValue = filters?.tag_name || filters?.tag
-      if (tagValue && triggerEvent.includes('tag')) {
-        queryParams.set('filters[tagid]', tagValue as string)
       }
     }
 
@@ -591,18 +604,17 @@ export async function pollActiveCampaignEvents(
     // AC returns results in a key named after the endpoint suffix
     let rawRecords = result.contacts || result.deals || result.contactTags || []
 
-    // Debug info to see what AC is actually returning
+    // Debug info
     const debugInfo = {
       recordCount: rawRecords.length,
       sampleRecords: rawRecords.slice(0, 2).map((r: any) => ({
         id: r.id,
-        udate: r.udate,
-        cdate: r.cdate,
         contact: r.contact,
         tag: r.tag,
+        cdate: r.cdate,
         email: r.email
       })),
-      url: `${baseUrl}${endpoint}?${queryParams.toString()}`,
+      endpoint,
       apiStatus: response.status
     }
 
@@ -611,12 +623,18 @@ export async function pollActiveCampaignEvents(
       let recordId = record.id
       let eventTimestamp = new Date(record.updated_timestamp || record.udate || record.cdate || Date.now())
 
-      // If we are polling contactTags, each record is an association, not a contact
-      if (endpoint.includes('contactTags')) {
-        recordId = record.contact // The actual contact ID
+      if (isTagEvent && endpoint.includes('contactTags')) {
+        recordId = record.contact
         if (eventTimestamp <= adjustedLastPolledAt) continue
 
-        // CRITICAL: Fetch the full contact details for this tag addition
+        // Map tag ID to name
+        const tagName = tagMap[String(record.tag)]
+        if (tagName) {
+          record.tag_names = tagName
+          record.tags = tagName // for matchesFilters
+        }
+
+        // Fetch full contact details
         try {
           const contactResponse = await fetch(`${baseUrl}/api/3/contacts/${recordId}`, {
             headers: { 'Api-Token': apiKey! }
@@ -624,19 +642,17 @@ export async function pollActiveCampaignEvents(
           if (contactResponse.ok) {
             const contactData = await contactResponse.json()
             if (contactData.contact) {
-              // Merge contact data into record for mapping/filtering
-              record = { ...contactData.contact, ...record }
+              // Spread contact second so its fields (like id, phone, email) overwrite the association fields
+              record = { ...record, ...contactData.contact }
             }
           }
         } catch (e) {
           console.error(`[Polling] Failed to fetch contact ${recordId} for tag event:`, e)
-          continue // Can't proceed without contact details for a trigger
+          continue
         }
       }
 
-      // Re-identify ID and data after possible enrichment
-      const actualContact = record
-      const contactId = actualContact.id || recordId
+      const contactId = record.id || recordId
 
       if (!matchesFilters('activecampaign', triggerEvent, record, filters)) continue
 
