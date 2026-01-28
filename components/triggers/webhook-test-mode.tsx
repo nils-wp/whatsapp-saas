@@ -48,11 +48,8 @@ export function WebhookTestMode({
 
   const webhookUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhook/${webhookId}`
 
-  // Genetic flag for all CRM triggers (automated or not)
+  // Check if this is a CRM trigger (not generic webhook)
   const isCRMTrigger = ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'].includes(triggerType)
-
-  // Check if this is a CRM trigger with AUTOMATED webhook registration
-  const isAutomatedCRM = ['pipedrive', 'monday'].includes(triggerType)
 
   // Poll for test events
   const pollTestMode = useCallback(async () => {
@@ -303,8 +300,8 @@ export function WebhookTestMode({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Webhook URL and Secret - Only for generic webhooks or non-automated CRMs */}
-        {!isAutomatedCRM && (
+        {/* Webhook URL and Secret - Only for generic webhooks, not CRM triggers */}
+        {!isCRMTrigger && (
           <div className="space-y-3">
             <div>
               <label className="text-sm text-gray-400 mb-1 block">Webhook URL</label>
@@ -523,17 +520,20 @@ export function WebhookTestMode({
             "bg-blue-500/5 border-blue-500/20"
           )}>
             <h4 className="text-sm font-medium text-blue-400 mb-2">So funktioniert es</h4>
-            {isAutomatedCRM ? (
+            {isCRMTrigger ? (
               <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
                 <li>Klicke auf &quot;Test Mode starten&quot;</li>
-                <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus</li>
-                <li>Die Daten werden automatisch erfasst</li>
+                <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus (z.B. neuer Deal erstellt)</li>
+                <li>Die empfangenen Daten und Variablen werden hier automatisch angezeigt</li>
+                <li>Kopiere die Variablen für deine erste Nachricht</li>
               </ol>
             ) : (
               <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
-                <li>Kopiere die Webhook URL oben und hinterlege sie in {getCrmName(triggerType)}</li>
+                <li>Konfiguriere den Webhook in {getCrmName(triggerType)} mit der URL und dem Secret oben</li>
                 <li>Klicke auf &quot;Test Mode starten&quot;</li>
-                <li>Löse das Event in {getCrmName(triggerType)} aus</li>
+                <li>Löse das gewünschte Event in {getCrmName(triggerType)} aus (z.B. neuer Deal erstellt)</li>
+                <li>Die empfangenen Daten und Variablen werden hier angezeigt</li>
+                <li>Kopiere die Variablen für deine erste Nachricht</li>
               </ol>
             )}
           </div>
