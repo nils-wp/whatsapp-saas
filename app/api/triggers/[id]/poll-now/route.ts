@@ -159,7 +159,7 @@ export async function POST(
       pollingConfig,
       triggerEvent,
       lastPolledAt,
-      filters
+      { ...filters, __isTestMode: 'true' }
     )
 
     if (pollResult.error) {
@@ -176,8 +176,8 @@ export async function POST(
     // Store events as test events - with STRICT manual filter
     let savedCount = 0
     for (const event of pollResult.events) {
-      // RELAXED FILTER: Allow events that happened just before start time (buffer for clock drift)
-      const buffer = 60000 // 60 seconds matching the lookback
+      // RELAXED FILTER: Allow events from last 24 hours for Test Mode (timezone protection)
+      const buffer = 86400000 // 24 hours
       if (isValidTestStartedAt && event.timestamp.getTime() < (testStartedAt!.getTime() - buffer)) {
         console.log(`[Poll Now] Skipping event ${event.id} - too old (${event.timestamp.toISOString()} < ${new Date(testStartedAt!.getTime() - buffer).toISOString()})`)
         continue

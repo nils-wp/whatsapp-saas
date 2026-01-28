@@ -522,8 +522,10 @@ export async function pollActiveCampaignEvents(
     }
     baseUrl = baseUrl.replace(/\/+$/, '')
 
-    // Add a 10-second lookback buffer to handle API latency/clock drift
-    const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - 10000)
+    // Add a lookback buffer. If testing, we use a large (24h) buffer to protect against timezone offsets.
+    const isTestMode = filters?.__isTestMode === 'true'
+    const lookbackMs = isTestMode ? 86400000 : 10000
+    const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - lookbackMs)
 
     // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS)
     const dateFilter = adjustedLastPolledAt.toISOString().replace('T', ' ').substring(0, 19)
