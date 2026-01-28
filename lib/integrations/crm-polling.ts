@@ -536,6 +536,7 @@ export async function pollActiveCampaignEvents(
       endpoint = '/api/3/deals'
       // Use adjusted date for deals too
       queryParams.set('filters[updated_timestamp][gt]', adjustedLastPolledAt.toISOString())
+      queryParams.set('orders[udate]', 'DESC')
 
       if (filters?.stage || filters?.target_stage) {
         queryParams.set('filters[stage]', (filters.stage || filters.target_stage) as string)
@@ -543,10 +544,17 @@ export async function pollActiveCampaignEvents(
       if (filters?.pipeline_id) {
         queryParams.set('filters[pipeline]', filters.pipeline_id as string)
       }
+    } else if (triggerEvent.includes('tag')) {
+      // For tag events, polling contacts is unreliable because tags don't always update 'udate'.
+      // Instead, we poll the contactTags endpoint which specifically lists tag associations.
+      endpoint = `/api/3/contactTags`
+      queryParams.set('orders[cdate]', 'DESC') // Get newest ones first
+      // Note: contactTags doesn't support updated_after filter well, so we'll fetch newest and filter manually
     } else {
       endpoint = '/api/3/contacts'
       // ActiveCampaign v3 Contacts API uses 'filters[updated_after]' without [gt]
       queryParams.set('filters[updated_after]', dateFilter)
+      queryParams.set('orders[udate]', 'DESC') // Sort by update date
 
       if (filters?.list || filters?.list_id) {
         queryParams.set('listid', (filters.list || filters.list_id) as string)
@@ -560,7 +568,6 @@ export async function pollActiveCampaignEvents(
     }
 
     queryParams.set('limit', '50')
-    queryParams.set('orders[cdate]', 'DESC')
 
     const response = await fetch(
       `${baseUrl}${endpoint}?${queryParams.toString()}`,
@@ -581,38 +588,70 @@ export async function pollActiveCampaignEvents(
     const result = await response.json()
     const events: CRMEvent[] = []
 
-    const records = result.contacts || result.deals || []
+    // AC returns results in a key named after the endpoint suffix
+    let rawRecords = result.contacts || result.deals || result.contactTags || []
 
     // Debug info to see what AC is actually returning
     const debugInfo = {
-      recordCount: records.length,
-      sampleRecords: records.slice(0, 2).map((r: any) => ({ id: r.id, udate: r.udate, email: r.email })),
+      recordCount: rawRecords.length,
+      sampleRecords: rawRecords.slice(0, 2).map((r: any) => ({
+        id: r.id,
+        udate: r.udate,
+        cdate: r.cdate,
+        contact: r.contact,
+        tag: r.tag,
+        email: r.email
+      })),
       url: `${baseUrl}${endpoint}?${queryParams.toString()}`,
       apiStatus: response.status
     }
 
-    for (const record of records) {
-      // Enrichment for ActiveCampaign: Fetch tags if needed for filtering
-      const hasTagFilter = Object.keys(filters || {}).some(k => k.includes('tag'))
-      if (hasTagFilter && !record.tags && !record.tag_names) {
-        // Note: Polling enrichment is limited as we don't have the full API helper here
-        // The webhook route does a better job of this.
+    // Process records
+    for (let record of rawRecords) {
+      let recordId = record.id
+      let eventTimestamp = new Date(record.updated_timestamp || record.udate || record.cdate || Date.now())
+
+      // If we are polling contactTags, each record is an association, not a contact
+      if (endpoint.includes('contactTags')) {
+        recordId = record.contact // The actual contact ID
+        if (eventTimestamp <= adjustedLastPolledAt) continue
+
+        // CRITICAL: Fetch the full contact details for this tag addition
+        try {
+          const contactResponse = await fetch(`${baseUrl}/api/3/contacts/${recordId}`, {
+            headers: { 'Api-Token': apiKey! }
+          })
+          if (contactResponse.ok) {
+            const contactData = await contactResponse.json()
+            if (contactData.contact) {
+              // Merge contact data into record for mapping/filtering
+              record = { ...contactData.contact, ...record }
+            }
+          }
+        } catch (e) {
+          console.error(`[Polling] Failed to fetch contact ${recordId} for tag event:`, e)
+          continue // Can't proceed without contact details for a trigger
+        }
       }
+
+      // Re-identify ID and data after possible enrichment
+      const actualContact = record
+      const contactId = actualContact.id || recordId
 
       if (!matchesFilters('activecampaign', triggerEvent, record, filters)) continue
 
       events.push({
-        id: `activecampaign_${record.id}_${Date.now()}`,
+        id: `activecampaign_${contactId}_${Date.now()}`,
         crm: 'activecampaign',
         eventType: triggerEvent,
-        recordId: record.id,
-        phone: record.phone || null,
-        firstName: record.firstName || null,
-        lastName: record.lastName || null,
-        fullName: [record.firstName, record.lastName].filter(Boolean).join(' ') || null,
-        email: record.email || null,
+        recordId: contactId,
+        phone: actualContact.phone || null,
+        firstName: actualContact.firstName || null,
+        lastName: actualContact.lastName || null,
+        fullName: actualContact.fullName || [actualContact.firstName, actualContact.lastName].filter(Boolean).join(' ') || null,
+        email: actualContact.email || null,
         data: record,
-        timestamp: new Date(record.updated_timestamp || record.udate || Date.now()),
+        timestamp: eventTimestamp,
       })
     }
 
