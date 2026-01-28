@@ -55,11 +55,16 @@ export function WebhookTestMode({
   const pollTestMode = useCallback(async () => {
     try {
       const response = await fetch(`/api/triggers/${triggerId}/test-mode`)
+      if (!response.ok) {
+        console.warn(`[Test Mode] Fetch failed with status ${response.status}`)
+        return null
+      }
       const data = await response.json()
+      console.log(`[Test Mode] Polled for events:`, { hasEvent: data.hasEvent, event: data.event })
       setTestState(data)
       return data
     } catch (error) {
-      console.error('Poll error:', error)
+      console.error('[Test Mode] Poll error:', error)
       return null
     }
   }, [triggerId])
@@ -80,11 +85,23 @@ export function WebhookTestMode({
     if (!isCRMTrigger) return
 
     try {
-      await fetch(`/api/triggers/${triggerId}/poll-now`, {
+      const response = await fetch(`/api/triggers/${triggerId}/poll-now`, {
         method: 'POST',
       })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error(`[Manual Poll] Failed with status ${response.status}`, errorData)
+      } else {
+        const data = await response.json()
+        if (data.debug) {
+          console.log(`[Manual Poll] Debug Info:`, data.debug)
+        }
+        if (data.eventsFound > 0) {
+          console.log(`[Manual Poll] Success: Found ${data.eventsFound} events`)
+        }
+      }
     } catch (error) {
-      console.error('Manual poll error:', error)
+      console.error('[Manual Poll] Fetch error:', error)
     }
   }, [triggerId, isCRMTrigger])
 

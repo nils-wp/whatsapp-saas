@@ -138,8 +138,9 @@ export async function POST(
     }
 
     // Safety: If testing and we have a start time, ensure we don't look back before it
+    // RELAXED: Look back 60 seconds before test start to account for clock drift/delayed indexing
     if (isValidTestStartedAt && lastPolledAt < testStartedAt!) {
-      lastPolledAt = testStartedAt!
+      lastPolledAt = new Date(testStartedAt!.getTime() - 60000)
     }
 
     // Get trigger event
@@ -211,6 +212,7 @@ export async function POST(
         lastName: e.lastName,
         email: e.email,
       })),
+      debug: pollResult.debugInfo,
     })
 
   } catch (error: any) {

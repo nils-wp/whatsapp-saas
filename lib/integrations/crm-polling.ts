@@ -78,6 +78,7 @@ export interface PollingResult {
   events: CRMEvent[]
   newCursor?: string
   error?: string
+  debugInfo?: any // Useful for troubleshooting production issues
 }
 
 /**
@@ -519,7 +520,13 @@ export async function pollActiveCampaignEvents(
       baseUrl = baseUrl.substring(0, baseUrl.length - 6)
     }
     baseUrl = baseUrl.replace(/\/+$/, '')
-    const dateFilter = lastPolledAt.toISOString()
+
+    // Add a 10-second lookback buffer to handle API latency/clock drift
+    const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - 10000)
+
+    // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS or ISO)
+    // Some versions of AC API prefer YYYY-MM-DD HH:MM:SS over ISO with T
+    const dateFilter = adjustedLastPolledAt.toISOString().replace('T', ' ').substring(0, 19)
 
     // Determine endpoint based on trigger event
     let endpoint: string
@@ -527,7 +534,8 @@ export async function pollActiveCampaignEvents(
 
     if (triggerEvent.includes('deal') || triggerEvent.includes('stage')) {
       endpoint = '/api/3/deals'
-      queryParams.set('filters[updated_timestamp][gt]', dateFilter)
+      // Use adjusted date for deals too
+      queryParams.set('filters[updated_timestamp][gt]', adjustedLastPolledAt.toISOString())
 
       if (filters?.stage || filters?.target_stage) {
         queryParams.set('filters[stage]', (filters.stage || filters.target_stage) as string)
@@ -575,18 +583,20 @@ export async function pollActiveCampaignEvents(
 
     const records = result.contacts || result.deals || []
 
+    // Debug info to see what AC is actually returning
+    const debugInfo = {
+      recordCount: records.length,
+      sampleRecords: records.slice(0, 2).map((r: any) => ({ id: r.id, udate: r.udate, email: r.email })),
+      url: `${baseUrl}${endpoint}?${queryParams.toString()}`,
+      apiStatus: response.status
+    }
+
     for (const record of records) {
       // Enrichment for ActiveCampaign: Fetch tags if needed for filtering
       const hasTagFilter = Object.keys(filters || {}).some(k => k.includes('tag'))
       if (hasTagFilter && !record.tags && !record.tag_names) {
-        try {
-          // Import dynamic to avoid circular dependencies if any, but since we are in same file/package it's fine
-          // Since we are in crm-polling, we don't have easy access to the full AC API helper without importing it
-          // For now, let's just use the tags link if provided or skip enrichment in polling (polling is often just a safety net)
-          // Actually, we should try to match against names too.
-        } catch (e) {
-          console.error('[Polling] AC enrichment error:', e)
-        }
+        // Note: Polling enrichment is limited as we don't have the full API helper here
+        // The webhook route does a better job of this.
       }
 
       if (!matchesFilters('activecampaign', triggerEvent, record, filters)) continue
@@ -606,7 +616,7 @@ export async function pollActiveCampaignEvents(
       })
     }
 
-    return { events }
+    return { events, debugInfo }
   } catch (error) {
     console.error('[Polling] ActiveCampaign error:', error)
     return { events: [], error: String(error) }
