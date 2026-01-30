@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { pollCRMEvents, extractContactFromEvent, type CRMType, type CRMEvent } from '@/lib/integrations/crm-polling'
+import { pollCRMEvents, extractContactFromEvent, getCRMApiConfig, matchesFilters as crmMatchesFilters, type CRMType, type CRMEvent } from '@/lib/integrations/crm-polling'
 import { startNewConversation } from '@/lib/ai/message-handler'
 
 function getSupabase() {
@@ -95,12 +95,24 @@ export async function GET(request: Request) {
           continue
         }
 
-        // Build polling config based on CRM type
+        // Build polling config based on CRM type (use shared getCRMApiConfig for consistency)
         const crmType = trigger.type as CRMType
-        const pollingConfig = buildPollingConfig(crmType, tenantIntegrations)
+        const pollingConfig = getCRMApiConfig(crmType, tenantIntegrations)
 
-        if (!pollingConfig) {
-          triggerResult.errors.push(`Invalid config for ${crmType}`)
+        // Check if required config is present
+        const hasRequiredConfig = (() => {
+          switch (crmType) {
+            case 'pipedrive': return !!pollingConfig.apiToken
+            case 'hubspot': return !!pollingConfig.accessToken
+            case 'close': return !!pollingConfig.apiKey
+            case 'activecampaign': return !!pollingConfig.apiKey && !!pollingConfig.apiUrl
+            case 'monday': return !!pollingConfig.apiToken && !!pollingConfig.boardId
+            default: return false
+          }
+        })()
+
+        if (!hasRequiredConfig) {
+          triggerResult.errors.push(`Invalid or incomplete config for ${crmType}`)
           results.push(triggerResult)
           continue
         }
@@ -141,8 +153,8 @@ export async function GET(request: Request) {
               continue
             }
 
-            // Check if event matches filters
-            if (!matchesFilters(event, filters)) {
+            // Check if event matches filters (use shared robust filter logic)
+            if (!crmMatchesFilters(crmType, triggerEvent, event.data, filters)) {
               console.log(`[Cron] Skipping event ${event.id} - filter mismatch`)
               continue
             }
@@ -256,84 +268,6 @@ export async function GET(request: Request) {
 // Also allow POST for Vercel Cron
 export async function POST(request: Request) {
   return GET(request)
-}
-
-/**
- * Build polling config from tenant integrations
- */
-function buildPollingConfig(
-  crmType: CRMType,
-  integrations: Record<string, unknown>
-): Record<string, string | undefined> | null {
-  switch (crmType) {
-    case 'pipedrive':
-      if (!integrations.pipedrive_api_token) return null
-      return { apiToken: integrations.pipedrive_api_token as string }
-
-    case 'hubspot':
-      if (!integrations.hubspot_access_token) return null
-      return { accessToken: integrations.hubspot_access_token as string }
-
-    case 'close':
-      if (!integrations.close_api_key) return null
-      return { apiKey: integrations.close_api_key as string }
-
-    case 'activecampaign':
-      if (!integrations.activecampaign_api_key || !integrations.activecampaign_url) return null
-      return {
-        apiKey: integrations.activecampaign_api_key as string,
-        apiUrl: integrations.activecampaign_url as string,
-      }
-
-    case 'monday':
-      if (!integrations.monday_api_token || !integrations.monday_board_id) return null
-      return {
-        apiToken: integrations.monday_api_token as string,
-        boardId: integrations.monday_board_id as string,
-        phoneColumnId: integrations.monday_phone_column_id as string,
-      }
-
-    default:
-      return null
-  }
-}
-
-/**
- * Check if event matches trigger filters
- */
-function matchesFilters(
-  event: CRMEvent,
-  filters: Record<string, string>
-): boolean {
-  if (!filters || Object.keys(filters).length === 0) {
-    return true
-  }
-
-  for (const [key, expectedValue] of Object.entries(filters)) {
-    const actualValue = getNestedValue(event.data, key)
-
-    if (actualValue === undefined || actualValue === null) {
-      continue
-    }
-
-    if (String(actualValue) !== String(expectedValue)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-/**
- * Get nested value from object using dot notation
- */
-function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce((current: unknown, key) => {
-    if (current && typeof current === 'object') {
-      return (current as Record<string, unknown>)[key]
-    }
-    return undefined
-  }, obj)
 }
 
 /**
