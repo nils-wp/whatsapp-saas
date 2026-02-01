@@ -523,9 +523,12 @@ export async function pollActiveCampaignEvents(
     baseUrl = baseUrl.replace(/\/+$/, '')
 
     // Add a lookback buffer to account for API delays and timezone issues
-    // Test mode: 24h buffer, Active mode: 5 minutes buffer
+    // Test mode: 24h buffer
+    // Active mode for tags: 12h buffer (AC timezone issues are severe)
+    // Active mode for others: 5 min buffer
     const isTestMode = filters?.__isTestMode === 'true'
-    const lookbackMs = isTestMode ? 86400000 : 300000 // 24h or 5 min
+    const isTagEvent = triggerEvent.includes('tag')
+    const lookbackMs = isTestMode ? 86400000 : (isTagEvent ? 43200000 : 300000) // 24h, 12h, or 5 min
     const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - lookbackMs)
 
     // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS)
@@ -537,7 +540,6 @@ export async function pollActiveCampaignEvents(
 
     // Cache tags if we need to filter by tag name
     let tagMap: Record<string, string> = {}
-    const isTagEvent = triggerEvent.includes('tag')
 
     if (isTagEvent) {
       // Fetch tags to map IDs to names. limit=500 is often supported
