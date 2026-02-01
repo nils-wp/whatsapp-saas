@@ -228,6 +228,7 @@ export async function GET(request: Request) {
             }
 
             // Start conversation
+            console.log(`[Cron] Starting conversation for ${contact.phone} (${contact.fullName})`)
             const conversationResult = await startNewConversation({
               tenantId: trigger.tenant_id,
               triggerId: trigger.id,
@@ -246,8 +247,11 @@ export async function GET(request: Request) {
               },
             })
 
+            console.log(`[Cron] Conversation result:`, JSON.stringify(conversationResult))
+
             if (conversationResult.success) {
               triggerResult.conversationsStarted++
+              console.log(`[Cron] Conversation started: ${conversationResult.conversationId}`)
 
               // Update conversation with extracted name data
               if (conversationResult.conversationId) {
@@ -270,9 +274,11 @@ export async function GET(request: Request) {
                 processed_at: new Date().toISOString(),
               })
             } else {
+              console.error(`[Cron] Failed to start conversation: ${conversationResult.error}`)
               triggerResult.errors.push(`Failed to start conversation: ${conversationResult.error}`)
             }
           } catch (eventError) {
+            console.error(`[Cron] Event processing error:`, eventError)
             triggerResult.errors.push(`Event processing error: ${String(eventError)}`)
           }
         }
