@@ -522,9 +522,10 @@ export async function pollActiveCampaignEvents(
     }
     baseUrl = baseUrl.replace(/\/+$/, '')
 
-    // Add a lookback buffer. If testing, we use a large (24h) buffer to protect against timezone offsets.
+    // Add a lookback buffer to account for API delays and timezone issues
+    // Test mode: 24h buffer, Active mode: 5 minutes buffer
     const isTestMode = filters?.__isTestMode === 'true'
-    const lookbackMs = isTestMode ? 86400000 : 10000
+    const lookbackMs = isTestMode ? 86400000 : 300000 // 24h or 5 min
     const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - lookbackMs)
 
     // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS)

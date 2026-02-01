@@ -72,12 +72,19 @@ export async function GET(request: Request) {
 
     // Process each trigger
     for (const trigger of triggers) {
-      const triggerResult = {
+      const triggerResult: {
+        triggerId: string
+        triggerName: string
+        eventsFound: number
+        conversationsStarted: number
+        errors: string[]
+        debug?: Record<string, unknown>
+      } = {
         triggerId: trigger.id,
         triggerName: trigger.name,
         eventsFound: 0,
         conversationsStarted: 0,
-        errors: [] as string[],
+        errors: [],
       }
 
       try {
@@ -152,6 +159,15 @@ export async function GET(request: Request) {
           lastPolledAt,
           filters
         )
+
+        // Add debug info to response
+        triggerResult.debug = {
+          crmType,
+          triggerEvent,
+          lastPolledAt: lastPolledAt.toISOString(),
+          filters,
+          pollDebugInfo: pollResult.debugInfo,
+        }
 
         if (pollResult.error) {
           triggerResult.errors.push(pollResult.error)
