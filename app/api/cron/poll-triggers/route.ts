@@ -50,13 +50,7 @@ export async function GET(request: Request) {
     // Load all active triggers with polling enabled
     const { data: triggers, error: triggersError } = await supabase
       .from('triggers')
-      .select(`
-        *,
-        tenant_integrations:tenants!inner(
-          id,
-          tenant_integrations(*)
-        )
-      `)
+      .select('*')
       .eq('is_active', true)
       .or('polling_enabled.eq.true,crm_webhook_status.is.null')
       .in('type', ['pipedrive', 'hubspot', 'monday', 'close', 'activecampaign'])
@@ -87,9 +81,32 @@ export async function GET(request: Request) {
       }
 
       try {
-        // Get integration config
-        const tenantIntegrations = trigger.tenant_integrations?.tenant_integrations?.[0]
-        if (!tenantIntegrations) {
+        // Get integration config - try both tables (same logic as poll-now)
+        let integrations: Record<string, any> | null = null
+
+        // 1. Try tenant_integrations table
+        const { data: tiData } = await supabase
+          .from('tenant_integrations')
+          .select('*')
+          .eq('tenant_id', trigger.tenant_id)
+          .maybeSingle()
+
+        if (tiData) {
+          integrations = tiData
+        } else {
+          // 2. Fallback to tenants.integration_settings
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('integration_settings')
+            .eq('id', trigger.tenant_id)
+            .maybeSingle()
+
+          if (tenantData?.integration_settings) {
+            integrations = tenantData.integration_settings as Record<string, any>
+          }
+        }
+
+        if (!integrations) {
           triggerResult.errors.push('No integration config found')
           results.push(triggerResult)
           continue
@@ -97,7 +114,7 @@ export async function GET(request: Request) {
 
         // Build polling config based on CRM type (use shared getCRMApiConfig for consistency)
         const crmType = trigger.type as CRMType
-        const pollingConfig = getCRMApiConfig(crmType, tenantIntegrations)
+        const pollingConfig = getCRMApiConfig(crmType, integrations)
 
         // Check if required config is present
         const hasRequiredConfig = (() => {
