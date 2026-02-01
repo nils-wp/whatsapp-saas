@@ -424,6 +424,8 @@ export async function startNewConversation(options: {
       ? firstMessage.split(/\n\s*---+\s*\n/).filter(p => p.trim() !== '')
       : [firstMessage]
 
+    console.log(`[startNewConversation] Sending ${messageParts.length} message(s) to ${options.phone}`)
+
     for (let i = 0; i < messageParts.length; i++) {
       const partContent = messageParts[i].trim()
       if (!partContent) continue
@@ -434,18 +436,25 @@ export async function startNewConversation(options: {
         await new Promise(resolve => setTimeout(resolve, sequenceDelaySeconds * 1000))
       }
 
-      await saveAndSendMessage({
-        conversationId: conversation.id,
-        tenantId: options.tenantId,
-        instanceName,
-        phone: options.phone,
-        content: partContent,
-        senderType: agent ? 'agent' : 'human',
-        scriptStep: 1,
-        contactName: options.contactName,
-        agentName: agent?.agent_name || agent?.name || 'System',
-        isOutreach: true, // Counts toward daily limit
-      })
+      try {
+        console.log(`[startNewConversation] Sending message ${i + 1}/${messageParts.length}: "${partContent.substring(0, 50)}..."`)
+        await saveAndSendMessage({
+          conversationId: conversation.id,
+          tenantId: options.tenantId,
+          instanceName,
+          phone: options.phone,
+          content: partContent,
+          senderType: agent ? 'agent' : 'human',
+          scriptStep: 1,
+          contactName: options.contactName,
+          agentName: agent?.agent_name || agent?.name || 'System',
+          isOutreach: true, // Counts toward daily limit
+        })
+        console.log(`[startNewConversation] Message ${i + 1} sent successfully`)
+      } catch (sendError) {
+        console.error(`[startNewConversation] Failed to send message ${i + 1}:`, sendError)
+        throw sendError
+      }
     }
 
     // 7. Update CRM status to contacted
