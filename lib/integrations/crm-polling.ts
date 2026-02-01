@@ -523,12 +523,11 @@ export async function pollActiveCampaignEvents(
     baseUrl = baseUrl.replace(/\/+$/, '')
 
     // Add a lookback buffer to account for API delays and timezone issues
-    // Test mode: 24h buffer
-    // Active mode for tags: 12h buffer (AC timezone issues are severe)
-    // Active mode for others: 5 min buffer
+    // Test mode: 24h buffer (to catch timezone issues during testing)
+    // Active mode: 30 min buffer (enough for timezone offset, fast enough for real-time)
     const isTestMode = filters?.__isTestMode === 'true'
     const isTagEvent = triggerEvent.includes('tag')
-    const lookbackMs = isTestMode ? 86400000 : (isTagEvent ? 43200000 : 300000) // 24h, 12h, or 5 min
+    const lookbackMs = isTestMode ? 86400000 : 1800000 // 24h or 30 min
     const adjustedLastPolledAt = new Date(lastPolledAt.getTime() - lookbackMs)
 
     // Format date for ActiveCampaign (YYYY-MM-DD HH:MM:SS)
