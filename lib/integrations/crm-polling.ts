@@ -572,7 +572,17 @@ export async function pollActiveCampaignEvents(
       // For tag events, polling contacts is unreliable because tags don't always update 'udate'.
       // Instead, we poll the contactTags endpoint which specifically lists tag associations.
       endpoint = `/api/3/contactTags`
-      queryParams.set('orders[cdate]', 'DESC') // Get newest ones first
+      queryParams.set('orders[id]', 'DESC') // Get newest ones first (by ID, more reliable than cdate)
+
+      // If we know the tag name, find its ID and filter by it for faster results
+      const targetTagName = filters?.tag_name || filters?.tag
+      if (targetTagName && Object.keys(tagMap).length > 0) {
+        const tagId = Object.entries(tagMap).find(([, name]) => name === targetTagName)?.[0]
+        if (tagId) {
+          queryParams.set('filters[tag]', tagId)
+          console.log(`[AC Polling] Filtering by tag ID ${tagId} for "${targetTagName}"`)
+        }
+      }
     } else {
       endpoint = '/api/3/contacts'
       // ActiveCampaign v3 Contacts API uses 'filters[updated_after]' without [gt]
