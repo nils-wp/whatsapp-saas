@@ -192,6 +192,23 @@ export async function GET(request: Request) {
               continue
             }
 
+            // Deduplicate: Check if this event was already processed
+            // Use CRM record ID + trigger ID to identify unique events
+            const { data: existingEvent } = await supabase
+              .from('crm_webhook_events')
+              .select('id')
+              .eq('trigger_id', trigger.id)
+              .eq('crm_type', crmType)
+              .contains('raw_payload', { id: event.recordId })
+              .eq('is_test_event', false)
+              .limit(1)
+              .maybeSingle()
+
+            if (existingEvent) {
+              console.log(`[Cron] Skipping event ${event.id} - already processed`)
+              continue
+            }
+
             // Check for test mode
             const isTestMode = await checkTestMode(supabase, trigger.id)
 
