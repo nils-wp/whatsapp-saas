@@ -645,7 +645,19 @@ export async function pollActiveCampaignEvents(
         const rawRecords = result.contactTags || []
         debugInfo.totalRecordsScanned += rawRecords.length
 
-        console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} records (offset ${offset})`)
+        // Log first few records for debugging
+        if (page === 0 && rawRecords.length > 0) {
+          const sampleCdates = rawRecords.slice(0, 3).map((r: any) => ({
+            id: r.id,
+            contact: r.contact,
+            tag: r.tag,
+            cdate: r.cdate
+          }))
+          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} records. Sample cdates:`, JSON.stringify(sampleCdates))
+          console.log(`[AC Polling] Cutoff time (adjustedLastPolledAt): ${adjustedLastPolledAt.toISOString()}`)
+        } else {
+          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} records (offset ${offset})`)
+        }
 
         if (rawRecords.length === 0) {
           allRecordsOld = true
