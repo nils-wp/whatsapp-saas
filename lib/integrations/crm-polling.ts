@@ -645,18 +645,34 @@ export async function pollActiveCampaignEvents(
         const rawRecords = result.contactTags || []
         debugInfo.totalRecordsScanned += rawRecords.length
 
+        // Count how many records match our target tag
+        const matchingTagRecords = targetTagId
+          ? rawRecords.filter((r: any) => String(r.tag) === targetTagId)
+          : rawRecords
+
         // Log first few records for debugging
-        if (page === 0 && rawRecords.length > 0) {
+        if (page === 0) {
           const sampleCdates = rawRecords.slice(0, 3).map((r: any) => ({
             id: r.id,
             contact: r.contact,
             tag: r.tag,
             cdate: r.cdate
           }))
-          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} records. Sample cdates:`, JSON.stringify(sampleCdates))
-          console.log(`[AC Polling] Cutoff time (adjustedLastPolledAt): ${adjustedLastPolledAt.toISOString()}`)
+          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} total, ${matchingTagRecords.length} matching tag ${targetTagId}`)
+          console.log(`[AC Polling] Sample records:`, JSON.stringify(sampleCdates))
+          console.log(`[AC Polling] Cutoff time: ${adjustedLastPolledAt.toISOString()}`)
+
+          // Log matching records if any
+          if (matchingTagRecords.length > 0) {
+            console.log(`[AC Polling] Matching tag records:`, JSON.stringify(matchingTagRecords.slice(0, 5).map((r: any) => ({
+              id: r.id,
+              contact: r.contact,
+              tag: r.tag,
+              cdate: r.cdate
+            }))))
+          }
         } else {
-          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} records (offset ${offset})`)
+          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} total, ${matchingTagRecords.length} matching tag ${targetTagId}`)
         }
 
         if (rawRecords.length === 0) {
@@ -666,6 +682,11 @@ export async function pollActiveCampaignEvents(
 
         // Track the newest cdate we find
         for (const record of rawRecords) {
+          // CRITICAL: AC API ignores filters[tag] parameter, so we must filter client-side
+          if (targetTagId && String(record.tag) !== targetTagId) {
+            continue // Skip records that don't match our target tag
+          }
+
           const cdate = new Date(record.cdate)
           if (!debugInfo.newestRecordFound || cdate.toISOString() > debugInfo.newestRecordFound) {
             debugInfo.newestRecordFound = cdate.toISOString()
