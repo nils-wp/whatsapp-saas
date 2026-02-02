@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Phone, MoreVertical, Settings, Trash2, Unplug, MessageSquare, Calendar, RefreshCw } from 'lucide-react'
+import { Phone, MoreVertical, Settings, Trash2, Unplug, MessageSquare, Calendar, RefreshCw, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ interface AccountCardProps {
   onDisconnect?: (id: string) => void
   onDelete?: (id: string) => void
   onSync?: (id: string) => void
+  onReconnect?: (account: WhatsAppAccount) => void
   isSyncing?: boolean
 }
 
@@ -50,7 +51,7 @@ const statusStyles = {
   },
 }
 
-export function AccountCard({ account, onDisconnect, onDelete, onSync, isSyncing }: AccountCardProps) {
+export function AccountCard({ account, onDisconnect, onDelete, onSync, onReconnect, isSyncing }: AccountCardProps) {
   const t = useTranslations('accounts')
   const tCommon = useTranslations('common')
   const { locale } = useLocale()
@@ -122,6 +123,15 @@ export function AccountCard({ account, onDisconnect, onDelete, onSync, isSyncing
                 >
                   <Unplug className="mr-2 h-4 w-4" />
                   {t('disconnect')}
+                </DropdownMenuItem>
+              )}
+              {account.status === 'disconnected' && (
+                <DropdownMenuItem
+                  onClick={() => onReconnect?.(account)}
+                  className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
+                >
+                  <QrCode className="mr-2 h-4 w-4" />
+                  {t('reconnect') || 'Neu verbinden'}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator className="bg-[#2a2a2a]" />

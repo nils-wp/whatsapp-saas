@@ -7,10 +7,14 @@ import { AccountCard } from '@/components/accounts/account-card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { ReconnectDialog } from '@/components/accounts/reconnect-dialog'
 import { useAccounts, useDeleteAccount, useSyncAccountStatuses } from '@/lib/hooks/use-accounts'
 import { useTranslations } from '@/providers/locale-provider'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
+import type { Tables } from '@/types/database'
+
+type WhatsAppAccount = Tables<'whatsapp_accounts'>
 
 export default function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts()
@@ -19,6 +23,7 @@ export default function AccountsPage() {
   const queryClient = useQueryClient()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
+  const [reconnectAccount, setReconnectAccount] = useState<WhatsAppAccount | null>(null)
   const t = useTranslations('accounts')
   const tCommon = useTranslations('common')
 
@@ -187,6 +192,7 @@ export default function AccountsPage() {
               onDisconnect={handleDisconnect}
               onDelete={setDeleteId}
               onSync={handleSyncChats}
+              onReconnect={setReconnectAccount}
               isSyncing={syncingAccountId === account.id}
             />
           ))}
@@ -202,6 +208,17 @@ export default function AccountsPage() {
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteAccount.isPending}
+      />
+
+      <ReconnectDialog
+        account={reconnectAccount}
+        open={!!reconnectAccount}
+        onOpenChange={(open) => !open && setReconnectAccount(null)}
+        onConnected={() => {
+          toast.success(t('reconnected') || 'Erfolgreich verbunden!')
+          queryClient.invalidateQueries({ queryKey: ['accounts'] })
+          setReconnectAccount(null)
+        }}
       />
     </div>
   )

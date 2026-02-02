@@ -179,7 +179,9 @@
       "connected": "Verbunden",
       "disconnected": "Getrennt",
       "connecting": "Verbindet..."
-    }
+    },
+    "reconnect": "Neu verbinden",
+    "reconnected": "Erfolgreich verbunden!"
   },
   "settings": {
     "title": "Einstellungen",
