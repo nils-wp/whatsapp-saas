@@ -125,7 +125,7 @@ export function AccountCard({ account, onDisconnect, onDelete, onSync, onReconne
                   {t('disconnect')}
                 </DropdownMenuItem>
               )}
-              {account.status === 'disconnected' && (
+              {account.status !== 'connected' && account.status !== 'qr_pending' && (
                 <DropdownMenuItem
                   onClick={() => onReconnect?.(account)}
                   className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
