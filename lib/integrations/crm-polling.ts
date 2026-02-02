@@ -580,14 +580,18 @@ export async function pollActiveCampaignEvents(
         queryParams.set('filters[pipeline]', filters.pipeline_id as string)
       }
     } else if (isTagEvent) {
-      // For tag events, we poll the contactTags endpoint with pagination
-      // AC API does not reliably sort by cdate, so we paginate and filter client-side
-      endpoint = `/api/3/contactTags`
+      // For tag events, use the contacts endpoint with tagid filter
+      // This is MORE RELIABLE than contactTags endpoint which ignores filters
+      endpoint = `/api/3/contacts`
 
-      // Filter by specific tag if we know the ID (reduces result set significantly)
+      // Filter by specific tag - this actually works on contacts endpoint!
       if (targetTagId) {
-        queryParams.set('filters[tag]', targetTagId)
+        queryParams.set('tagid', targetTagId)
+        console.log(`[AC Polling] Using contacts endpoint with tagid=${targetTagId}`)
       }
+
+      // Sort by update date descending to get recently tagged contacts first
+      queryParams.set('orders[udate]', 'DESC')
     } else {
       endpoint = '/api/3/contacts'
       // ActiveCampaign v3 Contacts API uses 'filters[updated_after]' without [gt]
@@ -611,145 +615,83 @@ export async function pollActiveCampaignEvents(
       processingDetails: [] as string[]
     }
 
-    // For tag events, we need to paginate through results to find new ones
-    // The AC API may not return results sorted by cdate correctly
+    // For tag events, we now use /contacts with tagid filter (more reliable)
+    // This returns contacts that have the specific tag applied
     if (isTagEvent) {
-      const maxPages = 5 // Limit pagination to avoid infinite loops
-      let offset = 0
-      const limit = 100 // Fetch more per page to reduce API calls
-      let foundNewRecords = false
-      let allRecordsOld = false
+      queryParams.set('limit', '100')
 
-      for (let page = 0; page < maxPages && !foundNewRecords && !allRecordsOld; page++) {
-        debugInfo.pagesSearched++
-        queryParams.set('limit', String(limit))
-        queryParams.set('offset', String(offset))
+      const response = await fetch(
+        `${baseUrl}${endpoint}?${queryParams.toString()}`,
+        {
+          headers: {
+            'Api-Token': apiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
 
-        const response = await fetch(
-          `${baseUrl}${endpoint}?${queryParams.toString()}`,
-          {
-            headers: {
-              'Api-Token': apiKey,
-              'Content-Type': 'application/json',
-            },
-          }
-        )
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => 'No error body')
+        console.error(`[Polling] ActiveCampaign API error ${response.status}: ${errorBody}`)
+        return { events: [], error: `ActiveCampaign API error: ${response.status}`, debugInfo }
+      }
 
-        if (!response.ok) {
-          const errorBody = await response.text().catch(() => 'No error body')
-          console.error(`[Polling] ActiveCampaign API error ${response.status}: ${errorBody}`)
-          return { events: [], error: `ActiveCampaign API error: ${response.status}`, debugInfo }
+      const result = await response.json()
+      const contacts = result.contacts || []
+      debugInfo.totalRecordsScanned = contacts.length
+
+      console.log(`[AC Polling] Found ${contacts.length} contacts with tag ${targetTagId}`)
+
+      // Log first few contacts for debugging
+      if (contacts.length > 0) {
+        const sampleContacts = contacts.slice(0, 3).map((c: any) => ({
+          id: c.id,
+          email: c.email,
+          phone: c.phone,
+          udate: c.udate
+        }))
+        console.log(`[AC Polling] Sample contacts:`, JSON.stringify(sampleContacts))
+        console.log(`[AC Polling] Cutoff time: ${adjustedLastPolledAt.toISOString()}`)
+      }
+
+      // Process contacts - check if they were recently updated (tag added)
+      for (const contact of contacts) {
+        const udate = new Date(contact.udate)
+
+        // Track newest record
+        if (!debugInfo.newestRecordFound || udate.toISOString() > debugInfo.newestRecordFound) {
+          debugInfo.newestRecordFound = udate.toISOString()
         }
 
-        const result = await response.json()
-        const rawRecords = result.contactTags || []
-        debugInfo.totalRecordsScanned += rawRecords.length
+        // Check if contact was updated after our cutoff (tag was recently added)
+        if (udate > adjustedLastPolledAt) {
+          const targetTagName = filters?.tag_name || filters?.tag
+          contact.tag_names = targetTagName
+          contact.tags = targetTagName
 
-        // Count how many records match our target tag
-        const matchingTagRecords = targetTagId
-          ? rawRecords.filter((r: any) => String(r.tag) === targetTagId)
-          : rawRecords
+          debugInfo.processingDetails.push(`[Contact ${contact.id}] Updated! udate=${udate.toISOString()}`)
 
-        // Log first few records for debugging
-        if (page === 0) {
-          const sampleCdates = rawRecords.slice(0, 3).map((r: any) => ({
-            id: r.id,
-            contact: r.contact,
-            tag: r.tag,
-            cdate: r.cdate
-          }))
-          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} total, ${matchingTagRecords.length} matching tag ${targetTagId}`)
-          console.log(`[AC Polling] Sample records:`, JSON.stringify(sampleCdates))
-          console.log(`[AC Polling] Cutoff time: ${adjustedLastPolledAt.toISOString()}`)
-
-          // Log matching records if any
-          if (matchingTagRecords.length > 0) {
-            console.log(`[AC Polling] Matching tag records:`, JSON.stringify(matchingTagRecords.slice(0, 5).map((r: any) => ({
-              id: r.id,
-              contact: r.contact,
-              tag: r.tag,
-              cdate: r.cdate
-            }))))
+          // Check if matches filters
+          if (matchesFilters('activecampaign', triggerEvent, contact, filters)) {
+            events.push({
+              id: `activecampaign_${contact.id}_${Date.now()}`,
+              crm: 'activecampaign',
+              eventType: triggerEvent,
+              recordId: contact.id,
+              phone: contact.phone || null,
+              firstName: contact.firstName || null,
+              lastName: contact.lastName || null,
+              fullName: contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || null,
+              email: contact.email || null,
+              data: contact,
+              timestamp: udate,
+            })
+            debugInfo.processingDetails.push(`[Contact ${contact.id}] Added to events. Phone: ${contact.phone}`)
           }
-        } else {
-          console.log(`[AC Polling] Page ${page + 1}: ${rawRecords.length} total, ${matchingTagRecords.length} matching tag ${targetTagId}`)
-        }
-
-        if (rawRecords.length === 0) {
-          allRecordsOld = true
-          break
-        }
-
-        // Track the newest cdate we find
-        for (const record of rawRecords) {
-          // CRITICAL: AC API ignores filters[tag] parameter, so we must filter client-side
-          if (targetTagId && String(record.tag) !== targetTagId) {
-            continue // Skip records that don't match our target tag
-          }
-
-          const cdate = new Date(record.cdate)
-          if (!debugInfo.newestRecordFound || cdate.toISOString() > debugInfo.newestRecordFound) {
-            debugInfo.newestRecordFound = cdate.toISOString()
-          }
-
-          // Check if this record is new enough
-          if (cdate > adjustedLastPolledAt) {
-            foundNewRecords = true
-            const recordId = record.contact
-            const tagName = tagMap[String(record.tag)]
-
-            debugInfo.processingDetails.push(`[Contact ${recordId}] New tag! cdate=${cdate.toISOString()}, tag=${tagName}`)
-
-            // Fetch full contact details
-            try {
-              const contactResponse = await fetch(`${baseUrl}/api/3/contacts/${recordId}`, {
-                headers: { 'Api-Token': apiKey }
-              })
-              if (contactResponse.ok) {
-                const contactData = await contactResponse.json()
-                const contact = contactData.contact
-                if (contact) {
-                  // Add tag info to contact
-                  contact.tag_names = tagName
-                  contact.tags = tagName
-
-                  // Check if this matches our filters
-                  if (matchesFilters('activecampaign', triggerEvent, contact, filters)) {
-                    events.push({
-                      id: `activecampaign_${contact.id}_${Date.now()}`,
-                      crm: 'activecampaign',
-                      eventType: triggerEvent,
-                      recordId: contact.id,
-                      phone: contact.phone || null,
-                      firstName: contact.firstName || null,
-                      lastName: contact.lastName || null,
-                      fullName: contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || null,
-                      email: contact.email || null,
-                      data: { ...record, ...contact },
-                      timestamp: cdate,
-                    })
-                    debugInfo.processingDetails.push(`[Contact ${contact.id}] Added to events. Phone: ${contact.phone}`)
-                  }
-                }
-              }
-            } catch (e) {
-              console.error(`[Polling] Failed to fetch contact ${recordId}:`, e)
-            }
-          }
-        }
-
-        // If we didn't find any new records on this page but got full results, try next page
-        if (!foundNewRecords && rawRecords.length >= limit) {
-          offset += limit
-        } else if (rawRecords.length < limit) {
-          // No more records to fetch
-          allRecordsOld = true
         }
       }
 
-      debugInfo.foundNewRecords = foundNewRecords
-      console.log(`[AC Polling] Search complete: ${events.length} new events found after scanning ${debugInfo.totalRecordsScanned} records`)
-
+      console.log(`[AC Polling] Search complete: ${events.length} new events found`)
       return { events, debugInfo }
     }
 
