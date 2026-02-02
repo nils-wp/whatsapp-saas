@@ -17,14 +17,14 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
   const [status, setStatus] = useState<ScanStatus>('loading')
   const [qrCode, setQRCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const hasShownQR = useRef(false) // Track if we've shown the QR code to the user
+  const [startPolling, setStartPolling] = useState(false) // Only start polling after QR is shown
   const statusRef = useRef<ScanStatus>('loading') // Track current status for interval callback
 
   async function fetchQRCode() {
     setStatus('loading')
     statusRef.current = 'loading'
     setError(null)
-    hasShownQR.current = false
+    setStartPolling(false) // Stop polling while loading new QR
 
     try {
       const response = await fetch('/api/evolution/qr', {
@@ -44,7 +44,8 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
         setQRCode(data.qrCode)
         setStatus('ready')
         statusRef.current = 'ready'
-        hasShownQR.current = true // Mark that we've shown the QR code
+        // Start polling AFTER QR is shown - this is the key fix!
+        setStartPolling(true)
       } else if (data.connected) {
         setStatus('connected')
         statusRef.current = 'connected'
@@ -59,23 +60,28 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
     }
   }
 
+  // Fetch QR code on mount
   useEffect(() => {
     fetchQRCode()
+  }, [instanceName])
 
-    // Poll for status updates
+  // Poll for status updates - only starts AFTER QR is shown
+  useEffect(() => {
+    if (!startPolling) return
+
+    console.log('[QR Scanner] Starting status polling...')
+
     const interval = setInterval(async () => {
       try {
         console.log('[QR Scanner] Checking status for:', instanceName)
         const response = await fetch(`/api/evolution/status?instanceName=${instanceName}`)
         const data = await response.json()
-        console.log('[QR Scanner] Status response:', data)
+        console.log('[QR Scanner] Status response:', data, 'UI status:', statusRef.current)
 
         // Only switch to 'scanning' if:
-        // 1. We've shown the QR code to the user (hasShownQR is true)
-        // 2. The current UI status is 'ready' (QR is displayed)
-        // 3. The Evolution status became 'connecting' (QR was scanned)
-        // Don't switch if 'connecting' is the initial state before showing QR
-        if (data.status === 'connecting' && hasShownQR.current && statusRef.current === 'ready') {
+        // 1. The current UI status is 'ready' (QR is displayed)
+        // 2. The Evolution status became 'connecting' (QR was scanned)
+        if (data.status === 'connecting' && statusRef.current === 'ready') {
           console.log('[QR Scanner] QR code scanned, connecting...')
           setStatus('scanning')
           statusRef.current = 'scanning'
@@ -98,7 +104,7 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
     }, 1500) // Check every 1.5 seconds
 
     return () => clearInterval(interval)
-  }, [instanceName])
+  }, [startPolling, instanceName])
 
   // Subscribe to realtime updates
   useEffect(() => {
