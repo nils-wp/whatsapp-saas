@@ -78,16 +78,9 @@ export function QRCodeScanner({ instanceName, onConnected }: QRCodeScannerProps)
         const data = await response.json()
         console.log('[QR Scanner] Status response:', data, 'UI status:', statusRef.current)
 
-        // Only switch to 'scanning' if:
-        // 1. The current UI status is 'ready' (QR is displayed)
-        // 2. The Evolution status became 'connecting' (QR was scanned)
-        if (data.status === 'connecting' && statusRef.current === 'ready') {
-          console.log('[QR Scanner] QR code scanned, connecting...')
-          setStatus('scanning')
-          statusRef.current = 'scanning'
-        }
-
-        // Detect when fully connected
+        // ONLY react to 'connected' status - ignore 'connecting'
+        // Evolution API returns 'connecting' for disconnected instances, NOT when QR is scanned
+        // The QR code should stay visible until we get 'connected'
         if (data.status === 'connected') {
           console.log('[QR Scanner] Connected!')
           setStatus('connected')
