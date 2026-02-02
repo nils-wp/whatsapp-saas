@@ -48,6 +48,104 @@ async function checkWhatsApp(phone) {
 // const hasWhatsApp = await checkWhatsApp("+4912345678");`
 }
 
+const generateFullEmbedCode = (slug: string, origin: string = '') => {
+  return `<!-- WhatsApp Nummer-Check von Chatsetter -->
+<script>
+(function() {
+  const CHATSETTER_API = '${origin}/api/tools/check/${slug}';
+
+  // WhatsApp Check Funktion
+  async function checkWhatsApp(phone) {
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    if (cleanPhone.length < 10) return { valid: false, error: 'Nummer zu kurz' };
+
+    try {
+      const res = await fetch(CHATSETTER_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone })
+      });
+      const data = await res.json();
+      return { valid: data.exists, phone: data.formatted || cleanPhone };
+    } catch (e) {
+      console.error('[Chatsetter] Check failed:', e);
+      return { valid: true, phone: cleanPhone }; // Im Fehlerfall erlauben
+    }
+  }
+
+  // Automatische Validierung für Inputs mit data-whatsapp-check
+  document.querySelectorAll('input[data-whatsapp-check]').forEach(input => {
+    let timeout;
+    const indicator = document.createElement('span');
+    indicator.style.cssText = 'margin-left:8px;font-size:14px;';
+    input.parentNode.insertBefore(indicator, input.nextSibling);
+
+    input.addEventListener('input', function() {
+      clearTimeout(timeout);
+      const phone = this.value.replace(/[^0-9+]/g, '');
+
+      if (phone.length < 10) {
+        indicator.textContent = '';
+        return;
+      }
+
+      indicator.textContent = '⏳';
+      timeout = setTimeout(async () => {
+        const result = await checkWhatsApp(phone);
+        indicator.textContent = result.valid ? '✅' : '❌';
+        this.dataset.hasWhatsapp = result.valid;
+      }, 500);
+    });
+  });
+
+  // Global verfügbar machen
+  window.checkWhatsApp = checkWhatsApp;
+})();
+</script>
+
+<!-- Beispiel: Füge data-whatsapp-check zu deinem Input hinzu -->
+<!-- <input type="tel" name="phone" data-whatsapp-check placeholder="+49 123 456789"> -->`
+}
+
+const generateFormValidationCode = (slug: string, origin: string = '') => {
+  return `// Formular-Validierung vor dem Absenden
+document.getElementById('mein-formular').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const phoneInput = this.querySelector('input[name="phone"]');
+  const phone = phoneInput.value.replace(/[^0-9+]/g, '');
+
+  // Visuelles Feedback
+  const submitBtn = this.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Prüfe Nummer...';
+  submitBtn.disabled = true;
+
+  try {
+    const res = await fetch('${origin}/api/tools/check/${slug}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+
+    if (!data.exists) {
+      alert('Diese Nummer ist nicht auf WhatsApp registriert. Bitte gib eine gültige WhatsApp-Nummer ein.');
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      phoneInput.focus();
+      return;
+    }
+
+    // Nummer ist gültig - Formular absenden
+    this.submit();
+  } catch (error) {
+    // Bei Fehler trotzdem absenden
+    this.submit();
+  }
+});`
+}
+
 export default function ToolsPage() {
   const [phone, setPhone] = useState('')
   const [accountId, setAccountId] = useState<string>('')
@@ -509,41 +607,137 @@ export default function ToolsPage() {
       </div>
       {/* Code Integration Dialog */}
       <Dialog open={isCodeDialogOpen} onOpenChange={setIsCodeDialogOpen}>
-        <DialogContent className="sm:max-w-6xl max-w-[95vw] bg-[#1a1a1a] text-white border-zinc-800">
+        <DialogContent className="sm:max-w-4xl max-w-[95vw] max-h-[90vh] overflow-y-auto bg-[#1a1a1a] text-white border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Integration in bestehenden Formular-Code</DialogTitle>
+            <DialogTitle className="text-xl">WhatsApp Nummer-Check einbinden</DialogTitle>
             <DialogDescription>
-              Nutze diese Funktion in deinem bestehenden Skript, um die Nummer vor dem Absenden zu prüfen.
+              Wähle die passende Integration für dein Formular. Kopiere den Code und füge ihn in deine Seite ein.
             </DialogDescription>
           </DialogHeader>
 
           {selectedConfig && (
-            <div className="space-y-0 border border-zinc-800 rounded-lg overflow-hidden bg-[#0d0d0d]">
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                  onClick={() => {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                    const code = generateSnippet(selectedConfig.slug, origin)
-                    navigator.clipboard.writeText(code)
-                    toast.success('Code kopiert')
-                  }}
-                >
-                  <Copy className="h-3 w-3 mr-1" />
-                  Kopieren
-                </Button>
-                <div className="p-4 pt-10 overflow-x-auto border-b border-zinc-800">
-                  <pre className="text-sm font-mono text-emerald-400 font-normal leading-relaxed">
-                    {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
-                  </pre>
+            <div className="space-y-6">
+              {/* Option 1: Einfaches Embed Script */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 text-sm font-bold">1</div>
+                  <h3 className="font-semibold text-white">Einfachste Variante: Auto-Validierung</h3>
+                  <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Empfohlen</Badge>
                 </div>
-                <div className="bg-zinc-900/50 p-4 flex items-start gap-3 text-xs text-zinc-400">
-                  <AlertTriangle className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <p>
-                    Dieser Endpunkt ist öffentlich (CORS enabled) und kann von jeder Domain aufgerufen werden.
+                <p className="text-sm text-gray-400 pl-8">
+                  Füge diesen Code am Ende deiner Seite ein (vor &lt;/body&gt;). Dann markiere dein Telefon-Input mit <code className="bg-zinc-800 px-1 rounded">data-whatsapp-check</code>.
+                </p>
+                <div className="relative border border-zinc-800 rounded-lg overflow-hidden bg-[#0d0d0d]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                      navigator.clipboard.writeText(generateFullEmbedCode(selectedConfig.slug, origin))
+                      toast.success('Code kopiert!')
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Kopieren
+                  </Button>
+                  <div className="p-4 pt-10 overflow-x-auto max-h-[200px]">
+                    <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap">
+                      {generateFullEmbedCode(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                    </pre>
+                  </div>
+                </div>
+                <div className="pl-8 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                  <p className="text-sm text-emerald-400">
+                    <strong>So verwendest du es:</strong> Füge <code className="bg-zinc-800 px-1 rounded">data-whatsapp-check</code> zu deinem Input hinzu:
                   </p>
+                  <pre className="mt-2 text-xs font-mono text-gray-300 bg-zinc-900 p-2 rounded">
+{`<input type="tel" name="phone" data-whatsapp-check placeholder="+49 123 456789">`}
+                  </pre>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Das Script zeigt automatisch ✅ oder ❌ neben dem Input an.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: Formular-Validierung */}
+              <div className="space-y-3 pt-4 border-t border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-sm font-bold">2</div>
+                  <h3 className="font-semibold text-white">Formular beim Absenden prüfen</h3>
+                </div>
+                <p className="text-sm text-gray-400 pl-8">
+                  Blockiert das Absenden, wenn die Nummer kein WhatsApp hat. Ersetze <code className="bg-zinc-800 px-1 rounded">mein-formular</code> mit der ID deines Formulars.
+                </p>
+                <div className="relative border border-zinc-800 rounded-lg overflow-hidden bg-[#0d0d0d]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                      navigator.clipboard.writeText(generateFormValidationCode(selectedConfig.slug, origin))
+                      toast.success('Code kopiert!')
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Kopieren
+                  </Button>
+                  <div className="p-4 pt-10 overflow-x-auto max-h-[200px]">
+                    <pre className="text-xs font-mono text-blue-400 whitespace-pre-wrap">
+                      {generateFormValidationCode(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 3: Nur die Funktion */}
+              <div className="space-y-3 pt-4 border-t border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500 text-sm font-bold">3</div>
+                  <h3 className="font-semibold text-white">Nur die Check-Funktion</h3>
+                </div>
+                <p className="text-sm text-gray-400 pl-8">
+                  Für Entwickler, die die Validierung selbst einbauen möchten.
+                </p>
+                <div className="relative border border-zinc-800 rounded-lg overflow-hidden bg-[#0d0d0d]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                      navigator.clipboard.writeText(generateSnippet(selectedConfig.slug, origin))
+                      toast.success('Code kopiert!')
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Kopieren
+                  </Button>
+                  <div className="p-4 pt-10 overflow-x-auto max-h-[150px]">
+                    <pre className="text-xs font-mono text-purple-400 whitespace-pre-wrap">
+                      {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* API Info */}
+              <div className="pt-4 border-t border-zinc-800">
+                <div className="flex items-start gap-3 p-4 bg-zinc-900/50 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                  <div className="space-y-2 text-sm">
+                    <p className="text-gray-300">
+                      <strong>API Endpoint:</strong>{' '}
+                      <code className="bg-zinc-800 px-2 py-0.5 rounded font-mono text-xs">
+                        {typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/{selectedConfig.slug}
+                      </code>
+                    </p>
+                    <p className="text-gray-400">
+                      Dieser Endpunkt ist öffentlich (CORS enabled) und kann von jeder Domain aufgerufen werden.
+                      Die API akzeptiert POST-Requests mit <code className="bg-zinc-800 px-1 rounded">{'{ "phone": "+49..." }'}</code>.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
