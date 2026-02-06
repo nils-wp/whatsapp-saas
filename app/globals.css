@@ -3,10 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================
+   EMERALD GREEN DESIGN SYSTEM
+   Primary: Emerald Green (#10b981 / oklch 0.65 0.19 160)
+   ============================================ */
+
 @theme inline {
+  /* Core colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+
+  /* Sidebar colors */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -15,11 +23,15 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
+  /* Chart colors */
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
+  /* UI element colors */
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -40,6 +52,26 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+
+  /* Surface colors for layered UI */
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+
+  /* Emerald color scale */
+  --color-emerald-50: oklch(0.97 0.02 160);
+  --color-emerald-100: oklch(0.93 0.04 160);
+  --color-emerald-200: oklch(0.87 0.08 160);
+  --color-emerald-300: oklch(0.79 0.12 160);
+  --color-emerald-400: oklch(0.72 0.16 160);
+  --color-emerald-500: oklch(0.65 0.19 160);
+  --color-emerald-600: oklch(0.58 0.18 160);
+  --color-emerald-700: oklch(0.50 0.16 160);
+  --color-emerald-800: oklch(0.42 0.13 160);
+  --color-emerald-900: oklch(0.35 0.10 160);
+  --color-emerald-950: oklch(0.25 0.08 160);
+
+  /* Border radius scale */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,103 +81,141 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* ============================================
+   LIGHT MODE (for auth pages)
+   ============================================ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Backgrounds */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0 0);
+
+  /* Surface hierarchy */
+  --surface: oklch(1 0 0);
+  --surface-elevated: oklch(0.99 0 0);
+  --surface-overlay: oklch(0.98 0.005 260);
+
+  /* Cards */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.15 0 0);
+
+  /* Popovers */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.648 0.2 142);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.648 0.2 142);
-  --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.75 0.18 85);
-  --warning-foreground: oklch(0.2 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.648 0.2 142);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  --popover-foreground: oklch(0.15 0 0);
 
-/* Premium Dark Theme - Default */
-.dark {
-  /* Deep dark backgrounds with subtle blue undertone */
-  --background: oklch(0.12 0.01 260);
-  --foreground: oklch(0.95 0 0);
-
-  /* Cards slightly elevated */
-  --card: oklch(0.16 0.01 260);
-  --card-foreground: oklch(0.95 0 0);
-
-  /* Popovers/Dropdowns */
-  --popover: oklch(0.18 0.01 260);
-  --popover-foreground: oklch(0.95 0 0);
-
-  /* Primary - WhatsApp Green */
-  --primary: oklch(0.65 0.2 145);
+  /* Primary - Emerald Green (oklch 0.65 0.19 160) */
+  --primary: oklch(0.65 0.19 160);
   --primary-foreground: oklch(1 0 0);
 
   /* Secondary */
-  --secondary: oklch(0.22 0.01 260);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.20 0 0);
+
+  /* Muted elements */
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+
+  /* Accent */
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.20 0 0);
+
+  /* Status colors */
+  --destructive: oklch(0.58 0.24 27);
+  --success: oklch(0.65 0.19 160);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.75 0.18 85);
+  --warning-foreground: oklch(0.20 0 0);
+
+  /* Borders & inputs */
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.65 0.19 160);
+
+  /* Chart colors - Emerald-based palette */
+  --chart-1: oklch(0.65 0.19 160);
+  --chart-2: oklch(0.60 0.15 200);
+  --chart-3: oklch(0.55 0.12 240);
+  --chart-4: oklch(0.70 0.16 80);
+  --chart-5: oklch(0.75 0.14 45);
+
+  /* Sidebar (light) */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: oklch(0.65 0.19 160);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.97 0.01 160);
+  --sidebar-accent-foreground: oklch(0.20 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.65 0.19 160);
+}
+
+/* ============================================
+   DARK MODE - Premium Dashboard Theme (Default)
+   Primary: Emerald Green (oklch 0.65 0.19 160)
+   ============================================ */
+.dark {
+  /* Deep dark backgrounds with subtle blue undertone */
+  --background: oklch(0.11 0.01 260);
+  --foreground: oklch(0.95 0 0);
+
+  /* Surface hierarchy for layered UI */
+  --surface: oklch(0.14 0.01 260);
+  --surface-elevated: oklch(0.17 0.01 260);
+  --surface-overlay: oklch(0.20 0.01 260);
+
+  /* Cards - slightly elevated from background */
+  --card: oklch(0.15 0.01 260);
+  --card-foreground: oklch(0.95 0 0);
+
+  /* Popovers/Dropdowns - more elevated */
+  --popover: oklch(0.18 0.01 260);
+  --popover-foreground: oklch(0.95 0 0);
+
+  /* Primary - Emerald Green (consistent hue 160) */
+  --primary: oklch(0.65 0.19 160);
+  --primary-foreground: oklch(1 0 0);
+
+  /* Secondary - subtle dark */
+  --secondary: oklch(0.20 0.01 260);
   --secondary-foreground: oklch(0.95 0 0);
 
   /* Muted elements */
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0 0);
+  --muted: oklch(0.20 0.01 260);
+  --muted-foreground: oklch(0.60 0 0);
 
-  /* Accent for hovers */
-  --accent: oklch(0.25 0.02 260);
+  /* Accent - for hover states */
+  --accent: oklch(0.23 0.02 260);
   --accent-foreground: oklch(0.95 0 0);
 
   /* Status colors */
-  --destructive: oklch(0.6 0.22 25);
-  --success: oklch(0.65 0.2 145);
+  --destructive: oklch(0.60 0.22 25);
+  --success: oklch(0.65 0.19 160);
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.15 70);
   --warning-foreground: oklch(0.15 0 0);
 
-  /* Borders - subtle */
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.22 0.01 260);
-  --ring: oklch(0.65 0.2 145);
+  /* Borders - subtle and consistent */
+  --border: oklch(0.26 0.01 260);
+  --input: oklch(0.20 0.01 260);
+  --ring: oklch(0.65 0.19 160);
 
-  /* Charts */
-  --chart-1: oklch(0.65 0.2 145);
-  --chart-2: oklch(0.6 0.18 200);
-  --chart-3: oklch(0.7 0.15 280);
-  --chart-4: oklch(0.75 0.18 45);
-  --chart-5: oklch(0.65 0.2 320);
+  /* Charts - Emerald-based palette */
+  --chart-1: oklch(0.65 0.19 160);
+  --chart-2: oklch(0.60 0.16 200);
+  --chart-3: oklch(0.70 0.14 280);
+  --chart-4: oklch(0.75 0.16 45);
+  --chart-5: oklch(0.65 0.18 320);
 
-  /* Sidebar - darker for depth */
-  --sidebar: oklch(0.10 0.01 260);
+  /* Sidebar - darkest for depth */
+  --sidebar: oklch(0.09 0.01 260);
   --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.65 0.2 145);
+  --sidebar-primary: oklch(0.65 0.19 160);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.18 0.02 260);
+  --sidebar-accent: oklch(0.16 0.02 260);
   --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.22 0.01 260);
-  --sidebar-ring: oklch(0.65 0.2 145);
+  --sidebar-border: oklch(0.20 0.01 260);
+  --sidebar-ring: oklch(0.65 0.19 160);
 }
 
 @layer base {
@@ -155,20 +225,82 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Text color hierarchy */
+  .text-primary-content {
+    color: var(--foreground);
+  }
+  .text-secondary-content {
+    color: oklch(0.75 0 0);
+  }
+  .text-tertiary-content {
+    color: var(--muted-foreground);
+  }
 }
 
-/* Custom scrollbar for dark mode */
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Surface utilities */
+.bg-surface {
+  background: var(--surface);
+}
+.bg-surface-elevated {
+  background: var(--surface-elevated);
+}
+.bg-surface-overlay {
+  background: var(--surface-overlay);
+}
+
+/* Primary foreground utility */
+.text-primary-foreground {
+  color: white;
+}
+
+/* Emerald color utilities */
+.bg-emerald {
+  background: var(--color-emerald-500);
+}
+.bg-emerald-subtle {
+  background: oklch(0.65 0.19 160 / 0.1);
+}
+.text-emerald {
+  color: var(--color-emerald-500);
+}
+.text-emerald-light {
+  color: var(--color-emerald-400);
+}
+.border-emerald {
+  border-color: var(--color-emerald-500);
+}
+.border-emerald-subtle {
+  border-color: oklch(0.65 0.19 160 / 0.3);
+}
+
+/* Focus ring with Emerald */
+.ring-emerald {
+  --tw-ring-color: var(--color-emerald-500);
+}
+.focus-emerald:focus {
+  outline: 2px solid var(--color-emerald-500);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR (Dark Mode)
+   ============================================ */
 .dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: oklch(0.12 0.01 260);
+  background: oklch(0.11 0.01 260);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: oklch(0.3 0.01 260);
+  background: oklch(0.28 0.01 260);
   border-radius: 4px;
 }
 
@@ -176,7 +308,11 @@
   background: oklch(0.35 0.01 260);
 }
 
-/* Gradient backgrounds for cards */
+/* ============================================
+   GRADIENT EFFECTS
+   ============================================ */
+
+/* Subtle gradient border */
 .gradient-border {
   position: relative;
 }
@@ -189,8 +325,8 @@
   padding: 1px;
   background: linear-gradient(
     135deg,
-    oklch(0.35 0.01 260) 0%,
-    oklch(0.22 0.01 260) 100%
+    oklch(0.32 0.01 260) 0%,
+    oklch(0.20 0.01 260) 100%
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -203,17 +339,89 @@
   pointer-events: none;
 }
 
+/* Emerald gradient border */
+.gradient-border-emerald {
+  position: relative;
+}
+
+.gradient-border-emerald::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.65 0.19 160 / 0.5) 0%,
+    oklch(0.50 0.16 160 / 0.2) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Emerald gradient background */
+.bg-gradient-emerald {
+  background: linear-gradient(135deg, oklch(0.65 0.19 160) 0%, oklch(0.55 0.17 160) 100%);
+}
+
+/* Subtle emerald gradient for cards */
+.bg-gradient-emerald-subtle {
+  background: linear-gradient(135deg, oklch(0.65 0.19 160 / 0.1) 0%, oklch(0.55 0.17 160 / 0.05) 100%);
+}
+
+/* ============================================
+   GLASS & BLUR EFFECTS
+   ============================================ */
+
 /* Glass effect for special cards */
 .glass {
-  background: oklch(0.16 0.01 260 / 0.8);
+  background: oklch(0.15 0.01 260 / 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Glow effect for primary elements */
-.glow-primary {
-  box-shadow: 0 0 20px oklch(0.65 0.2 145 / 0.3);
+/* Glass with emerald tint */
+.glass-emerald {
+  background: oklch(0.65 0.19 160 / 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
+
+/* ============================================
+   GLOW EFFECTS (Emerald)
+   ============================================ */
+
+/* Primary glow - Emerald */
+.glow-primary {
+  box-shadow: 0 0 20px oklch(0.65 0.19 160 / 0.3);
+}
+
+/* Stronger glow for emphasis */
+.glow-primary-strong {
+  box-shadow: 0 0 30px oklch(0.65 0.19 160 / 0.4), 0 0 60px oklch(0.65 0.19 160 / 0.2);
+}
+
+/* Subtle glow for hover states */
+.glow-primary-subtle {
+  box-shadow: 0 0 12px oklch(0.65 0.19 160 / 0.2);
+}
+
+/* Glow on hover */
+.hover-glow-primary:hover {
+  box-shadow: 0 0 20px oklch(0.65 0.19 160 / 0.3);
+  transition: box-shadow 0.3s ease;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 
 /* Status indicator pulse animation */
 @keyframes pulse-dot {
@@ -227,4 +435,39 @@
 
 .animate-pulse-dot {
   animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Emerald glow pulse */
+@keyframes pulse-glow-emerald {
+  0%, 100% {
+    box-shadow: 0 0 8px oklch(0.65 0.19 160 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px oklch(0.65 0.19 160 / 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow-emerald 2s ease-in-out infinite;
+}
+
+/* ============================================
+   INTERACTIVE STATES
+   ============================================ */
+
+/* Hover states for emerald elements */
+.hover-emerald:hover {
+  background: oklch(0.58 0.18 160);
+  transition: background 0.2s ease;
+}
+
+/* Active/pressed state */
+.active-emerald:active {
+  background: oklch(0.50 0.16 160);
+}
+
+/* Focus visible for accessibility */
+.focus-visible-emerald:focus-visible {
+  outline: 2px solid oklch(0.65 0.19 160);
+  outline-offset: 2px;
 }

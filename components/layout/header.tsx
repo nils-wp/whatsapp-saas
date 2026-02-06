@@ -1,9 +1,8 @@
 'use client'
 
-import { Menu, Bell } from 'lucide-react'
+import { Menu, Bell, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { UserMenu } from './user-menu'
-import { ProjectSelector } from './project-selector'
+import { LanguageSwitcher } from '@/components/shared/language-switcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -20,71 +19,84 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-slate-800/50 bg-slate-950/95 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80 px-6">
       {/* Mobile menu button */}
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="lg:hidden text-slate-400 hover:text-white hover:bg-white/5"
         onClick={onMenuClick}
       >
         <Menu className="h-5 w-5" />
-        <span className="sr-only">Menu öffnen</span>
+        <span className="sr-only">Menu oeffnen</span>
       </Button>
 
-      {/* Project Selector */}
-      <ProjectSelector />
+      {/* Search (optional - hidden on mobile) */}
+      <div className="hidden md:flex flex-1 max-w-md">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Input
+            type="search"
+            placeholder="Suchen..."
+            className="w-full pl-9 bg-slate-900/50 border-slate-800 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-9"
+          />
+        </div>
+      </div>
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div className="flex-1 md:hidden" />
 
-      {/* Notifications */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge
-              variant="destructive"
-              className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+      {/* Right side actions */}
+      <div className="flex items-center gap-2">
+        {/* Language Switcher */}
+        <LanguageSwitcher />
+
+        {/* Notifications */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-slate-400 hover:text-white hover:bg-white/5 h-9 w-9"
             >
-              3
-            </Badge>
-            <span className="sr-only">Benachrichtigungen</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
-          <DropdownMenuLabel>Benachrichtigungen</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-            <span className="font-medium">Neue Eskalation</span>
-            <span className="text-sm text-muted-foreground">
-              Ein Lead hat nach dem Preis gefragt und wartet auf Antwort.
-            </span>
-            <span className="text-xs text-muted-foreground">vor 5 Minuten</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-            <span className="font-medium">Termin gebucht</span>
-            <span className="text-sm text-muted-foreground">
-              Max Mustermann hat einen Termin für morgen 14:00 Uhr gebucht.
-            </span>
-            <span className="text-xs text-muted-foreground">vor 15 Minuten</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-            <span className="font-medium">WhatsApp verbunden</span>
-            <span className="text-sm text-muted-foreground">
-              Deine neue Nummer +49 151 12345678 ist jetzt aktiv.
-            </span>
-            <span className="text-xs text-muted-foreground">vor 1 Stunde</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="justify-center text-primary">
-            Alle anzeigen
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* User menu */}
-      <UserMenu />
+              <Bell className="h-5 w-5" />
+              <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-emerald-500 text-[10px] font-medium text-white flex items-center justify-center">
+                3
+              </span>
+              <span className="sr-only">Benachrichtigungen</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 bg-slate-900 border-slate-700">
+            <DropdownMenuLabel className="text-white">Benachrichtigungen</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-slate-700" />
+            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
+              <span className="font-medium text-white">Neue Eskalation</span>
+              <span className="text-sm text-slate-400">
+                Ein Lead hat nach dem Preis gefragt und wartet auf Antwort.
+              </span>
+              <span className="text-xs text-slate-500">vor 5 Minuten</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
+              <span className="font-medium text-white">Termin gebucht</span>
+              <span className="text-sm text-slate-400">
+                Max Mustermann hat einen Termin fuer morgen 14:00 Uhr gebucht.
+              </span>
+              <span className="text-xs text-slate-500">vor 15 Minuten</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
+              <span className="font-medium text-white">WhatsApp verbunden</span>
+              <span className="text-sm text-slate-400">
+                Deine neue Nummer +49 151 12345678 ist jetzt aktiv.
+              </span>
+              <span className="text-xs text-slate-500">vor 1 Stunde</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-slate-700" />
+            <DropdownMenuItem className="justify-center text-emerald-500 hover:text-emerald-400 hover:bg-slate-800 cursor-pointer">
+              Alle anzeigen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   )
 }

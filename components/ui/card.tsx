@@ -1,15 +1,32 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+const cardVariants = cva(
+  "bg-slate-900/50 text-slate-100 flex flex-col gap-6 rounded-xl border border-slate-800 py-6 shadow-sm transition-all duration-200",
+  {
+    variants: {
+      hover: {
+        true: "hover:border-slate-700 hover:bg-slate-900/70 hover:shadow-md",
+        false: "",
+      },
+    },
+    defaultVariants: {
+      hover: false,
+    },
+  }
+)
+
+function Card({
+  className,
+  hover = false,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
     <div
       data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      )}
+      className={cn(cardVariants({ hover }), className)}
       {...props}
     />
   )
@@ -20,7 +37,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-3 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className
       )}
       {...props}
@@ -32,7 +49,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      className={cn("text-lg font-semibold leading-none text-white", className)}
       {...props}
     />
   )
@@ -42,7 +59,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-sm text-gray-400", className)}
       {...props}
     />
   )
@@ -89,4 +106,5 @@ export {
   CardAction,
   CardDescription,
   CardContent,
+  cardVariants,
 }
