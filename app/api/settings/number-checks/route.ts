@@ -122,11 +122,13 @@ export async function POST(request: NextRequest) {
         const body = createSchema.parse(json)
         console.log('[API] Body parsed:', body)
 
-        // 3. Check Slug Uniqueness
-        console.log('[API] Checking slug uniqueness...')
+        // 3. Check Slug Uniqueness (per Tenant only!)
+        // Slugs are now unique per tenant, not globally
+        console.log('[API] Checking slug uniqueness for tenant...')
         const { data: existing, error: slugError } = await client
             .from('number_check_configs')
             .select('id')
+            .eq('tenant_id', member.tenant_id)
             .eq('slug', body.slug)
             .maybeSingle()
 
@@ -136,9 +138,9 @@ export async function POST(request: NextRequest) {
         }
 
         if (existing) {
-            console.log('[API] Slug already exists')
+            console.log('[API] Slug already exists for this tenant')
             return NextResponse.json(
-                { error: 'Dieser URL-Slug ist bereits vergeben' },
+                { error: 'Dieser URL-Slug ist bereits vergeben. Wähle einen anderen Namen.' },
                 { status: 400 }
             )
         }

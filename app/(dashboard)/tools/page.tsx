@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAccounts } from '@/lib/hooks/use-accounts'
+import { useTenant } from '@/providers/tenant-provider'
 import { toast } from 'sonner'
 import type { Tables } from '@/types/database'
 
@@ -27,11 +28,17 @@ interface CheckResult {
   error?: string
 }
 
-const generateSnippet = (slug: string, origin: string = '') => {
+// Generate API URL with tenant slug for uniqueness
+const getApiUrl = (tenantSlug: string, configSlug: string, origin: string = '') => {
+  return `${origin}/api/tools/check/${tenantSlug}/${configSlug}`
+}
+
+const generateSnippet = (tenantSlug: string, configSlug: string, origin: string = '') => {
+  const apiUrl = getApiUrl(tenantSlug, configSlug, origin)
   return `// Füge diese Funktion in dein Skript ein
 async function checkWhatsApp(phone) {
   try {
-    const res = await fetch('${origin}/api/tools/check/${slug}', {
+    const res = await fetch('${apiUrl}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
@@ -48,11 +55,12 @@ async function checkWhatsApp(phone) {
 // const hasWhatsApp = await checkWhatsApp("+4912345678");`
 }
 
-const generateFullEmbedCode = (slug: string, origin: string = '') => {
+const generateFullEmbedCode = (tenantSlug: string, configSlug: string, origin: string = '') => {
+  const apiUrl = getApiUrl(tenantSlug, configSlug, origin)
   return `<!-- WhatsApp Nummer-Check von Chatsetter -->
 <script>
 (function() {
-  const CHATSETTER_API = '${origin}/api/tools/check/${slug}';
+  const CHATSETTER_API = '${apiUrl}';
 
   // WhatsApp Check Funktion
   async function checkWhatsApp(phone) {
@@ -107,7 +115,8 @@ const generateFullEmbedCode = (slug: string, origin: string = '') => {
 <!-- <input type="tel" name="phone" data-whatsapp-check placeholder="+49 123 456789"> -->`
 }
 
-const generateFormValidationCode = (slug: string, origin: string = '') => {
+const generateFormValidationCode = (tenantSlug: string, configSlug: string, origin: string = '') => {
+  const apiUrl = getApiUrl(tenantSlug, configSlug, origin)
   return `// Formular-Validierung vor dem Absenden
 document.getElementById('mein-formular').addEventListener('submit', async function(e) {
   e.preventDefault();
@@ -122,7 +131,7 @@ document.getElementById('mein-formular').addEventListener('submit', async functi
   submitBtn.disabled = true;
 
   try {
-    const res = await fetch('${origin}/api/tools/check/${slug}', {
+    const res = await fetch('${apiUrl}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
@@ -168,7 +177,9 @@ export default function ToolsPage() {
   const [isCodeDialogOpen, setIsCodeDialogOpen] = useState(false)
 
   const { data: accounts } = useAccounts()
+  const { currentTenant } = useTenant()
   const connectedAccounts = accounts?.filter(a => a.status === 'connected') || []
+  const tenantSlug = currentTenant?.slug || ''
 
   // Load configs on mount
   useEffect(() => {
@@ -366,8 +377,8 @@ export default function ToolsPage() {
                     <div className="space-y-2">
                       <Label>URL Slug</Label>
                       <div className="flex items-center">
-                        <span className="bg-muted px-3 py-2 rounded-l-md border border-r-0 text-muted-foreground text-sm">
-                          .../api/tools/check/
+                        <span className="bg-muted px-3 py-2 rounded-l-md border border-r-0 text-muted-foreground text-sm truncate max-w-[180px]" title={`.../api/tools/check/${tenantSlug}/`}>
+                          .../{tenantSlug}/
                         </span>
                         <Input
                           value={newConfigSlug}
@@ -376,6 +387,9 @@ export default function ToolsPage() {
                           className="rounded-l-none font-mono"
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Vollständige URL: <code className="bg-muted px-1 rounded">/api/tools/check/{tenantSlug}/{newConfigSlug || 'slug'}</code>
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Verwendeter WhatsApp Account</Label>
@@ -430,7 +444,7 @@ export default function ToolsPage() {
                       <div className="flex items-center gap-2 text-sm text-gray-400 font-mono">
                         <LinkIcon className="h-3 w-3" />
                         <span className="truncate max-w-[300px] md:max-w-[500px]">
-                          {typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${config.slug}` : `/api/tools/check/${config.slug}`}
+                          {typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${tenantSlug}/${config.slug}` : `/api/tools/check/${tenantSlug}/${config.slug}`}
                         </span>
                       </div>
                     </div>
@@ -449,7 +463,7 @@ export default function ToolsPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => copyNumber(typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${config.slug}` : "")}
+                        onClick={() => copyNumber(typeof window !== 'undefined' ? `${window.location.origin}/api/tools/check/${tenantSlug}/${config.slug}` : "")}
                         title="URL kopieren"
                       >
                         <Copy className="h-4 w-4" />
@@ -634,7 +648,7 @@ export default function ToolsPage() {
                     className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
                     onClick={() => {
                       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                      navigator.clipboard.writeText(generateFullEmbedCode(selectedConfig.slug, origin))
+                      navigator.clipboard.writeText(generateFullEmbedCode(tenantSlug, selectedConfig.slug, origin))
                       toast.success('Code kopiert!')
                     }}
                   >
@@ -643,7 +657,7 @@ export default function ToolsPage() {
                   </Button>
                   <div className="p-4 pt-10 overflow-x-auto max-h-[200px]">
                     <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap">
-                      {generateFullEmbedCode(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                      {generateFullEmbedCode(tenantSlug, selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                     </pre>
                   </div>
                 </div>
@@ -676,7 +690,7 @@ export default function ToolsPage() {
                     className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
                     onClick={() => {
                       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                      navigator.clipboard.writeText(generateFormValidationCode(selectedConfig.slug, origin))
+                      navigator.clipboard.writeText(generateFormValidationCode(tenantSlug, selectedConfig.slug, origin))
                       toast.success('Code kopiert!')
                     }}
                   >
@@ -685,7 +699,7 @@ export default function ToolsPage() {
                   </Button>
                   <div className="p-4 pt-10 overflow-x-auto max-h-[200px]">
                     <pre className="text-xs font-mono text-blue-400 whitespace-pre-wrap">
-                      {generateFormValidationCode(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                      {generateFormValidationCode(tenantSlug, selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                     </pre>
                   </div>
                 </div>
@@ -707,7 +721,7 @@ export default function ToolsPage() {
                     className="absolute top-2 right-2 h-7 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 z-10"
                     onClick={() => {
                       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                      navigator.clipboard.writeText(generateSnippet(selectedConfig.slug, origin))
+                      navigator.clipboard.writeText(generateSnippet(tenantSlug, selectedConfig.slug, origin))
                       toast.success('Code kopiert!')
                     }}
                   >
@@ -716,7 +730,7 @@ export default function ToolsPage() {
                   </Button>
                   <div className="p-4 pt-10 overflow-x-auto max-h-[150px]">
                     <pre className="text-xs font-mono text-purple-400 whitespace-pre-wrap">
-                      {generateSnippet(selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
+                      {generateSnippet(tenantSlug, selectedConfig.slug, typeof window !== 'undefined' ? window.location.origin : '')}
                     </pre>
                   </div>
                 </div>
@@ -730,7 +744,7 @@ export default function ToolsPage() {
                     <p className="text-gray-300">
                       <strong>API Endpoint:</strong>{' '}
                       <code className="bg-zinc-800 px-2 py-0.5 rounded font-mono text-xs">
-                        {typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/{selectedConfig.slug}
+                        {typeof window !== 'undefined' ? window.location.origin : ''}/api/tools/check/{tenantSlug}/{selectedConfig.slug}
                       </code>
                     </p>
                     <p className="text-gray-400">

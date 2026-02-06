@@ -26,17 +26,15 @@ export async function OPTIONS() {
 }
 
 /**
- * POST /api/tools/check/[slug]
+ * POST /api/tools/check/[tenantSlug]/[configSlug]
+ * Public endpoint to check if a number exists on WhatsApp
  *
- * DEPRECATED: This endpoint is kept for backwards compatibility.
- * New integrations should use: /api/tools/check/[tenantSlug]/[configSlug]
- *
- * This endpoint still works for configs with globally unique slugs,
- * but new configs should use the tenant-scoped endpoint.
+ * URL Pattern: /api/tools/check/{organisation-slug}/{widget-slug}
+ * Example: /api/tools/check/my-company/vsl-funnel
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ slug: string }> }
+    { params }: { params: Promise<{ tenantSlug: string; configSlug: string }> }
 ) {
     // CORS Headers
     const headers = {
@@ -46,7 +44,7 @@ export async function POST(
     }
 
     try {
-        const { slug } = await params
+        const { tenantSlug, configSlug } = await params
         const body = await request.json()
         const { phone } = body
 
@@ -54,20 +52,33 @@ export async function POST(
             return NextResponse.json({ error: 'Phone number is required' }, { status: 400, headers })
         }
 
-        // 1. Find config by slug
         const supabaseAdmin = getSupabaseAdmin()
+
+        // 1. Find tenant by slug
+        const { data: tenant } = await supabaseAdmin
+            .from('tenants')
+            .select('id')
+            .eq('slug', tenantSlug)
+            .single()
+
+        if (!tenant) {
+            return NextResponse.json({ error: 'Organisation not found' }, { status: 404, headers })
+        }
+
+        // 2. Find config by tenant_id + config_slug combination
         const { data: config } = await supabaseAdmin
             .from('number_check_configs')
             .select('*, whatsapp_accounts(instance_name, status)')
-            .eq('slug', slug)
+            .eq('tenant_id', tenant.id)
+            .eq('slug', configSlug)
             .eq('is_active', true)
             .single()
 
         if (!config) {
-            return NextResponse.json({ error: 'Configuration not found or inactive' }, { status: 404, headers })
+            return NextResponse.json({ error: 'Widget not found or inactive' }, { status: 404, headers })
         }
 
-        // 2. Resolve WhatsApp Account to use
+        // 3. Resolve WhatsApp Account to use
         let instanceName = config.whatsapp_accounts?.instance_name
 
         // If no specific account linked, find first connected one for tenant
@@ -91,7 +102,7 @@ export async function POST(
             )
         }
 
-        // 3. Clean phone number
+        // 4. Clean phone number
         const cleanPhone = phone.replace(/\D/g, '')
 
         if (cleanPhone.length < 5) {
@@ -101,7 +112,7 @@ export async function POST(
             )
         }
 
-        // 4. Validate via Evolution API
+        // 5. Validate via Evolution API
         const checkResult = await checkWhatsAppNumbers(instanceName, [cleanPhone])
 
         if (!checkResult.success) {
@@ -115,7 +126,7 @@ export async function POST(
         const numberCheck = checkResult.data?.[0]
         const exists = numberCheck?.exists ?? false
 
-        // 5. Response
+        // 6. Response
         return NextResponse.json({
             exists,
             formatted: formatPhoneNumber(cleanPhone),
