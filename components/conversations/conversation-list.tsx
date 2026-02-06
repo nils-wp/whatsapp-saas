@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { MoreVertical, Trash2, Eye, CheckCheck } from 'lucide-react'
+import { MoreVertical, Trash2, MessageSquare, Bot, Phone } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,113 +27,113 @@ interface ConversationListProps {
   onDelete?: (id: string) => void
 }
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  active: { label: 'Aktiv', color: 'text-[#00a884]' },
-  paused: { label: 'Pausiert', color: 'text-[#f7c948]' },
-  escalated: { label: 'Eskaliert', color: 'text-[#ea4335]' },
-  completed: { label: 'Abgeschlossen', color: 'text-[#53bdeb]' },
-  disqualified: { label: 'Disqualifiziert', color: 'text-[#8696a0]' },
+const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  active: { label: 'Aktiv', variant: 'default' },
+  paused: { label: 'Pausiert', variant: 'secondary' },
+  escalated: { label: 'Eskaliert', variant: 'destructive' },
+  completed: { label: 'Abgeschlossen', variant: 'outline' },
+  booked: { label: 'Gebucht', variant: 'default' },
+  disqualified: { label: 'Disqualifiziert', variant: 'secondary' },
 }
 
 export function ConversationList({ conversations, selectedId, onDelete }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-[#8696a0] p-8 text-center">
-        Keine Konversationen gefunden
+      <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center">
+        <MessageSquare className="h-12 w-12 mb-3 text-slate-600" />
+        <p>Keine Konversationen gefunden</p>
       </div>
     )
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div>
-        {conversations.map((conversation) => {
-          const status = statusConfig[conversation.status] || statusConfig.active
-          const isSelected = conversation.id === selectedId
-          // Priority: contact_name (from CRM) > contact_push_name (from WhatsApp) > formatted phone
-          const displayName = conversation.contact_name || conversation.contact_push_name || formatPhoneNumber(conversation.contact_phone)
+    <div className="divide-y divide-slate-800/50">
+      {conversations.map((conversation) => {
+        const status = statusConfig[conversation.status] || statusConfig.active
+        const isSelected = conversation.id === selectedId
+        const displayName = conversation.contact_name || conversation.contact_push_name || formatPhoneNumber(conversation.contact_phone)
 
-          return (
-            <div
-              key={conversation.id}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 transition-colors group cursor-pointer border-b border-[#222d34]',
-                isSelected
-                  ? 'bg-[#2a3942]'
-                  : 'hover:bg-[#202c33]'
+        return (
+          <Link
+            key={conversation.id}
+            href={`/conversations/${conversation.id}`}
+            className={cn(
+              'flex items-center gap-4 p-4 transition-all group hover:bg-slate-900/50',
+              isSelected && 'bg-slate-900/80 border-l-2 border-l-emerald-500'
+            )}
+          >
+            <Avatar className="h-12 w-12 shrink-0 ring-2 ring-slate-800">
+              <AvatarImage
+                src={conversation.profile_picture_url || undefined}
+                alt={displayName}
+              />
+              <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 text-emerald-400 font-semibold">
+                {getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="font-semibold text-white truncate">
+                  {displayName}
+                </p>
+                <span className="text-xs text-slate-500 shrink-0">
+                  {conversation.last_message_at
+                    ? formatDistanceToNow(new Date(conversation.last_message_at), {
+                        addSuffix: false,
+                        locale: de,
+                      })
+                    : '-'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant={status.variant} className="text-xs">
+                  {status.label}
+                </Badge>
+                {conversation.agents?.name && (
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <Bot className="h-3 w-3" />
+                    {conversation.agents.name}
+                  </span>
+                )}
+              </div>
+
+              {conversation.contact_phone && displayName !== formatPhoneNumber(conversation.contact_phone) && (
+                <p className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                  <Phone className="h-3 w-3" />
+                  {formatPhoneNumber(conversation.contact_phone)}
+                </p>
               )}
-            >
-              <Link href={`/conversations/${conversation.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-12 w-12 shrink-0">
-                  <AvatarImage
-                    src={conversation.profile_picture_url || undefined}
-                    alt={conversation.contact_name || conversation.contact_phone}
-                  />
-                  <AvatarFallback className="bg-[#6b7c85] text-[#e9edef] font-medium text-base">
-                    {getContactInitials(conversation.contact_name, conversation.contact_push_name, conversation.contact_phone)}
-                  </AvatarFallback>
-                </Avatar>
+            </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-[#e9edef] truncate text-[15px]">
-                      {displayName}
-                    </p>
-                    <span className="text-xs text-[#8696a0] shrink-0">
-                      {conversation.last_message_at
-                        ? formatDistanceToNow(new Date(conversation.last_message_at), {
-                            addSuffix: false,
-                            locale: de,
-                          })
-                        : '-'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <CheckCheck className="h-4 w-4 text-[#53bdeb] shrink-0" />
-                    <span className={cn('text-sm truncate', status.color)}>
-                      {status.label}
-                    </span>
-                    {conversation.agents?.name && (
-                      <span className="text-sm text-[#8696a0] truncate">
-                        · {conversation.agents.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-
+            {onDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-2 rounded-full text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942] transition-colors opacity-0 group-hover:opacity-100">
-                    <MoreVertical className="h-5 w-5" />
+                  <button
+                    onClick={(e) => e.preventDefault()}
+                    className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <MoreVertical className="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#233138] border-[#233138] shadow-xl">
-                  <DropdownMenuItem asChild className="text-[#e9edef] focus:text-[#e9edef] focus:bg-[#2a3942]">
-                    <Link href={`/conversations/${conversation.id}`}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Anzeigen
-                    </Link>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onDelete(conversation.id)
+                    }}
+                    className="text-red-400 focus:text-red-400"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Löschen
                   </DropdownMenuItem>
-                  {onDelete && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault()
-                        onDelete(conversation.id)
-                      }}
-                      className="text-[#ea4335] focus:text-[#ea4335] focus:bg-[#2a3942]"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Löschen
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          )
-        })}
-      </div>
-    </ScrollArea>
+            )}
+          </Link>
+        )
+      })}
+    </div>
   )
 }

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { MessageSquare, Filter, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card } from '@/components/ui/card'
 import { ConversationList } from '@/components/conversations/conversation-list'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
@@ -96,7 +95,6 @@ export default function ConversationsPage() {
             variant="outline"
             onClick={handleSyncProfiles}
             disabled={isSyncing}
-            className="border-[#00a884]/50 text-[#00a884] hover:bg-[#00a884]/10 hover:text-[#00a884]"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Synchronisiere...' : 'Profile sync'}
@@ -105,10 +103,10 @@ export default function ConversationsPage() {
             <Button
               variant="outline"
               onClick={() => setShowCleanupDialog(true)}
-              className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {t('cleanup')} ({orphanedCount} {t('orphaned')})
+              {t('cleanup')} ({orphanedCount})
             </Button>
           )}
         </div>
@@ -117,15 +115,15 @@ export default function ConversationsPage() {
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-500">{t('filter')}:</span>
+          <Filter className="h-4 w-4 text-slate-500" />
+          <span className="text-sm text-slate-500">{t('filter')}:</span>
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-[#1a1a1a] border-[#2a2a2a]">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <SelectContent>
             <SelectItem value="all">{t('allStatus')}</SelectItem>
             <SelectItem value="active">{t('status.active')}</SelectItem>
             <SelectItem value="paused">{t('status.paused')}</SelectItem>
@@ -136,10 +134,10 @@ export default function ConversationsPage() {
         </Select>
 
         <Select value={agentFilter} onValueChange={setAgentFilter}>
-          <SelectTrigger className="w-40 bg-[#1a1a1a] border-[#2a2a2a]">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Agent" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <SelectContent>
             <SelectItem value="all">{t('allAgents')}</SelectItem>
             {agents?.map((agent) => (
               <SelectItem key={agent.id} value={agent.id}>
@@ -157,7 +155,6 @@ export default function ConversationsPage() {
               setStatusFilter('all')
               setAgentFilter('all')
             }}
-            className="text-gray-400 hover:text-white"
           >
             {t('resetFilters')}
           </Button>
@@ -171,12 +168,12 @@ export default function ConversationsPage() {
           description={t('noConversationsDesc')}
         />
       ) : (
-        <Card className="h-[600px] bg-[#1a1a1a] border-[#2a2a2a]">
+        <div className="rounded-lg border border-slate-800 overflow-hidden">
           <ConversationList
             conversations={conversations}
             onDelete={setDeleteId}
           />
-        </Card>
+        </div>
       )}
 
       {/* Delete Conversation Dialog */}
