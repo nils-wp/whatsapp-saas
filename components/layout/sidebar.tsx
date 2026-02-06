@@ -66,6 +66,7 @@ const navigationGroups = [
     items: [
       { key: 'dashboard', href: '/', icon: LayoutDashboard, label: 'Dashboard' },
       { key: 'conversations', href: '/conversations', icon: MessageSquare, label: 'Konversationen' },
+      { key: 'contacts', href: '/contacts', icon: Users, label: 'Kontakte' },
       { key: 'agents', href: '/agents', icon: Bot, label: 'Agenten' },
     ],
   },
