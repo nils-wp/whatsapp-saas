@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/integrations') ||
     pathname.startsWith('/templates') ||
+    pathname.startsWith('/dashboard') ||
     pathname === '/'
 
   // Auth routes
@@ -64,7 +65,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

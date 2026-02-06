@@ -79,17 +79,17 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+      <div className="text-center">
+        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900 mb-3">
+        <h1 className="text-2xl font-semibold text-white mb-3">
           Passwort aktualisiert
         </h1>
-        <p className="text-slate-500 mb-2 leading-relaxed">
+        <p className="text-slate-400 mb-2 leading-relaxed">
           Dein Passwort wurde erfolgreich geändert.
         </p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-500">
           Du wirst gleich weitergeleitet...
         </p>
       </div>
@@ -97,13 +97,13 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+    <>
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+        <h1 className="text-2xl font-semibold text-white mb-2">
           Neues Passwort setzen
         </h1>
-        <p className="text-slate-500">
+        <p className="text-slate-400">
           Wähle ein sicheres Passwort für dein Konto
         </p>
       </div>
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+          <div className="flex items-center gap-3 p-4 text-sm text-red-400 bg-red-500/10 rounded-xl border border-red-500/20">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -119,16 +119,16 @@ export default function ResetPasswordPage() {
 
         {/* Password field */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-300">
             Neues Passwort
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="password"
               type="password"
               placeholder="Mind. 8 Zeichen, 1 Großbuchstabe, 1 Zahl"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
           </div>
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
                           : passwordStrength <= 3
                           ? 'bg-emerald-400'
                           : 'bg-emerald-500'
-                        : 'bg-slate-200'
+                        : 'bg-slate-700'
                     }`}
                   />
                 ))}
@@ -162,7 +162,7 @@ export default function ResetPasswordPage() {
             </div>
           )}
           {errors.password && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.password.message}
             </p>
@@ -171,21 +171,21 @@ export default function ResetPasswordPage() {
 
         {/* Confirm password field */}
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-300">
             Passwort bestätigen
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="confirmPassword"
               type="password"
               placeholder="Passwort wiederholen"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('confirmPassword')}
             />
           </div>
           {errors.confirmPassword && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.confirmPassword.message}
             </p>
@@ -195,7 +195,7 @@ export default function ResetPasswordPage() {
         {/* Submit button */}
         <Button
           type="submit"
-          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -213,12 +213,12 @@ export default function ResetPasswordPage() {
       <div className="mt-8 text-center">
         <Link
           href="/login"
-          className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          className="inline-flex items-center text-sm text-slate-500 hover:text-slate-300 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Zurück zum Login
         </Link>
       </div>
-    </div>
+    </>
   )
 }

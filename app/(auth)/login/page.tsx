@@ -48,13 +48,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+    <>
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+        <h1 className="text-2xl font-semibold text-white mb-2">
           Willkommen zurück
         </h1>
-        <p className="text-slate-500">
+        <p className="text-slate-400">
           Melde dich an, um fortzufahren
         </p>
       </div>
@@ -62,7 +62,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+          <div className="flex items-center gap-3 p-4 text-sm text-red-400 bg-red-500/10 rounded-xl border border-red-500/20">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -70,21 +70,21 @@ export default function LoginPage() {
 
         {/* Email field */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-300">
             E-Mail-Adresse
           </Label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="email"
               type="email"
               placeholder="name@firma.de"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('email')}
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.email.message}
             </p>
@@ -94,28 +94,28 @@ export default function LoginPage() {
         {/* Password field */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+            <Label htmlFor="password" className="text-sm font-medium text-slate-300">
               Passwort
             </Label>
             <Link
               href="/forgot-password"
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+              className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
             >
               Vergessen?
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
           </div>
           {errors.password && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.password.message}
             </p>
@@ -125,7 +125,7 @@ export default function LoginPage() {
         {/* Submit button */}
         <Button
           type="submit"
-          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -145,10 +145,10 @@ export default function LoginPage() {
       {/* Divider */}
       <div className="relative my-8">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
+          <div className="w-full border-t border-slate-700" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-slate-400">Neu hier?</span>
+          <span className="px-4 bg-slate-900 text-slate-500">Neu hier?</span>
         </div>
       </div>
 
@@ -157,11 +157,11 @@ export default function LoginPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-12 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+          className="w-full h-12 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:text-white font-medium rounded-xl transition-all"
         >
           Kostenloses Konto erstellen
         </Button>
       </Link>
-    </div>
+    </>
   )
 }

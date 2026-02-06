@@ -1,4 +1,5 @@
-import { MessageSquare, Shield, Zap, Users, CheckCircle2 } from 'lucide-react'
+import { Shield, Zap, MessageSquare } from 'lucide-react'
+import { ChatsetterLogo } from '@/components/shared/chatsetter-logo'
 
 export default function AuthLayout({
   children,
@@ -6,121 +7,72 @@ export default function AuthLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Professional branding panel */}
-      <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0tNiA2aC0ydi00aDJ2NHptMC02aC0ydi00aDJ2NHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      {/* Subtle background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950" />
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-slate-900/40" />
+      {/* Subtle grid pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-between p-10 xl:p-14 w-full">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
-              <MessageSquare className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-semibold text-white">ChatFlow</span>
-          </div>
+      {/* Ambient glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl" />
 
-          {/* Main content */}
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-3xl xl:text-4xl font-bold text-white leading-tight mb-4">
-                WhatsApp-Automatisierung
-                <br />
-                <span className="text-emerald-400">die wirklich funktioniert</span>
-              </h1>
-              <p className="text-slate-300 text-lg leading-relaxed">
-                KI-gesteuerte Konversationen, die aus Interessenten zahlende Kunden machen.
-                24/7 automatisiert, DSGVO-konform.
-              </p>
-            </div>
+      {/* Content container */}
+      <div className="relative z-10 w-full max-w-[420px] flex flex-col items-center">
+        {/* Logo */}
+        <div className="mb-8">
+          <ChatsetterLogo size={36} showText />
+        </div>
 
-            {/* Feature list */}
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Zap className="h-4 w-4 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Sofortige Antworten</p>
-                  <p className="text-slate-400 text-sm">Reagiere in Sekunden auf neue Leads</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Users className="h-4 w-4 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Unbegrenzt skalierbar</p>
-                  <p className="text-slate-400 text-sm">Bearbeite hunderte Gespräche gleichzeitig</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Shield className="h-4 w-4 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">100% DSGVO-konform</p>
-                  <p className="text-slate-400 text-sm">Hosting in der EU, Azure OpenAI</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Main card with subtle glow */}
+        <div className="w-full relative">
+          {/* Card glow effect */}
+          <div className="absolute -inset-0.5 bg-gradient-to-b from-slate-700/50 to-slate-800/50 rounded-2xl blur-sm" />
 
-          {/* Testimonial */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center gap-1 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} className="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20">
-                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                </svg>
-              ))}
-            </div>
-            <blockquote className="text-white/90 mb-4 leading-relaxed">
-              "Seit wir ChatFlow nutzen, haben wir unsere Conversion-Rate um 340% gesteigert.
-              Die KI qualifiziert Leads perfekt vor."
-            </blockquote>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
-                MK
-              </div>
-              <div>
-                <p className="text-white font-medium text-sm">Michael König</p>
-                <p className="text-slate-400 text-xs">CEO, TechVentures GmbH</p>
-              </div>
-            </div>
+          {/* Card */}
+          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+            {children}
           </div>
         </div>
-      </div>
 
-      {/* Right side - Auth form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-slate-50">
-        <div className="w-full max-w-[420px]">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
-              <MessageSquare className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-semibold text-slate-900">ChatFlow</span>
+        {/* Feature highlights - minimal */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-slate-500 text-sm">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-emerald-500/70" />
+            <span>KI-Automatisierung</span>
           </div>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-emerald-500/70" />
+            <span>WhatsApp API</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-emerald-500/70" />
+            <span>DSGVO-konform</span>
+          </div>
+        </div>
 
-          {children}
-
-          {/* Trust indicators */}
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <div className="flex items-center justify-center gap-6 text-slate-400">
-              <div className="flex items-center gap-1.5 text-xs">
-                <Shield className="h-3.5 w-3.5" />
-                <span>SSL-gesichert</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>DSGVO-konform</span>
-              </div>
+        {/* Trust badges */}
+        <div className="mt-10 pt-6 border-t border-slate-800/50 w-full">
+          <div className="flex items-center justify-center gap-8 text-slate-600 text-xs">
+            <div className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>SSL-verschlüsselt</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span>EU-Hosting</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22,4 12,14.01 9,11.01" />
+              </svg>
+              <span>Azure OpenAI</span>
             </div>
           </div>
         </div>

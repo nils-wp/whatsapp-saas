@@ -73,14 +73,14 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+      <div className="text-center">
+        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900 mb-3">
+        <h1 className="text-2xl font-semibold text-white mb-3">
           Bestätige deine E-Mail
         </h1>
-        <p className="text-slate-500 mb-8 leading-relaxed">
+        <p className="text-slate-400 mb-8 leading-relaxed">
           Wir haben dir einen Bestätigungslink geschickt.
           <br />
           Bitte überprüfe dein Postfach und deinen Spam-Ordner.
@@ -88,7 +88,7 @@ export default function SignupPage() {
         <Link href="/login">
           <Button
             variant="outline"
-            className="h-12 px-8 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+            className="h-12 px-8 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:text-white font-medium rounded-xl transition-all"
           >
             Zurück zum Login
           </Button>
@@ -98,17 +98,17 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+    <>
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full text-sm font-medium mb-4 border border-emerald-500/20">
           <Sparkles className="h-3.5 w-3.5" />
           14 Tage kostenlos testen
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+        <h1 className="text-2xl font-semibold text-white mb-2">
           Konto erstellen
         </h1>
-        <p className="text-slate-500">
+        <p className="text-slate-400">
           In wenigen Minuten startklar
         </p>
       </div>
@@ -116,7 +116,7 @@ export default function SignupPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Error message */}
         {error && (
-          <div className="flex items-center gap-3 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100">
+          <div className="flex items-center gap-3 p-4 text-sm text-red-400 bg-red-500/10 rounded-xl border border-red-500/20">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -124,21 +124,21 @@ export default function SignupPage() {
 
         {/* Name field */}
         <div className="space-y-2">
-          <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="name" className="text-sm font-medium text-slate-300">
             Vollständiger Name
           </Label>
           <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="name"
               type="text"
               placeholder="Max Mustermann"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('name')}
             />
           </div>
           {errors.name && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.name.message}
             </p>
@@ -147,21 +147,21 @@ export default function SignupPage() {
 
         {/* Email field */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-300">
             Geschäftliche E-Mail
           </Label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="email"
               type="email"
               placeholder="name@firma.de"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('email')}
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.email.message}
             </p>
@@ -170,16 +170,16 @@ export default function SignupPage() {
 
         {/* Password field */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-300">
             Passwort
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="password"
               type="password"
               placeholder="Mind. 8 Zeichen, 1 Großbuchstabe, 1 Zahl"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('password')}
             />
           </div>
@@ -199,7 +199,7 @@ export default function SignupPage() {
                           : passwordStrength <= 3
                           ? 'bg-emerald-400'
                           : 'bg-emerald-500'
-                        : 'bg-slate-200'
+                        : 'bg-slate-700'
                     }`}
                   />
                 ))}
@@ -213,7 +213,7 @@ export default function SignupPage() {
             </div>
           )}
           {errors.password && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.password.message}
             </p>
@@ -222,21 +222,21 @@ export default function SignupPage() {
 
         {/* Confirm password field */}
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+          <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-300">
             Passwort bestätigen
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               id="confirmPassword"
               type="password"
               placeholder="Passwort wiederholen"
-              className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
+              className="pl-10 h-12 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:bg-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
               {...register('confirmPassword')}
             />
           </div>
           {errors.confirmPassword && (
-            <p className="text-sm text-red-500 flex items-center gap-1.5">
+            <p className="text-sm text-red-400 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.confirmPassword.message}
             </p>
@@ -246,11 +246,11 @@ export default function SignupPage() {
         {/* Terms notice */}
         <p className="text-xs text-slate-500 leading-relaxed">
           Mit der Registrierung akzeptierst du unsere{' '}
-          <Link href="/terms" className="text-emerald-600 hover:underline">
+          <Link href="/terms" className="text-emerald-400 hover:text-emerald-300 hover:underline">
             AGB
           </Link>{' '}
           und{' '}
-          <Link href="/privacy" className="text-emerald-600 hover:underline">
+          <Link href="/privacy" className="text-emerald-400 hover:text-emerald-300 hover:underline">
             Datenschutzerklärung
           </Link>
           .
@@ -259,7 +259,7 @@ export default function SignupPage() {
         {/* Submit button */}
         <Button
           type="submit"
-          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-emerald-500/25"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -279,10 +279,10 @@ export default function SignupPage() {
       {/* Divider */}
       <div className="relative my-8">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
+          <div className="w-full border-t border-slate-700" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-slate-400">Bereits registriert?</span>
+          <span className="px-4 bg-slate-900 text-slate-500">Bereits registriert?</span>
         </div>
       </div>
 
@@ -291,11 +291,11 @@ export default function SignupPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-12 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-medium rounded-xl transition-all"
+          className="w-full h-12 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:text-white font-medium rounded-xl transition-all"
         >
           Zum Login
         </Button>
       </Link>
-    </div>
+    </>
   )
 }

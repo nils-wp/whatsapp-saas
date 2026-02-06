@@ -37,7 +37,7 @@ export default async function RootPage() {
 
   // If authenticated, redirect to dashboard
   if (user) {
-    redirect('/accounts')
+    redirect('/dashboard')
   }
 
   // Show landing page for non-authenticated users
